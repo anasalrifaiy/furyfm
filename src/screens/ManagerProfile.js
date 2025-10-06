@@ -39,7 +39,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
     const offerValue = parseFloat(offerAmount) * 1000000;
 
     if (offerValue > currentManagerProfile.budget) {
-      Alert.alert('Insufficient Funds', 'You don\'t have enough budget for this offer.');
+      showAlert('Insufficient Funds', 'You don\'t have enough budget for this offer.');
       return;
     }
 
@@ -70,7 +70,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
       read: false
     });
 
-    Alert.alert('Offer Sent!', `Your offer of ${formatCurrency(offerValue)} for ${selectedPlayer.name} has been sent to ${manager.managerName}.`);
+    showAlert('Offer Sent!', `Your offer of ${formatCurrency(offerValue)} for ${selectedPlayer.name} has been sent to ${manager.managerName}.`);
     setSelectedPlayer(null);
     setOfferAmount('');
   };

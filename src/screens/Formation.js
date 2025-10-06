@@ -56,7 +56,7 @@ const Formation = ({ onBack }) => {
   const handleSelectPlayer = (position) => {
     const availablePlayers = getPlayersForPosition(position);
     if (availablePlayers.length === 0) {
-      Alert.alert('No Players', `You don't have any players available for this position. Sign players from the Transfer Market.`);
+      showAlert('No Players', `You don't have any players available for this position. Sign players from the Transfer Market.`);
       return;
     }
     setSelectingPosition(position);
@@ -82,7 +82,7 @@ const Formation = ({ onBack }) => {
       formation: selectedFormation,
       lineup: lineup
     });
-    Alert.alert('Success', 'Your formation has been saved!');
+    showAlert('Success', 'Your formation has been saved!');
   };
 
   const PositionSlot = ({ position, label, top, left }) => {

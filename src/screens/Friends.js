@@ -66,7 +66,7 @@ const Friends = ({ onBack, onViewProfile }) => {
     const currentFriends = managerProfile.friends || [];
 
     if (currentFriends.includes(friendId)) {
-      Alert.alert('Already Friends', 'This manager is already in your friends list.');
+      showAlert('Already Friends', 'This manager is already in your friends list.');
       return;
     }
 
@@ -84,12 +84,12 @@ const Friends = ({ onBack, onViewProfile }) => {
       read: false
     });
 
-    Alert.alert('Success', 'Friend added!');
+    showAlert('Success', 'Friend added!');
     loadFriends();
   };
 
   const removeFriend = async (friendId) => {
-    Alert.alert(
+    showAlert(
       'Remove Friend',
       'Are you sure you want to remove this friend?',
       [

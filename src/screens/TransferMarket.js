@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, update } from 'firebase/database';
 import { initialPlayers } from '../data/players';
+import { showAlert } from '../utils/alert';
 
 const TransferMarket = ({ onBack }) => {
   const { currentUser, managerProfile, updateManagerProfile } = useAuth();
@@ -52,12 +53,12 @@ const TransferMarket = ({ onBack }) => {
     const offerValue = parseFloat(offerAmount) * 1000000;
 
     if (offerValue > managerProfile.budget) {
-      Alert.alert('Insufficient Funds', 'You don\'t have enough budget for this offer.');
+      showAlert('Insufficient Funds', 'You don\'t have enough budget for this offer.');
       return;
     }
 
     if (offerValue < selectedPlayer.price * 0.7) {
-      Alert.alert('Offer Too Low', 'Your offer is too low. Try offering at least 70% of the asking price.');
+      showAlert('Offer Too Low', 'Your offer is too low. Try offering at least 70% of the asking price.');
       return;
     }
 
@@ -74,12 +75,12 @@ const TransferMarket = ({ onBack }) => {
       await update(ref(database, `market/${selectedPlayer.id}`), { onMarket: false, ownerId: currentUser.uid });
       await updateManagerProfile({ squad: newSquad, budget: newBudget });
 
-      Alert.alert('Success!', `${selectedPlayer.name} has joined your squad for ${formatCurrency(offerValue)}!`);
+      showAlert('Success!', `${selectedPlayer.name} has joined your squad for ${formatCurrency(offerValue)}!`);
       setSelectedPlayer(null);
       setOfferAmount('');
       loadMarketPlayers();
     } else {
-      Alert.alert('Offer Rejected', 'The club has rejected your offer. Try increasing your bid.');
+      showAlert('Offer Rejected', 'The club has rejected your offer. Try increasing your bid.');
     }
   };
 

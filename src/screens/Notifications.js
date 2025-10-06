@@ -46,7 +46,7 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
   };
 
   const clearAll = async () => {
-    Alert.alert(
+    showAlert(
       'Clear All Notifications',
       'Are you sure you want to delete all notifications?',
       [

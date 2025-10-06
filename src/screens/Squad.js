@@ -13,7 +13,7 @@ const Squad = ({ onBack }) => {
   };
 
   const handleSellPlayer = async (player) => {
-    Alert.alert(
+    showAlert(
       'Sell Player',
       `Are you sure you want to list ${player.name} on the transfer market?`,
       [
@@ -28,7 +28,7 @@ const Squad = ({ onBack }) => {
             await update(ref(database, `market/${player.id}`), { onMarket: true, ownerId: null });
             await updateManagerProfile({ squad: newSquad });
 
-            Alert.alert('Success', `${player.name} has been listed on the transfer market.`);
+            showAlert('Success', `${player.name} has been listed on the transfer market.`);
           }
         }
       ]
