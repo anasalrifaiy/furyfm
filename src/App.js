@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './components/Auth/Login';
+import Signup from './components/Auth/Signup';
+import TransferMarket from './screens/TransferMarket';
+import Squad from './screens/Squad';
+import Formation from './screens/Formation';
+import Friends from './screens/Friends';
+import Leaderboard from './screens/Leaderboard';
+import Notifications from './screens/Notifications';
+import ManagerProfile from './screens/ManagerProfile';
 
-const App = () => {
+const MainApp = () => {
+  const { currentUser, managerProfile, logout } = useAuth();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [playerData, setPlayerData] = useState({
-    managerName: 'Alex Fury',
-    clubName: 'Fury FC',
-    season: '2024/25',
-    league: 'Premier League',
-    position: 1,
-    points: 78,
-    goalsFor: 95,
-    goalsAgainst: 23
-  });
+  const [authScreen, setAuthScreen] = useState('login');
+  const [selectedManagerId, setSelectedManagerId] = useState(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -32,6 +35,23 @@ const App = () => {
     ]).start();
   }, []);
 
+  const formatCurrency = (amount) => {
+    return `$${(amount / 1000000).toFixed(1)}M`;
+  };
+
+  const handleViewProfile = (managerId) => {
+    setSelectedManagerId(managerId);
+    setCurrentScreen('profile');
+  };
+
+  if (!currentUser) {
+    return authScreen === 'login' ? (
+      <Login onSwitch={() => setAuthScreen('signup')} />
+    ) : (
+      <Signup onSwitch={() => setAuthScreen('login')} />
+    );
+  }
+
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerContent}>
@@ -40,16 +60,16 @@ const App = () => {
       </View>
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Season</Text>
-          <Text style={styles.statValue}>{playerData.season}</Text>
+          <Text style={styles.statLabel}>Manager</Text>
+          <Text style={styles.statValue}>{managerProfile?.managerName}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Position</Text>
-          <Text style={styles.statValue}>#{playerData.position}</Text>
+          <Text style={styles.statLabel}>Budget</Text>
+          <Text style={styles.statValue}>{formatCurrency(managerProfile?.budget || 0)}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>Points</Text>
-          <Text style={styles.statValue}>{playerData.points}</Text>
+          <Text style={styles.statValue}>{managerProfile?.points || 0}</Text>
         </View>
       </View>
     </View>
@@ -58,21 +78,21 @@ const App = () => {
   const renderHomeScreen = () => (
     <ScrollView style={styles.content}>
       <View style={styles.welcomeCard}>
-        <Text style={styles.welcomeTitle}>Welcome back, {playerData.managerName}!</Text>
-        <Text style={styles.welcomeSubtitle}>Managing {playerData.clubName}</Text>
+        <Text style={styles.welcomeTitle}>Welcome back, {managerProfile?.managerName}!</Text>
+        <Text style={styles.welcomeSubtitle}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
 
         <View style={styles.quickStats}>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Goals For</Text>
-            <Text style={styles.statCardValue}>{playerData.goalsFor}</Text>
+            <Text style={styles.statCardLabel}>Squad Size</Text>
+            <Text style={styles.statCardValue}>{managerProfile?.squad?.length || 0}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Goals Against</Text>
-            <Text style={styles.statCardValue}>{playerData.goalsAgainst}</Text>
+            <Text style={styles.statCardLabel}>Wins</Text>
+            <Text style={styles.statCardValue}>{managerProfile?.wins || 0}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Goal Difference</Text>
-            <Text style={styles.statCardValue}>+{playerData.goalsFor - playerData.goalsAgainst}</Text>
+            <Text style={styles.statCardLabel}>Friends</Text>
+            <Text style={styles.statCardValue}>{managerProfile?.friends?.length || 0}</Text>
           </View>
         </View>
       </View>
@@ -80,63 +100,78 @@ const App = () => {
       <View style={styles.menuGrid}>
         <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('squad')}>
           <Text style={styles.menuIcon}>👥</Text>
-          <Text style={styles.menuTitle}>Squad Management</Text>
-          <Text style={styles.menuDesc}>Manage your players and tactics</Text>
+          <Text style={styles.menuTitle}>My Squad</Text>
+          <Text style={styles.menuDesc}>View and manage your players</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('transfers')}>
+        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('market')}>
           <Text style={styles.menuIcon}>💰</Text>
           <Text style={styles.menuTitle}>Transfer Market</Text>
           <Text style={styles.menuDesc}>Buy and sell players</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('matches')}>
+        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('formation')}>
           <Text style={styles.menuIcon}>⚽</Text>
-          <Text style={styles.menuTitle}>Fixtures</Text>
-          <Text style={styles.menuDesc}>View upcoming matches</Text>
+          <Text style={styles.menuTitle}>Formation</Text>
+          <Text style={styles.menuDesc}>Set your tactical lineup</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('tactics')}>
-          <Text style={styles.menuIcon}>📋</Text>
-          <Text style={styles.menuTitle}>Tactics</Text>
-          <Text style={styles.menuDesc}>Set formations and strategies</Text>
+        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('friends')}>
+          <Text style={styles.menuIcon}>👥</Text>
+          <Text style={styles.menuTitle}>Friends</Text>
+          <Text style={styles.menuDesc}>Find and add managers</Text>
         </TouchableOpacity>
-      </View>
-    </ScrollView>
-  );
 
-  const renderFeatureScreen = (title, icon) => (
-    <ScrollView style={styles.content}>
-      <View style={styles.featureHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => setCurrentScreen('home')}>
-          <Text style={styles.backButtonText}>← Back</Text>
+        <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('leaderboard')}>
+          <Text style={styles.menuIcon}>🏆</Text>
+          <Text style={styles.menuTitle}>Leaderboard</Text>
+          <Text style={styles.menuDesc}>Compete with other managers</Text>
         </TouchableOpacity>
-        <Text style={styles.featureTitle}>{icon} {title}</Text>
-      </View>
 
-      <View style={styles.comingSoonCard}>
-        <Text style={styles.comingSoonIcon}>🚀</Text>
-        <Text style={styles.comingSoonTitle}>Coming Soon!</Text>
-        <Text style={styles.comingSoonDesc}>
-          This feature is under development. The new Fury FM will include advanced {title.toLowerCase()}
-          with modern UI, real-time updates, and enhanced gameplay mechanics.
-        </Text>
+        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('notifications')}>
+          <Text style={styles.menuIcon}>🔔</Text>
+          <Text style={styles.menuTitle}>Notifications</Text>
+          <Text style={styles.menuDesc}>View your alerts</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => handleViewProfile(currentUser.uid)}>
+          <Text style={styles.menuIcon}>👤</Text>
+          <Text style={styles.menuTitle}>My Profile</Text>
+          <Text style={styles.menuDesc}>View your stats</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={logout}>
+          <Text style={styles.menuIcon}>🚪</Text>
+          <Text style={styles.menuTitle}>Logout</Text>
+          <Text style={styles.menuDesc}>Sign out of your account</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
+      case 'market':
+        return <TransferMarket onBack={() => setCurrentScreen('home')} />;
       case 'squad':
-        return renderFeatureScreen('Squad Management', '👥');
-      case 'transfers':
-        return renderFeatureScreen('Transfer Market', '💰');
-      case 'matches':
-        return renderFeatureScreen('Fixtures', '⚽');
-      case 'tactics':
-        return renderFeatureScreen('Tactics', '📋');
+        return <Squad onBack={() => setCurrentScreen('home')} />;
+      case 'formation':
+        return <Formation onBack={() => setCurrentScreen('home')} />;
+      case 'friends':
+        return <Friends onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+      case 'leaderboard':
+        return <Leaderboard onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+      case 'notifications':
+        return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+      case 'profile':
+        return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
       default:
-        return renderHomeScreen();
+        return (
+          <>
+            {renderHeader()}
+            {renderHomeScreen()}
+          </>
+        );
     }
   };
 
@@ -150,9 +185,16 @@ const App = () => {
         }
       ]}
     >
-      {renderHeader()}
       {renderCurrentScreen()}
     </Animated.View>
+  );
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 };
 
@@ -301,53 +343,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-  },
-  featureHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  backButton: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  featureTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    flex: 1,
-  },
-  comingSoonCard: {
-    backgroundColor: '#1a1f3a',
-    borderRadius: 20,
-    padding: 40,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#667eea',
-    borderStyle: 'dashed',
-  },
-  comingSoonIcon: {
-    fontSize: 50,
-    marginBottom: 20,
-  },
-  comingSoonTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 15,
-  },
-  comingSoonDesc: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 24,
   },
 });
 

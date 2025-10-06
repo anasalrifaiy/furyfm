@@ -4,9 +4,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Production builds
+# Build outputs
 dist/
 build/
+*.log
 
 # Environment variables
 .env
@@ -15,38 +16,25 @@ build/
 .env.test.local
 .env.production.local
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# Logs
-logs
-*.log
+# OS
+.DS_Store
+Thumbs.db
 
-# Cache
+# Testing
+coverage/
+
+# Misc
 .cache/
-.parcel-cache/
+*.pid
+*.seed
+*.pid.lock
 
-# Android
-android/app/build/
-android/build/
-*.apk
-*.aab
-
-# iOS
-ios/build/
-*.ipa
-
-# React Native
-.metro-health-check*
+# Claude Code
+.claude/
