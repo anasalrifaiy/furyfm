@@ -10,22 +10,31 @@ const Signup = ({ onSwitch }) => {
   const { signup } = useAuth();
 
   const handleSignup = async () => {
+    console.log('Signup button clicked');
+
     if (!email || !password || !managerName) {
-      Alert.alert('Error', 'Please fill in all fields');
+      const message = 'Please fill in all fields';
+      console.error('Validation error:', message);
+      alert(message);
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      const message = 'Password must be at least 6 characters';
+      console.error('Validation error:', message);
+      alert(message);
       return;
     }
 
+    console.log('Attempting signup for:', email, 'Manager:', managerName);
     setLoading(true);
     try {
-      await signup(email, password, managerName);
-      Alert.alert('Success', 'Account created! You now have $200M to build your squad.');
+      const result = await signup(email, password, managerName);
+      console.log('Signup successful:', result);
+      alert('Success! Account created! You now have $200M to build your squad.');
     } catch (error) {
-      Alert.alert('Signup Failed', error.message);
+      console.error('Signup error:', error);
+      alert('Signup Failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

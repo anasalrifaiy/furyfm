@@ -9,16 +9,23 @@ const Login = ({ onSwitch }) => {
   const { login } = useAuth();
 
   const handleLogin = async () => {
+    console.log('Login button clicked');
+
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      const message = 'Please fill in all fields';
+      console.error('Validation error:', message);
+      alert(message);
       return;
     }
 
+    console.log('Attempting login for:', email);
     setLoading(true);
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      console.log('Login successful:', result);
     } catch (error) {
-      Alert.alert('Login Failed', error.message);
+      console.error('Login error:', error);
+      alert('Login Failed: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
