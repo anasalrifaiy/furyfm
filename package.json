@@ -1,6 +1,7 @@
 {
   "name": "furyfm",
   "version": "1.0.0",
+  "homepage": "https://anasalrifaiy.github.io/furyfm",
   "main": "index.js",
   "scripts": {
     "start": "webpack serve --mode development",
@@ -8,10 +9,10 @@
     "dev": "webpack serve --mode development --open",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["football", "manager", "game", "soccer", "sports"],
+  "author": "Anas Alrifaiy",
   "license": "ISC",
-  "description": "",
+  "description": "Advanced Football Manager game built with React Native Web and Firebase",
   "dependencies": {
     "firebase": "^12.3.0",
     "react": "^19.2.0",
