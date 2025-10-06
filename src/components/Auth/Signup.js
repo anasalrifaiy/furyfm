@@ -7,22 +7,26 @@ const Signup = ({ onSwitch }) => {
   const [password, setPassword] = useState('');
   const [managerName, setManagerName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const { signup } = useAuth();
 
   const handleSignup = async () => {
     console.log('Signup button clicked');
+    setError('');
+    setSuccess('');
 
     if (!email || !password || !managerName) {
       const message = 'Please fill in all fields';
       console.error('Validation error:', message);
-      alert(message);
+      setError(message);
       return;
     }
 
     if (password.length < 6) {
       const message = 'Password must be at least 6 characters';
       console.error('Validation error:', message);
-      alert(message);
+      setError(message);
       return;
     }
 
@@ -31,10 +35,13 @@ const Signup = ({ onSwitch }) => {
     try {
       const result = await signup(email, password, managerName);
       console.log('Signup successful:', result);
-      alert('Success! Account created! You now have $200M to build your squad.');
+      setSuccess('Success! Account created! You now have $200M to build your squad.');
+      setError('');
     } catch (error) {
       console.error('Signup error:', error);
-      alert('Signup Failed: ' + (error.message || 'Unknown error'));
+      const errorMessage = error.message || 'Unknown error occurred';
+      setError('Signup Failed: ' + errorMessage);
+      setSuccess('');
     } finally {
       setLoading(false);
     }
@@ -44,6 +51,18 @@ const Signup = ({ onSwitch }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Join Fury FM</Text>
       <Text style={styles.subtitle}>Create your manager account</Text>
+
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {success ? (
+        <View style={styles.successContainer}>
+          <Text style={styles.successText}>{success}</Text>
+        </View>
+      ) : null}
 
       <TextInput
         style={styles.input}
@@ -139,6 +158,34 @@ const styles = StyleSheet.create({
   switchText: {
     color: '#667eea',
     fontSize: 14,
+  },
+  errorContainer: {
+    backgroundColor: '#ff4444',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ff0000',
+  },
+  errorText: {
+    color: '#ffffff',
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  successContainer: {
+    backgroundColor: '#44ff44',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#00ff00',
+  },
+  successText: {
+    color: '#006600',
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

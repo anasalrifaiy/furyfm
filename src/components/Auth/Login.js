@@ -6,15 +6,17 @@ const Login = ({ onSwitch }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
 
   const handleLogin = async () => {
     console.log('Login button clicked');
+    setError('');
 
     if (!email || !password) {
       const message = 'Please fill in all fields';
       console.error('Validation error:', message);
-      alert(message);
+      setError(message);
       return;
     }
 
@@ -23,9 +25,11 @@ const Login = ({ onSwitch }) => {
     try {
       const result = await login(email, password);
       console.log('Login successful:', result);
+      setError('');
     } catch (error) {
       console.error('Login error:', error);
-      alert('Login Failed: ' + (error.message || 'Unknown error'));
+      const errorMessage = error.message || 'Unknown error occurred';
+      setError('Login Failed: ' + errorMessage);
     } finally {
       setLoading(false);
     }
@@ -35,6 +39,12 @@ const Login = ({ onSwitch }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Fury FM</Text>
       <Text style={styles.subtitle}>Login to your account</Text>
+
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
       <TextInput
         style={styles.input}
@@ -122,6 +132,20 @@ const styles = StyleSheet.create({
   switchText: {
     color: '#667eea',
     fontSize: 14,
+  },
+  errorContainer: {
+    backgroundColor: '#ff4444',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ff0000',
+  },
+  errorText: {
+    color: '#ffffff',
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 
