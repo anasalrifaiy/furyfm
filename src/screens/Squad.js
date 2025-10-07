@@ -176,8 +176,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0e27',
   },
   header: {
+    position: 'sticky',
+    top: 0,
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     padding: 15,
+    zIndex: 100,
     paddingTop: 20,
   },
   backButton: {

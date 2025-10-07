@@ -72,22 +72,37 @@ const Friends = ({ onBack, onViewProfile }) => {
       return;
     }
 
-    const newFriends = [...currentFriends, friendId];
-    await updateManagerProfile({ friends: newFriends });
+    // Check if we already sent a request
+    const friendRef = ref(database, `managers/${friendId}/notifications`);
+    const snapshot = await get(friendRef);
+    let requestExists = false;
 
-    // Send notification to friend
+    if (snapshot.exists()) {
+      snapshot.forEach(childSnapshot => {
+        const notif = childSnapshot.val();
+        if (notif.type === 'friend_request' && notif.from === currentUser.uid) {
+          requestExists = true;
+        }
+      });
+    }
+
+    if (requestExists) {
+      showAlert('Request Pending', 'You already sent a friend request to this manager.');
+      return;
+    }
+
+    // Send friend request notification
     const notificationRef = ref(database, `managers/${friendId}/notifications`);
     await push(notificationRef, {
       type: 'friend_request',
       from: currentUser.uid,
       fromName: managerProfile.managerName,
-      message: `${managerProfile.managerName} added you as a friend!`,
+      message: `${managerProfile.managerName} sent you a friend request`,
       timestamp: Date.now(),
       read: false
     });
 
-    showAlert('Success', 'Friend added!');
-    loadFriends();
+    showAlert('Request Sent', 'Friend request sent successfully!');
   };
 
   const removeFriend = async (friendId) => {
@@ -245,8 +260,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0e27',
   },
   header: {
+    position: 'sticky',
+    top: 0,
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     padding: 15,
+    zIndex: 100,
     paddingTop: 20,
   },
   backButton: {

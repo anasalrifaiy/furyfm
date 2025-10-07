@@ -18,6 +18,7 @@ const MainApp = () => {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [authScreen, setAuthScreen] = useState('login');
   const [selectedManagerId, setSelectedManagerId] = useState(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     // Check if running on web - native driver is not supported on web
@@ -37,6 +38,14 @@ const MainApp = () => {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    // Load unread notifications count
+    if (managerProfile?.notifications) {
+      const count = Object.values(managerProfile.notifications).filter(n => !n.read).length;
+      setUnreadNotifications(count);
+    }
+  }, [managerProfile]);
 
   const formatCurrency = (amount) => {
     return `$${(amount / 1000000).toFixed(1)}M`;
@@ -132,7 +141,14 @@ const MainApp = () => {
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('notifications')}>
-          <Text style={styles.menuIcon}>🔔</Text>
+          <View style={styles.iconContainer}>
+            <Text style={styles.menuIcon}>🔔</Text>
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{unreadNotifications}</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.menuTitle}>Notifications</Text>
           <Text style={styles.menuDesc}>View your alerts</Text>
         </TouchableOpacity>
@@ -346,6 +362,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
+  },
+  iconContainer: {
+    position: 'relative',
+    marginBottom: 10,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -10,
+    backgroundColor: '#f5576c',
+    borderRadius: 12,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });
 

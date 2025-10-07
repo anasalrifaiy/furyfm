@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
-import { ref, get, update, remove } from 'firebase/database';
+import { ref, get, update, remove, push } from 'firebase/database';
+import { showAlert } from '../utils/alert';
 
 const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
-  const { currentUser, managerProfile } = useAuth();
+  const { currentUser, managerProfile, updateManagerProfile } = useAuth();
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -94,6 +95,42 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
     return `${days}d ago`;
   };
 
+  const acceptFriendRequest = async (notification) => {
+    // Add friend to both users
+    const currentFriends = managerProfile.friends || [];
+    const newFriends = [...currentFriends, notification.from];
+    await updateManagerProfile({ friends: newFriends });
+
+    // Add me to their friends list
+    const friendRef = ref(database, `managers/${notification.from}`);
+    const friendSnapshot = await get(friendRef);
+    if (friendSnapshot.exists()) {
+      const friendData = friendSnapshot.val();
+      const theirFriends = friendData.friends || [];
+      await update(friendRef, { friends: [...theirFriends, currentUser.uid] });
+    }
+
+    // Send notification to them
+    const notificationRef = ref(database, `managers/${notification.from}/notifications`);
+    await push(notificationRef, {
+      type: 'friend_accepted',
+      from: currentUser.uid,
+      fromName: managerProfile.managerName,
+      message: `${managerProfile.managerName} accepted your friend request!`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    // Delete the request notification
+    await deleteNotification(notification.id);
+    showAlert('Success', 'Friend request accepted!');
+  };
+
+  const rejectFriendRequest = async (notification) => {
+    await deleteNotification(notification.id);
+    showAlert('Rejected', 'Friend request rejected.');
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -129,20 +166,12 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
           </View>
         ) : (
           notifications.map(notification => (
-            <TouchableOpacity
+            <View
               key={notification.id}
               style={[
                 styles.notificationCard,
                 !notification.read && styles.notificationUnread
               ]}
-              onPress={() => {
-                markAsRead(notification.id);
-                if (notification.type === 'friend_request') {
-                  onViewProfile(notification.from);
-                } else if (notification.type.includes('trade')) {
-                  onViewOffer && onViewOffer(notification.offerId);
-                }
-              }}
             >
               <View style={styles.notificationIcon}>
                 <Text style={styles.iconText}>{getNotificationIcon(notification.type)}</Text>
@@ -151,18 +180,32 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
               <View style={styles.notificationContent}>
                 <Text style={styles.notificationMessage}>{notification.message}</Text>
                 <Text style={styles.notificationTime}>{formatTime(notification.timestamp)}</Text>
+
+                {notification.type === 'friend_request' && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptFriendRequest(notification)}
+                    >
+                      <Text style={styles.acceptButtonText}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() => rejectFriendRequest(notification)}
+                    >
+                      <Text style={styles.rejectButtonText}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity
                 style={styles.deleteButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  deleteNotification(notification.id);
-                }}
+                onPress={() => deleteNotification(notification.id)}
               >
                 <Text style={styles.deleteButtonText}>✕</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>
@@ -176,8 +219,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0e27',
   },
   header: {
+    position: 'sticky',
+    top: 0,
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     padding: 15,
+    zIndex: 100,
     paddingTop: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,6 +345,34 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 10,
+    gap: 10,
+  },
+  acceptButton: {
+    background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    marginRight: 10,
+  },
+  acceptButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  rejectButton: {
+    backgroundColor: '#2d3561',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+  },
+  rejectButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });
 
