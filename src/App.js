@@ -10,6 +10,7 @@ import Friends from './screens/Friends';
 import Leaderboard from './screens/Leaderboard';
 import Notifications from './screens/Notifications';
 import ManagerProfile from './screens/ManagerProfile';
+import Match from './screens/Match';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
@@ -128,6 +129,12 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Set your tactical lineup</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
+          <Text style={styles.menuIcon}>🏟️</Text>
+          <Text style={styles.menuTitle}>Match</Text>
+          <Text style={styles.menuDesc}>Challenge friends to play</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('friends')}>
           <Text style={styles.menuIcon}>👥</Text>
           <Text style={styles.menuTitle}>Friends</Text>
@@ -176,6 +183,8 @@ const MainApp = () => {
         return <Squad onBack={() => setCurrentScreen('home')} />;
       case 'formation':
         return <Formation onBack={() => setCurrentScreen('home')} />;
+      case 'match':
+        return <Match onBack={() => setCurrentScreen('home')} />;
       case 'friends':
         return <Friends onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
       case 'leaderboard':
@@ -343,6 +352,9 @@ const styles = StyleSheet.create({
   },
   accentCard: {
     background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  },
+  successCard: {
+    background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
   },
   warningCard: {
     background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',

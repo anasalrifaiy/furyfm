@@ -11,7 +11,6 @@ const TransferMarket = ({ onBack }) => {
   const [players, setPlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPosition, setFilterPosition] = useState('All');
-  const [filterLeague, setFilterLeague] = useState('All');
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
 
@@ -90,16 +89,14 @@ const TransferMarket = ({ onBack }) => {
     const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          player.club.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPosition = filterPosition === 'All' || player.position === filterPosition;
-    const matchesLeague = filterLeague === 'All' || player.league === filterLeague;
 
     // Don't show players already in user's squad
     const notInSquad = !(managerProfile.squad || []).some(p => p.id === player.id);
 
-    return matchesSearch && matchesPosition && matchesLeague && notInSquad;
+    return matchesSearch && matchesPosition && notInSquad;
   });
 
   const positions = ['All', 'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST'];
-  const leagues = ['All', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'];
 
   if (!managerProfile) {
     return (
@@ -146,20 +143,6 @@ const TransferMarket = ({ onBack }) => {
               onPress={() => setFilterPosition(pos)}
             >
               <Text style={[styles.filterText, filterPosition === pos && styles.filterTextActive]}>{pos}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-          {leagues.map(league => (
-            <TouchableOpacity
-              key={league}
-              style={[styles.filterChip, filterLeague === league && styles.filterChipActive]}
-              onPress={() => setFilterLeague(league)}
-            >
-              <Text style={[styles.filterText, filterLeague === league && styles.filterTextActive]}>
-                {league === 'All' ? 'All Leagues' : league}
-              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

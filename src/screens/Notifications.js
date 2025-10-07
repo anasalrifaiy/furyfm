@@ -121,7 +121,7 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
       read: false
     });
 
-    // Delete the request notification
+    // Delete the request notification and reload
     await deleteNotification(notification.id);
     showAlert('Success', 'Friend request accepted!');
   };

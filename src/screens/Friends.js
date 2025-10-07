@@ -16,7 +16,7 @@ const Friends = ({ onBack, onViewProfile }) => {
     if (managerProfile) {
       loadFriends();
     }
-  }, [managerProfile]);
+  }, [managerProfile, managerProfile?.friends]);
 
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {
