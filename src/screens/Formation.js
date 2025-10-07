@@ -79,10 +79,24 @@ const Formation = ({ onBack }) => {
   };
 
   const assignPlayer = (player) => {
-    setLineup(prev => ({
-      ...prev,
-      [selectingPosition]: player
-    }));
+    // Check if player is already assigned to another position
+    const currentPosition = Object.keys(lineup).find(pos => lineup[pos]?.id === player.id);
+
+    if (currentPosition && currentPosition !== selectingPosition) {
+      // Remove from current position and assign to new position
+      setLineup(prev => ({
+        ...prev,
+        [currentPosition]: null,
+        [selectingPosition]: player
+      }));
+    } else {
+      // Just assign to the position
+      setLineup(prev => ({
+        ...prev,
+        [selectingPosition]: player
+      }));
+    }
+
     setSelectingPosition(null);
   };
 
@@ -275,21 +289,27 @@ const Formation = ({ onBack }) => {
             <Text style={styles.modalTitle}>Select Player for {selectingPosition}</Text>
 
             <ScrollView style={styles.playerList}>
-              {getPlayersForPosition(selectingPosition).map(player => (
-                <TouchableOpacity
-                  key={player.id}
-                  style={styles.playerOption}
-                  onPress={() => assignPlayer(player)}
-                >
-                  <View>
-                    <Text style={styles.playerOptionName}>{player.name}</Text>
-                    <Text style={styles.playerOptionDetails}>
-                      {player.position} • OVR {player.overall}
-                    </Text>
-                  </View>
-                  <Text style={styles.playerOptionRating}>{player.overall}</Text>
-                </TouchableOpacity>
-              ))}
+              {getPlayersForPosition(selectingPosition).map(player => {
+                const assignedPosition = Object.keys(lineup).find(pos => lineup[pos]?.id === player.id);
+                const isAssigned = assignedPosition && assignedPosition !== selectingPosition;
+
+                return (
+                  <TouchableOpacity
+                    key={player.id}
+                    style={[styles.playerOption, isAssigned && styles.playerOptionAssigned]}
+                    onPress={() => assignPlayer(player)}
+                  >
+                    <View>
+                      <Text style={styles.playerOptionName}>{player.name}</Text>
+                      <Text style={styles.playerOptionDetails}>
+                        {player.position} • OVR {player.overall}
+                        {isAssigned && ` • Currently at ${assignedPosition}`}
+                      </Text>
+                    </View>
+                    <Text style={styles.playerOptionRating}>{player.overall}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
             <TouchableOpacity
@@ -481,6 +501,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  playerOptionAssigned: {
+    backgroundColor: '#3d4468',
+    borderWidth: 1,
+    borderColor: '#ffa726',
   },
   playerOptionName: {
     color: '#ffffff',
