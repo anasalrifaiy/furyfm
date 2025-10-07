@@ -280,7 +280,12 @@ const ManagerProfile = ({ managerId, onBack }) => {
     </View>
 
     {isEditing && (
-      <View style={styles.modalOverlay}>
+      <View style={styles.modalOverlay} pointerEvents="auto">
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsEditing(false)}
+        />
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Edit Profile</Text>
 
@@ -336,7 +341,15 @@ const ManagerProfile = ({ managerId, onBack }) => {
     )}
 
     {selectedPlayer && (
-      <View style={styles.modalOverlay}>
+      <View style={styles.modalOverlay} pointerEvents="auto">
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => {
+            setSelectedPlayer(null);
+            setOfferAmount('');
+          }}
+        />
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
           <Text style={styles.modalSubtitle}>Market Value: {formatCurrency(selectedPlayer.price)}</Text>
@@ -638,11 +651,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999,
+    zIndex: 99999,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    zIndex: 1,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
@@ -652,6 +675,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderWidth: 1,
     borderColor: '#2d3561',
+    zIndex: 2,
   },
   modalTitle: {
     fontSize: 20,

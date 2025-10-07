@@ -88,6 +88,7 @@ const Squad = ({ onBack }) => {
   );
 
   return (
+    <>
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -116,10 +117,16 @@ const Squad = ({ onBack }) => {
           )}
         </View>
       </ScrollView>
+    </View>
 
-      {selectedPlayer && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
+    {selectedPlayer && (
+      <View style={styles.modalOverlay} pointerEvents="auto">
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setSelectedPlayer(null)}
+        />
+        <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{selectedPlayer.name}</Text>
             <Text style={styles.modalSubtitle}>{selectedPlayer.position} • {selectedPlayer.club}</Text>
 
@@ -165,8 +172,8 @@ const Squad = ({ onBack }) => {
             </View>
           </View>
         </View>
-      )}
-    </View>
+    )}
+  </>
   );
 };
 
@@ -293,26 +300,39 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
-  modal: {
+  modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    zIndex: 1000,
+    zIndex: 99999,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    zIndex: 1,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
     borderRadius: 20,
     padding: 25,
-    width: '100%',
+    width: '90%',
     maxWidth: 400,
     borderWidth: 1,
     borderColor: '#2d3561',
+    zIndex: 2,
   },
   modalTitle: {
     fontSize: 24,
