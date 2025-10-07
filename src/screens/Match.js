@@ -197,23 +197,46 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   };
 
+  // Calculate team strength based on player ratings
+  const calculateTeamStrength = (squad) => {
+    if (!squad || squad.length === 0) return 50;
+    const avgRating = squad.reduce((sum, player) => sum + player.overall, 0) / squad.length;
+    return avgRating;
+  };
+
   const simulateMatch = async () => {
     if (!currentMatch) return;
 
     const matchRef = ref(database, `matches/${currentMatch.id}`);
+
+    // Calculate team strengths
+    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    const totalStrength = homeStrength + awayStrength;
+
+    // Home advantage bonus
+    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    const awayChance = (awayStrength / totalStrength) * 0.55;
+
     let currentMinute = 0;
 
     const interval = setInterval(async () => {
       currentMinute++;
 
-      // Random chance of goal (5% per minute)
-      const goalChance = Math.random();
+      // Goal chance based on team strength (4% per minute scaled by strength)
+      const goalRoll = Math.random();
       let newEvents = [];
 
-      if (goalChance < 0.05) {
-        const isHomeGoal = Math.random() < 0.5;
+      if (goalRoll < 0.04) {
+        const teamRoll = Math.random();
+        const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
-        const scorer = team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        // More likely to score with attacking players
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        const scorer = attackers.length > 0 && Math.random() > 0.3
+          ? attackers[Math.floor(Math.random() * attackers.length)]
+          : team.squad[Math.floor(Math.random() * team.squad.length)];
 
         const newScore = isHomeGoal
           ? { homeScore: (await get(matchRef)).val().homeScore + 1 }
@@ -221,7 +244,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
         await update(matchRef, newScore);
 
-        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
 
         // Get current events and prepend new one
         const currentData = (await get(matchRef)).val();
@@ -276,17 +299,32 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const matchRef = ref(database, `matches/${currentMatch.id}`);
 
+    // Calculate team strengths
+    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    const totalStrength = homeStrength + awayStrength;
+
+    // Home advantage bonus
+    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    const awayChance = (awayStrength / totalStrength) * 0.55;
+
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
       const currentMinute = currentData.minute + 1;
 
-      // Random chance of goal (5% per minute)
-      const goalChance = Math.random();
+      // Goal chance based on team strength (4% per minute scaled by strength)
+      const goalRoll = Math.random();
 
-      if (goalChance < 0.05) {
-        const isHomeGoal = Math.random() < 0.5;
+      if (goalRoll < 0.04) {
+        const teamRoll = Math.random();
+        const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
-        const scorer = team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        // More likely to score with attacking players
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        const scorer = attackers.length > 0 && Math.random() > 0.3
+          ? attackers[Math.floor(Math.random() * attackers.length)]
+          : team.squad[Math.floor(Math.random() * team.squad.length)];
 
         const newScore = isHomeGoal
           ? { homeScore: currentData.homeScore + 1 }
@@ -294,7 +332,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
         await update(matchRef, newScore);
 
-        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
         const newEvents = [eventText, ...(currentData.events || [])];
         await update(matchRef, { events: newEvents });
       }
@@ -332,6 +370,45 @@ const Match = ({ onBack, activeMatchId }) => {
     const finalHomeScore = matchData.homeScore || 0;
     const finalAwayScore = matchData.awayScore || 0;
 
+    // Calculate team strengths for match report
+    const homeStrength = calculateTeamStrength(matchData.homeManager.squad);
+    const awayStrength = calculateTeamStrength(matchData.awayManager.squad);
+
+    // Generate match report
+    let matchReport = '';
+    const scoreDiff = Math.abs(finalHomeScore - finalAwayScore);
+    const strengthDiff = Math.abs(homeStrength - awayStrength);
+
+    if (finalHomeScore > finalAwayScore) {
+      // Home win
+      matchReport = `${matchData.homeManager.name} won ${finalHomeScore}-${finalAwayScore}. `;
+      if (homeStrength > awayStrength + 3) {
+        matchReport += `The favorites dominated with superior squad quality (${homeStrength.toFixed(1)} vs ${awayStrength.toFixed(1)} avg rating).`;
+      } else if (homeStrength < awayStrength - 3) {
+        matchReport += `An upset victory! ${matchData.homeManager.name}'s tactical approach overcame ${matchData.awayManager.name}'s stronger squad (${awayStrength.toFixed(1)} avg rating).`;
+      } else {
+        matchReport += `A well-deserved victory with home advantage proving decisive in a closely matched contest.`;
+      }
+    } else if (finalAwayScore > finalHomeScore) {
+      // Away win
+      matchReport = `${matchData.awayManager.name} won ${finalAwayScore}-${finalHomeScore} away from home. `;
+      if (awayStrength > homeStrength + 3) {
+        matchReport += `The superior squad quality (${awayStrength.toFixed(1)} vs ${homeStrength.toFixed(1)} avg rating) showed as expected.`;
+      } else if (awayStrength < homeStrength - 3) {
+        matchReport += `Major upset! ${matchData.awayManager.name} pulled off an incredible away win despite facing a stronger squad.`;
+      } else {
+        matchReport += `Excellent away performance overcoming home advantage in a competitive match.`;
+      }
+    } else {
+      // Draw
+      matchReport = `Match ended ${finalHomeScore}-${finalHomeScore}. `;
+      if (strengthDiff < 2) {
+        matchReport += `A fair result between two evenly matched teams (${homeStrength.toFixed(1)} vs ${awayStrength.toFixed(1)} avg rating).`;
+      } else {
+        matchReport += `The underdog held on for a valuable point against a superior opponent.`;
+      }
+    }
+
     // Create match history record
     const matchHistory = {
       id: matchData.id,
@@ -345,7 +422,10 @@ const Match = ({ onBack, activeMatchId }) => {
       },
       homeScore: finalHomeScore,
       awayScore: finalAwayScore,
+      homeStrength: homeStrength.toFixed(1),
+      awayStrength: awayStrength.toFixed(1),
       events: matchData.events || [],
+      matchReport: matchReport,
       playedAt: Date.now()
     };
 
@@ -740,6 +820,24 @@ const Match = ({ onBack, activeMatchId }) => {
               Points earned: {result === 'WIN' ? '+3' : result === 'DRAW' ? '+1' : '0'}
             </Text>
           </View>
+
+          {currentMatch.matchReport && (
+            <View style={styles.matchReportCard}>
+              <Text style={styles.matchReportTitle}>📊 Match Analysis</Text>
+              <Text style={styles.matchReportText}>{currentMatch.matchReport}</Text>
+              <View style={styles.strengthComparison}>
+                <View style={styles.strengthItem}>
+                  <Text style={styles.strengthLabel}>{currentMatch.homeManager.name}</Text>
+                  <Text style={styles.strengthValue}>⭐ {currentMatch.homeStrength || 'N/A'}</Text>
+                </View>
+                <Text style={styles.strengthVs}>VS</Text>
+                <View style={styles.strengthItem}>
+                  <Text style={styles.strengthLabel}>{currentMatch.awayManager.name}</Text>
+                  <Text style={styles.strengthValue}>⭐ {currentMatch.awayStrength || 'N/A'}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           <View style={styles.matchSummary}>
             <Text style={styles.summaryTitle}>Match Events</Text>
@@ -1279,6 +1377,57 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  matchReportCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#667eea',
+  },
+  matchReportTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  matchReportText: {
+    fontSize: 15,
+    color: '#e0e0e0',
+    lineHeight: 24,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  strengthComparison: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#252b54',
+    borderRadius: 15,
+    padding: 15,
+  },
+  strengthItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  strengthLabel: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  strengthValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#43e97b',
+  },
+  strengthVs: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#667eea',
+    marginHorizontal: 10,
   },
 });
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, onValue } from 'firebase/database';
 import { initialPlayers } from '../data/players';
 import { showAlert } from '../utils/alert';
 
@@ -15,29 +15,30 @@ const TransferMarket = ({ onBack }) => {
   const [offerAmount, setOfferAmount] = useState('');
 
   useEffect(() => {
-    if (managerProfile) {
-      loadMarketPlayers();
-    }
-  }, [managerProfile]);
-
-  const loadMarketPlayers = async () => {
-    // Load players from database, if not initialized, use initial data
     const marketRef = ref(database, 'market');
-    const snapshot = await get(marketRef);
 
-    if (snapshot.exists()) {
-      const marketData = snapshot.val();
-      setPlayers(Object.values(marketData).filter(p => p.onMarket));
-    } else {
-      // Initialize market with all players
-      const marketData = {};
-      initialPlayers.forEach(player => {
-        marketData[player.id] = player;
-      });
-      await update(ref(database, 'market'), marketData);
-      setPlayers(initialPlayers.filter(p => p.onMarket));
-    }
-  };
+    // Check if market exists, if not initialize it
+    get(marketRef).then(snapshot => {
+      if (!snapshot.exists()) {
+        const marketData = {};
+        initialPlayers.forEach(player => {
+          marketData[player.id] = player;
+        });
+        update(ref(database, 'market'), marketData);
+      }
+    });
+
+    // Set up real-time listener
+    const unsubscribe = onValue(marketRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const marketData = snapshot.val();
+        setPlayers(Object.values(marketData).filter(p => p.onMarket));
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
 
   const formatCurrency = (amount) => {
     return `$${(amount / 1000000).toFixed(1)}M`;
@@ -83,7 +84,6 @@ const TransferMarket = ({ onBack }) => {
 
       showAlert('Success!', `${selectedPlayer.name} has joined your squad for ${formatCurrency(offerValue)}!`);
       closeModal();
-      loadMarketPlayers();
     } else {
       showAlert('Offer Rejected', 'The club has rejected your offer. Try increasing your bid.');
     }
@@ -119,63 +119,65 @@ const TransferMarket = ({ onBack }) => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Transfer Market</Text>
-        <Text style={styles.budget}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
+    <>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Transfer Market</Text>
+          <Text style={styles.budget}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
+        </View>
+
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.searchSection}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search players or clubs..."
+              placeholderTextColor="#888"
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+            {positions.map(pos => (
+              <TouchableOpacity
+                key={pos}
+                style={[styles.filterChip, filterPosition === pos && styles.filterChipActive]}
+                onPress={() => setFilterPosition(pos)}
+              >
+                <Text style={[styles.filterText, filterPosition === pos && styles.filterTextActive]}>{pos}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.playersList}>
+            {filteredPlayers.map(player => (
+              <View key={player.id} style={styles.playerCard}>
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>{player.name}</Text>
+                  <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
+                  <Text style={styles.playerClub}>{player.club} ({player.league})</Text>
+                  <Text style={styles.playerRating}>Overall: {player.overall}</Text>
+                </View>
+                <View style={styles.playerActions}>
+                  <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
+                  <TouchableOpacity
+                    style={styles.offerButton}
+                    onPress={() => handleMakeOffer(player)}
+                  >
+                    <Text style={styles.offerButtonText}>Make Offer</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.searchSection}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search players or clubs..."
-            placeholderTextColor="#888"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-          {positions.map(pos => (
-            <TouchableOpacity
-              key={pos}
-              style={[styles.filterChip, filterPosition === pos && styles.filterChipActive]}
-              onPress={() => setFilterPosition(pos)}
-            >
-              <Text style={[styles.filterText, filterPosition === pos && styles.filterTextActive]}>{pos}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.playersList}>
-          {filteredPlayers.map(player => (
-            <View key={player.id} style={styles.playerCard}>
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>{player.name}</Text>
-                <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
-                <Text style={styles.playerClub}>{player.club} ({player.league})</Text>
-                <Text style={styles.playerRating}>Overall: {player.overall}</Text>
-              </View>
-              <View style={styles.playerActions}>
-                <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
-                <TouchableOpacity
-                  style={styles.offerButton}
-                  onPress={() => handleMakeOffer(player)}
-                >
-                  <Text style={styles.offerButtonText}>Make Offer</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
       {selectedPlayer && (
-        <View style={styles.modal}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
             <Text style={styles.modalSubtitle}>Asking Price: {formatCurrency(selectedPlayer.price)}</Text>
@@ -210,7 +212,7 @@ const TransferMarket = ({ onBack }) => {
           </View>
         </View>
       )}
-    </View>
+    </>
   );
 };
 
@@ -347,30 +349,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
-  modal: {
+  modalOverlay: {
     position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '100%',
-    height: '100%',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100vw',
+    height: '100vh',
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-    padding: 20,
+    zIndex: 9999,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
     borderRadius: 20,
     padding: 25,
-    width: '100%',
+    width: '90%',
     maxWidth: 400,
-    maxHeight: '90vh',
     borderWidth: 1,
     borderColor: '#2d3561',
-    overflowY: 'auto',
   },
   modalTitle: {
     fontSize: 22,

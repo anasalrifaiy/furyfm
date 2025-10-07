@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
-import { ref, get, update, remove, push, set } from 'firebase/database';
+import { ref, get, update, remove, push, set, onValue } from 'firebase/database';
 import { showAlert } from '../utils/alert';
 
 const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChallenge }) => {
@@ -10,40 +10,41 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
     if (!currentUser) return;
 
     const notificationsRef = ref(database, `managers/${currentUser.uid}/notifications`);
-    const snapshot = await get(notificationsRef);
 
-    if (snapshot.exists()) {
-      const notifData = [];
-      snapshot.forEach(childSnapshot => {
-        notifData.push({
-          id: childSnapshot.key,
-          ...childSnapshot.val()
+    // Set up real-time listener
+    const unsubscribe = onValue(notificationsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const notifData = [];
+        snapshot.forEach(childSnapshot => {
+          notifData.push({
+            id: childSnapshot.key,
+            ...childSnapshot.val()
+          });
         });
-      });
 
-      // Sort by timestamp, newest first
-      notifData.sort((a, b) => b.timestamp - a.timestamp);
-      setNotifications(notifData);
-    }
-  };
+        // Sort by timestamp, newest first
+        notifData.sort((a, b) => b.timestamp - a.timestamp);
+        setNotifications(notifData);
+      } else {
+        setNotifications([]);
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const markAsRead = async (notificationId) => {
     const notifRef = ref(database, `managers/${currentUser.uid}/notifications/${notificationId}`);
     await update(notifRef, { read: true });
-    loadNotifications();
   };
 
   const deleteNotification = async (notificationId) => {
     const notifRef = ref(database, `managers/${currentUser.uid}/notifications/${notificationId}`);
     await remove(notifRef);
-    loadNotifications();
   };
 
   const clearAll = async () => {
