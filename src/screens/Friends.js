@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, update, push } from 'firebase/database';
+import { showAlert } from '../utils/alert';
 
 const Friends = ({ onBack, onViewProfile }) => {
   const { currentUser, managerProfile, updateManagerProfile, loading } = useAuth();
@@ -106,22 +107,25 @@ const Friends = ({ onBack, onViewProfile }) => {
   };
 
   const removeFriend = async (friendId) => {
-    showAlert(
-      'Remove Friend',
-      'Are you sure you want to remove this friend?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            const newFriends = managerProfile.friends.filter(id => id !== friendId);
-            await updateManagerProfile({ friends: newFriends });
-            loadFriends();
-          }
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm('Are you sure you want to remove this friend?');
+      if (confirmed) {
+        const newFriends = managerProfile.friends.filter(id => id !== friendId);
+        await updateManagerProfile({ friends: newFriends });
+
+        // Also remove me from their friends list
+        const friendRef = ref(database, `managers/${friendId}`);
+        const friendSnapshot = await get(friendRef);
+        if (friendSnapshot.exists()) {
+          const friendData = friendSnapshot.val();
+          const theirFriends = (friendData.friends || []).filter(id => id !== currentUser.uid);
+          await update(friendRef, { friends: theirFriends });
         }
-      ]
-    );
+
+        loadFriends();
+        showAlert('Removed', 'Friend has been removed from your list.');
+      }
+    }
   };
 
   if (!managerProfile) {

@@ -3,13 +3,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert 
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, push, update } from 'firebase/database';
+import { showAlert } from '../utils/alert';
 
 const ManagerProfile = ({ managerId, onBack }) => {
-  const { currentUser, managerProfile: currentManagerProfile, loading } = useAuth();
+  const { currentUser, managerProfile: currentManagerProfile, updateManagerProfile, loading } = useAuth();
   const [manager, setManager] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
   const [activeTab, setActiveTab] = useState('squad'); // 'squad' or 'stats'
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editClub, setEditClub] = useState('');
+  const [editCountry, setEditCountry] = useState('');
 
   useEffect(() => {
     if (currentManagerProfile) {
@@ -22,8 +27,33 @@ const ManagerProfile = ({ managerId, onBack }) => {
     const snapshot = await get(managerRef);
 
     if (snapshot.exists()) {
-      setManager({ uid: managerId, ...snapshot.val() });
+      const data = { uid: managerId, ...snapshot.val() };
+      setManager(data);
+      setEditName(data.managerName || '');
+      setEditClub(data.clubName || '');
+      setEditCountry(data.country || '');
     }
+  };
+
+  const handleEditProfile = () => {
+    setIsEditing(true);
+  };
+
+  const saveProfile = async () => {
+    if (!editName.trim()) {
+      showAlert('Error', 'Manager name cannot be empty');
+      return;
+    }
+
+    await updateManagerProfile({
+      managerName: editName.trim(),
+      clubName: editClub.trim() || 'No Club',
+      country: editCountry.trim() || 'Unknown'
+    });
+
+    setIsEditing(false);
+    loadManager();
+    showAlert('Success', 'Profile updated successfully!');
   };
 
   const formatCurrency = (amount) => {
@@ -109,7 +139,16 @@ const ManagerProfile = ({ managerId, onBack }) => {
           <Text style={styles.avatarText}>{manager.managerName.charAt(0)}</Text>
         </View>
         <Text style={styles.managerName}>{manager.managerName}</Text>
-        {isOwnProfile && <Text style={styles.youBadge}>(Your Profile)</Text>}
+        {manager.clubName && <Text style={styles.clubName}>{manager.clubName}</Text>}
+        {manager.country && <Text style={styles.countryText}>{manager.country}</Text>}
+        {isOwnProfile && (
+          <>
+            <Text style={styles.youBadge}>(Your Profile)</Text>
+            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+              <Text style={styles.editButtonText}>✏️ Edit Profile</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -237,6 +276,62 @@ const ManagerProfile = ({ managerId, onBack }) => {
           </View>
         )}
       </ScrollView>
+
+      {isEditing && (
+        <View style={styles.modal}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Manager Name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Enter manager name"
+                placeholderTextColor="#888"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Club Name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editClub}
+                onChangeText={setEditClub}
+                placeholder="Enter club name"
+                placeholderTextColor="#888"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Country</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editCountry}
+                onChangeText={setEditCountry}
+                placeholder="Enter country"
+                placeholderTextColor="#888"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setIsEditing(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={saveProfile}
+              >
+                <Text style={styles.submitButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {selectedPlayer && (
         <View style={styles.modal}>
@@ -639,6 +734,45 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  clubName: {
+    fontSize: 16,
+    color: '#667eea',
+    marginTop: 5,
+  },
+  countryText: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: 3,
+  },
+  editButton: {
+    marginTop: 15,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  editButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  inputGroup: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 5,
+  },
+  textInput: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    color: '#ffffff',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#2d3561',
   },
 });
 

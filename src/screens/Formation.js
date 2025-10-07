@@ -158,8 +158,70 @@ const Formation = ({ onBack }) => {
             <PositionSlot position="RW" label="ST" top={12} left={55} />
           </>
         );
+      case '3-5-2':
+        return (
+          <>
+            <PositionSlot position="GK" label="GK" top={85} left={45} />
+            <PositionSlot position="CB1" label="CB" top={65} left={25} />
+            <PositionSlot position="CB2" label="CB" top={65} left={45} />
+            <PositionSlot position="RB" label="CB" top={65} left={65} />
+            <PositionSlot position="LM" label="LWB" top={45} left={10} />
+            <PositionSlot position="CDM" label="CDM" top={48} left={45} />
+            <PositionSlot position="CM1" label="CM" top={42} left={30} />
+            <PositionSlot position="CM2" label="CM" top={42} left={60} />
+            <PositionSlot position="RM" label="RWB" top={45} left={80} />
+            <PositionSlot position="LW" label="ST" top={12} left={35} />
+            <PositionSlot position="ST" label="ST" top={12} left={55} />
+          </>
+        );
+      case '4-2-3-1':
+        return (
+          <>
+            <PositionSlot position="GK" label="GK" top={85} left={45} />
+            <PositionSlot position="LB" label="LB" top={65} left={10} />
+            <PositionSlot position="CB1" label="CB" top={65} left={35} />
+            <PositionSlot position="CB2" label="CB" top={65} left={55} />
+            <PositionSlot position="RB" label="RB" top={65} left={80} />
+            <PositionSlot position="CDM" label="CDM" top={48} left={35} />
+            <PositionSlot position="CM1" label="CDM" top={48} left={55} />
+            <PositionSlot position="LW" label="LW" top={28} left={15} />
+            <PositionSlot position="CM2" label="CAM" top={30} left={45} />
+            <PositionSlot position="RW" label="RW" top={28} left={75} />
+            <PositionSlot position="ST" label="ST" top={10} left={45} />
+          </>
+        );
+      case '3-4-3':
+        return (
+          <>
+            <PositionSlot position="GK" label="GK" top={85} left={45} />
+            <PositionSlot position="CB1" label="CB" top={65} left={25} />
+            <PositionSlot position="CB2" label="CB" top={65} left={45} />
+            <PositionSlot position="RB" label="CB" top={65} left={65} />
+            <PositionSlot position="LM" label="LM" top={45} left={15} />
+            <PositionSlot position="CM1" label="CM" top={45} left={35} />
+            <PositionSlot position="CM2" label="CM" top={45} left={55} />
+            <PositionSlot position="RM" label="RM" top={45} left={75} />
+            <PositionSlot position="LW" label="LW" top={15} left={15} />
+            <PositionSlot position="ST" label="ST" top={10} left={45} />
+            <PositionSlot position="CDM" label="RW" top={15} left={75} />
+          </>
+        );
       default:
-        return renderFormation433();
+        return (
+          <>
+            <PositionSlot position="GK" label="GK" top={85} left={45} />
+            <PositionSlot position="LB" label="LB" top={65} left={10} />
+            <PositionSlot position="CB1" label="CB" top={65} left={35} />
+            <PositionSlot position="CB2" label="CB" top={65} left={55} />
+            <PositionSlot position="RB" label="RB" top={65} left={80} />
+            <PositionSlot position="CDM" label="CDM" top={45} left={45} />
+            <PositionSlot position="CM1" label="CM" top={40} left={25} />
+            <PositionSlot position="CM2" label="CM" top={40} left={65} />
+            <PositionSlot position="LW" label="LW" top={15} left={15} />
+            <PositionSlot position="ST" label="ST" top={10} left={45} />
+            <PositionSlot position="RW" label="RW" top={15} left={75} />
+          </>
+        );
     }
   };
 
