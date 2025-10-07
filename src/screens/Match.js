@@ -15,6 +15,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [minute, setMinute] = useState(0);
   const [events, setEvents] = useState([]);
   const [isHome, setIsHome] = useState(true);
+  const [substitutionMode, setSubstitutionMode] = useState(null); // { playerOut: player, playerOutIndex: number }
 
   useEffect(() => {
     if (managerProfile) {
@@ -248,8 +249,20 @@ const Match = ({ onBack, activeMatchId }) => {
   const resumeFromHalftime = async () => {
     if (!currentMatch) return;
 
-    await update(ref(database, `matches/${currentMatch.id}`), {
-      state: 'playing'
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    const matchData = (await get(matchRef)).val();
+
+    // Check if second half already started
+    if (matchData.secondHalfStarted) {
+      // Just update state to playing for this user
+      setMatchState('playing');
+      return;
+    }
+
+    // Mark second half as started
+    await update(matchRef, {
+      state: 'playing',
+      secondHalfStarted: true
     });
 
     // Only home manager continues simulation
@@ -318,6 +331,27 @@ const Match = ({ onBack, activeMatchId }) => {
   const updateMatchStats = async (matchData) => {
     const finalHomeScore = matchData.homeScore || 0;
     const finalAwayScore = matchData.awayScore || 0;
+
+    // Create match history record
+    const matchHistory = {
+      id: matchData.id,
+      homeManager: {
+        uid: matchData.homeManager.uid,
+        name: matchData.homeManager.name
+      },
+      awayManager: {
+        uid: matchData.awayManager.uid,
+        name: matchData.awayManager.name
+      },
+      homeScore: finalHomeScore,
+      awayScore: finalAwayScore,
+      events: matchData.events || [],
+      playedAt: Date.now()
+    };
+
+    // Save match to both managers' history
+    await push(ref(database, `managers/${matchData.homeManager.uid}/matchHistory`), matchHistory);
+    await push(ref(database, `managers/${matchData.awayManager.uid}/matchHistory`), matchHistory);
 
     // Update home manager stats
     const homeManagerRef = ref(database, `managers/${matchData.homeManager.uid}`);
@@ -389,38 +423,32 @@ const Match = ({ onBack, activeMatchId }) => {
     // Already handled by updateMatchStats
   };
 
-  const makeSubstitution = async (outPlayerIndex) => {
-    if (!currentMatch) return;
+  const startSubstitution = (player, index) => {
+    setSubstitutionMode({ playerOut: player, playerOutIndex: index });
+  };
+
+  const makeSubstitution = async (playerIn) => {
+    if (!currentMatch || !substitutionMode) return;
 
     const myTeam = isHome ? 'homeManager' : 'awayManager';
     const mySquad = isHome ? currentMatch.homeManager.squad : currentMatch.awayManager.squad;
 
-    // Get bench players
-    const bench = (managerProfile.squad || []).filter(p =>
-      !mySquad.some(fp => fp.id === p.id)
-    );
-
-    if (bench.length === 0) {
-      showAlert('No Substitutes', 'You don\'t have any players on the bench.');
-      return;
-    }
-
     // Substitute
     const newSquad = [...mySquad];
-    const outPlayer = newSquad[outPlayerIndex];
-    newSquad[outPlayerIndex] = bench[0];
+    newSquad[substitutionMode.playerOutIndex] = playerIn;
 
     // Update in Firebase
     const matchRef = ref(database, `matches/${currentMatch.id}/${myTeam}`);
     await update(matchRef, { squad: newSquad });
 
-    const newEvent = `${minute}' 🔄 ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}: ${bench[0].name} replaces ${outPlayer.name}`;
+    const newEvent = `${minute}' 🔄 ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
     const currentEvents = (await get(ref(database, `matches/${currentMatch.id}`))).val().events || [];
     await update(ref(database, `matches/${currentMatch.id}`), {
       events: [newEvent, ...currentEvents]
     });
 
-    showAlert('Substitution Made', `${bench[0].name} is now on the pitch.`);
+    setSubstitutionMode(null);
+    showAlert('Substitution Made', `${playerIn.name} is now on the pitch.`);
   };
 
   if (!managerProfile) {
@@ -576,13 +604,13 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
 
           <View style={styles.substitutionSection}>
-            <Text style={styles.sectionTitle}>Make Substitutions</Text>
+            <Text style={styles.sectionTitle}>Starting XI</Text>
             <Text style={styles.sectionDesc}>Tap a player to substitute them</Text>
             {mySquad.map((player, index) => (
               <TouchableOpacity
                 key={player.id}
                 style={styles.playerRow}
-                onPress={() => makeSubstitution(index)}
+                onPress={() => startSubstitution(player, index)}
               >
                 <Text style={styles.playerPosition}>{player.position}</Text>
                 <Text style={styles.playerRowName}>{player.name}</Text>
@@ -596,6 +624,42 @@ const Match = ({ onBack, activeMatchId }) => {
             <Text style={styles.continueButtonText}>Continue to 2nd Half</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {substitutionMode && (
+          <View style={styles.modal}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Substitute {substitutionMode.playerOut.name}</Text>
+              <Text style={styles.modalSubtitle}>Select replacement from bench:</Text>
+
+              <ScrollView style={styles.benchList}>
+                {(managerProfile.squad || [])
+                  .filter(p => !mySquad.some(fp => fp.id === p.id))
+                  .map(player => (
+                    <TouchableOpacity
+                      key={player.id}
+                      style={styles.benchPlayerOption}
+                      onPress={() => makeSubstitution(player)}
+                    >
+                      <View>
+                        <Text style={styles.benchPlayerName}>{player.name}</Text>
+                        <Text style={styles.benchPlayerDetails}>
+                          {player.position} • OVR {player.overall}
+                        </Text>
+                      </View>
+                      <Text style={styles.benchPlayerRating}>{player.overall}</Text>
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setSubstitutionMode(null)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     );
   }
@@ -1138,6 +1202,83 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  modal: {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 20,
+    padding: 25,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '90vh',
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    overflowY: 'auto',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#888',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  benchList: {
+    maxHeight: 400,
+    marginBottom: 20,
+  },
+  benchPlayerOption: {
+    backgroundColor: '#252b54',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  benchPlayerName: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  benchPlayerDetails: {
+    color: '#888',
+    fontSize: 13,
+  },
+  benchPlayerRating: {
+    color: '#43e97b',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#f5576c',
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
