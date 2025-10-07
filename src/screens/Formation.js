@@ -291,11 +291,14 @@ const styles = StyleSheet.create({
   pitch: {
     flex: 1,
     margin: 15,
-    backgroundColor: '#1a5c3a',
-    borderRadius: 20,
+    backgroundColor: '#2d5016',
+    borderRadius: 15,
     position: 'relative',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ffffff',
+    minHeight: 500,
+    // Add grass-like gradient effect
+    backgroundImage: 'repeating-linear-gradient(0deg, #2d5016 0px, #3a6b1f 40px, #2d5016 80px)',
   },
   positionSlot: {
     position: 'absolute',
@@ -305,7 +308,7 @@ const styles = StyleSheet.create({
     marginTop: -35,
   },
   playerSlot: {
-    backgroundColor: '#667eea',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     width: 70,
     height: 70,
     borderRadius: 35,
@@ -313,6 +316,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   playerSlotName: {
     color: '#ffffff',
@@ -327,15 +334,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   emptySlot: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     width: 70,
     height: 70,
     borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     borderStyle: 'dashed',
+    backdropFilter: 'blur(5px)',
   },
   emptySlotText: {
     color: '#ffffff',
@@ -366,13 +374,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   modal: {
-    position: 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'flex-end',
+    zIndex: 1000,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
