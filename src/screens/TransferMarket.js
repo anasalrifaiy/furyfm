@@ -7,7 +7,7 @@ import { initialPlayers } from '../data/players';
 import { showAlert } from '../utils/alert';
 
 const TransferMarket = ({ onBack }) => {
-  const { currentUser, managerProfile, updateManagerProfile } = useAuth();
+  const { currentUser, managerProfile, updateManagerProfile, loading } = useAuth();
   const [players, setPlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -16,8 +16,10 @@ const TransferMarket = ({ onBack }) => {
   const [offerAmount, setOfferAmount] = useState('');
 
   useEffect(() => {
-    loadMarketPlayers();
-  }, []);
+    if (managerProfile) {
+      loadMarketPlayers();
+    }
+  }, [managerProfile]);
 
   const loadMarketPlayers = async () => {
     // Load players from database, if not initialized, use initial data
@@ -98,6 +100,22 @@ const TransferMarket = ({ onBack }) => {
 
   const positions = ['All', 'GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST'];
   const leagues = ['All', 'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1'];
+
+  if (!managerProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Transfer Market</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -423,6 +441,17 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

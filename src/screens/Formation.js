@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { useAuth } from '../context/AuthContext';
 
 const Formation = ({ onBack }) => {
-  const { managerProfile, updateManagerProfile } = useAuth();
+  const { managerProfile, updateManagerProfile, loading } = useAuth();
   const [selectedFormation, setSelectedFormation] = useState(managerProfile?.formation || '4-3-3');
   const [lineup, setLineup] = useState(managerProfile?.lineup || {
     GK: null,
@@ -19,6 +19,22 @@ const Formation = ({ onBack }) => {
     RW: null
   });
   const [selectingPosition, setSelectingPosition] = useState(null);
+
+  if (!managerProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Formation</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   const formations = {
     '4-3-3': { defenders: 4, midfielders: 3, forwards: 3 },
@@ -409,6 +425,17 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
     fontWeight: 'bold',
   },
 });

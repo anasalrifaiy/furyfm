@@ -5,8 +5,24 @@ import { database } from '../firebase';
 import { ref, update } from 'firebase/database';
 
 const Squad = ({ onBack }) => {
-  const { managerProfile, updateManagerProfile } = useAuth();
+  const { managerProfile, updateManagerProfile, loading } = useAuth();
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  if (!managerProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>My Squad</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   const formatCurrency = (amount) => {
     return `$${(amount / 1000000).toFixed(1)}M`;
@@ -353,6 +369,17 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

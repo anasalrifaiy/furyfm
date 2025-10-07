@@ -5,14 +5,16 @@ import { database } from '../firebase';
 import { ref, get, update, push } from 'firebase/database';
 
 const Friends = ({ onBack, onViewProfile }) => {
-  const { currentUser, managerProfile, updateManagerProfile } = useAuth();
+  const { currentUser, managerProfile, updateManagerProfile, loading } = useAuth();
   const [friends, setFriends] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [activeTab, setActiveTab] = useState('friends'); // 'friends' or 'search'
 
   useEffect(() => {
-    loadFriends();
+    if (managerProfile) {
+      loadFriends();
+    }
   }, [managerProfile]);
 
   const loadFriends = async () => {
@@ -106,6 +108,22 @@ const Friends = ({ onBack, onViewProfile }) => {
       ]
     );
   };
+
+  if (!managerProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Friends</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   const FriendCard = ({ manager, isSearchResult = false }) => (
     <View style={styles.friendCard}>
@@ -371,6 +389,17 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

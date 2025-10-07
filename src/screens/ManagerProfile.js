@@ -5,15 +5,17 @@ import { database } from '../firebase';
 import { ref, get, push, update } from 'firebase/database';
 
 const ManagerProfile = ({ managerId, onBack }) => {
-  const { currentUser, managerProfile: currentManagerProfile } = useAuth();
+  const { currentUser, managerProfile: currentManagerProfile, loading } = useAuth();
   const [manager, setManager] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
   const [activeTab, setActiveTab] = useState('squad'); // 'squad' or 'stats'
 
   useEffect(() => {
-    loadManager();
-  }, [managerId]);
+    if (currentManagerProfile) {
+      loadManager();
+    }
+  }, [managerId, currentManagerProfile]);
 
   const loadManager = async () => {
     const managerRef = ref(database, `managers/${managerId}`);
@@ -75,14 +77,17 @@ const ManagerProfile = ({ managerId, onBack }) => {
     setOfferAmount('');
   };
 
-  if (!manager) {
+  if (!manager || !currentManagerProfile) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Loading...</Text>
+          <Text style={styles.title}>Manager Profile</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </View>
     );
@@ -619,6 +624,17 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

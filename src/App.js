@@ -20,17 +20,20 @@ const MainApp = () => {
   const [selectedManagerId, setSelectedManagerId] = useState(null);
 
   useEffect(() => {
+    // Check if running on web - native driver is not supported on web
+    const isWeb = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
-        useNativeDriver: true,
+        useNativeDriver: !isWeb,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: !isWeb,
       }),
     ]).start();
   }, []);
