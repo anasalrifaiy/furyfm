@@ -120,7 +120,11 @@ const Formation = ({ onBack }) => {
 
     return (
       <TouchableOpacity
-        style={[styles.positionSlot, { top: `${top}%`, left: `${left}%` }]}
+        style={[styles.positionSlot, {
+          top: `${top}%`,
+          left: `${left}%`,
+          transform: [{ translateX: -35 }, { translateY: -35 }]
+        }]}
         onPress={() => player ? null : handleSelectPlayer(position)}
         onLongPress={() => player && removePlayer(position)}
       >
@@ -395,8 +399,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 70,
     height: 70,
-    marginLeft: -35,
-    marginTop: -35,
   },
   playerSlot: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
