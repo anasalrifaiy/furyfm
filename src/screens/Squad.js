@@ -100,19 +100,21 @@ const Squad = ({ onBack }) => {
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
-        <PositionSection title="Goalkeepers" players={goalkeepers} color="#4facfe" />
-        <PositionSection title="Defenders" players={defenders} color="#43e97b" />
-        <PositionSection title="Midfielders" players={midfielders} color="#f093fb" />
-        <PositionSection title="Forwards" players={forwards} color="#f5576c" />
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <PositionSection title="Goalkeepers" players={goalkeepers} color="#4facfe" />
+          <PositionSection title="Defenders" players={defenders} color="#43e97b" />
+          <PositionSection title="Midfielders" players={midfielders} color="#f093fb" />
+          <PositionSection title="Forwards" players={forwards} color="#f5576c" />
 
-        {squad.length === 0 && (
-          <View style={styles.emptySquad}>
-            <Text style={styles.emptyIcon}>👥</Text>
-            <Text style={styles.emptyTitle}>Your squad is empty</Text>
-            <Text style={styles.emptyDesc}>Head to the Transfer Market to sign your first players!</Text>
-          </View>
-        )}
+          {squad.length === 0 && (
+            <View style={styles.emptySquad}>
+              <Text style={styles.emptyIcon}>👥</Text>
+              <Text style={styles.emptyTitle}>Your squad is empty</Text>
+              <Text style={styles.emptyDesc}>Head to the Transfer Market to sign your first players!</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {selectedPlayer && (
@@ -175,11 +177,11 @@ const styles = StyleSheet.create({
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: 20,
-    paddingTop: 50,
+    padding: 15,
+    paddingTop: 20,
   },
   backButton: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   backButtonText: {
     color: '#ffffff',
@@ -187,10 +189,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   squadStats: {
     flexDirection: 'row',
@@ -204,8 +206,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  content: {
+  scrollContent: {
     flex: 1,
+  },
+  content: {
     padding: 15,
   },
   positionSection: {

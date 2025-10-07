@@ -172,38 +172,40 @@ const Formation = ({ onBack }) => {
         <Text style={styles.title}>Formation</Text>
       </View>
 
-      <View style={styles.formationSelector}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {Object.keys(formations).map(formation => (
-            <TouchableOpacity
-              key={formation}
-              style={[
-                styles.formationChip,
-                selectedFormation === formation && styles.formationChipActive
-              ]}
-              onPress={() => setSelectedFormation(formation)}
-            >
-              <Text style={[
-                styles.formationText,
-                selectedFormation === formation && styles.formationTextActive
-              ]}>
-                {formation}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.formationSelector}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {Object.keys(formations).map(formation => (
+              <TouchableOpacity
+                key={formation}
+                style={[
+                  styles.formationChip,
+                  selectedFormation === formation && styles.formationChipActive
+                ]}
+                onPress={() => setSelectedFormation(formation)}
+              >
+                <Text style={[
+                  styles.formationText,
+                  selectedFormation === formation && styles.formationTextActive
+                ]}>
+                  {formation}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      <View style={styles.pitch}>
-        {renderFormation()}
-      </View>
+        <View style={styles.pitch}>
+          {renderFormation()}
+        </View>
 
-      <View style={styles.actions}>
-        <Text style={styles.tipText}>Tap to select player • Long press to remove</Text>
-        <TouchableOpacity style={styles.saveButton} onPress={saveFormation}>
-          <Text style={styles.saveButtonText}>Save Formation</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actions}>
+          <Text style={styles.tipText}>Tap to select player • Long press to remove</Text>
+          <TouchableOpacity style={styles.saveButton} onPress={saveFormation}>
+            <Text style={styles.saveButtonText}>Save Formation</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
       {selectingPosition && (
         <View style={styles.modal}>
@@ -248,11 +250,11 @@ const styles = StyleSheet.create({
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: 20,
-    paddingTop: 50,
+    padding: 15,
+    paddingTop: 20,
   },
   backButton: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   backButtonText: {
     color: '#ffffff',
@@ -260,12 +262,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
   },
+  content: {
+    flex: 1,
+  },
   formationSelector: {
     padding: 15,
+    paddingBottom: 10,
   },
   formationChip: {
     backgroundColor: '#1a1f3a',
@@ -289,14 +295,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   pitch: {
-    flex: 1,
-    margin: 15,
+    marginHorizontal: 15,
+    marginBottom: 15,
     backgroundColor: '#2d5016',
     borderRadius: 15,
     position: 'relative',
     borderWidth: 3,
     borderColor: '#ffffff',
-    minHeight: 500,
+    height: 450,
     // Add grass-like gradient effect
     backgroundImage: 'repeating-linear-gradient(0deg, #2d5016 0px, #3a6b1f 40px, #2d5016 80px)',
   },
@@ -351,7 +357,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   actions: {
-    padding: 20,
+    padding: 15,
+    paddingBottom: 20,
     alignItems: 'center',
   },
   tipText: {

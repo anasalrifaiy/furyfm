@@ -127,62 +127,64 @@ const TransferMarket = ({ onBack }) => {
         <Text style={styles.budget}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
       </View>
 
-      <View style={styles.searchSection}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search players or clubs..."
-          placeholderTextColor="#888"
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
-      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.searchSection}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search players or clubs..."
+            placeholderTextColor="#888"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+        </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {positions.map(pos => (
-          <TouchableOpacity
-            key={pos}
-            style={[styles.filterChip, filterPosition === pos && styles.filterChipActive]}
-            onPress={() => setFilterPosition(pos)}
-          >
-            <Text style={[styles.filterText, filterPosition === pos && styles.filterTextActive]}>{pos}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+          {positions.map(pos => (
+            <TouchableOpacity
+              key={pos}
+              style={[styles.filterChip, filterPosition === pos && styles.filterChipActive]}
+              onPress={() => setFilterPosition(pos)}
+            >
+              <Text style={[styles.filterText, filterPosition === pos && styles.filterTextActive]}>{pos}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {leagues.map(league => (
-          <TouchableOpacity
-            key={league}
-            style={[styles.filterChip, filterLeague === league && styles.filterChipActive]}
-            onPress={() => setFilterLeague(league)}
-          >
-            <Text style={[styles.filterText, filterLeague === league && styles.filterTextActive]}>
-              {league === 'All' ? 'All Leagues' : league}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+          {leagues.map(league => (
+            <TouchableOpacity
+              key={league}
+              style={[styles.filterChip, filterLeague === league && styles.filterChipActive]}
+              onPress={() => setFilterLeague(league)}
+            >
+              <Text style={[styles.filterText, filterLeague === league && styles.filterTextActive]}>
+                {league === 'All' ? 'All Leagues' : league}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-      <ScrollView style={styles.playersList}>
-        {filteredPlayers.map(player => (
-          <View key={player.id} style={styles.playerCard}>
-            <View style={styles.playerInfo}>
-              <Text style={styles.playerName}>{player.name}</Text>
-              <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
-              <Text style={styles.playerClub}>{player.club} ({player.league})</Text>
-              <Text style={styles.playerRating}>Overall: {player.overall}</Text>
+        <View style={styles.playersList}>
+          {filteredPlayers.map(player => (
+            <View key={player.id} style={styles.playerCard}>
+              <View style={styles.playerInfo}>
+                <Text style={styles.playerName}>{player.name}</Text>
+                <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
+                <Text style={styles.playerClub}>{player.club} ({player.league})</Text>
+                <Text style={styles.playerRating}>Overall: {player.overall}</Text>
+              </View>
+              <View style={styles.playerActions}>
+                <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
+                <TouchableOpacity
+                  style={styles.offerButton}
+                  onPress={() => handleMakeOffer(player)}
+                >
+                  <Text style={styles.offerButtonText}>Make Offer</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.playerActions}>
-              <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
-              <TouchableOpacity
-                style={styles.offerButton}
-                onPress={() => handleMakeOffer(player)}
-              >
-                <Text style={styles.offerButtonText}>Make Offer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+          ))}
+        </View>
       </ScrollView>
 
       {selectedPlayer && (
@@ -235,8 +237,8 @@ const styles = StyleSheet.create({
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: 20,
-    paddingTop: 50,
+    padding: 15,
+    paddingTop: 20,
   },
   backButton: {
     marginBottom: 10,
@@ -247,18 +249,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   budget: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
   },
+  content: {
+    flex: 1,
+  },
   searchSection: {
     padding: 15,
+    paddingBottom: 10,
   },
   searchInput: {
     backgroundColor: '#1a1f3a',
@@ -296,8 +302,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   playersList: {
-    flex: 1,
     padding: 15,
+    paddingTop: 5,
   },
   playerCard: {
     backgroundColor: '#1a1f3a',

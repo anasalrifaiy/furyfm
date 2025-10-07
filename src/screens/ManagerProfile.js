@@ -292,8 +292,8 @@ const styles = StyleSheet.create({
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: 20,
-    paddingTop: 50,
+    padding: 15,
+    paddingTop: 20,
   },
   backButton: {
     marginBottom: 10,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    padding: 20,
+    padding: 15,
     backgroundColor: '#1a1f3a',
     marginHorizontal: 15,
     marginTop: -30,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   statCard: {
     backgroundColor: '#1a1f3a',
     borderRadius: 15,
-    padding: 20,
+    padding: 15,
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#2d3561',
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 15,
     zIndex: 1000,
   },
   modalContent: {

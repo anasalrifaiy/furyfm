@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
   },
   header: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    padding: 20,
-    paddingTop: 50,
+    padding: 15,
+    paddingTop: 20,
   },
   backButton: {
     marginBottom: 10,
