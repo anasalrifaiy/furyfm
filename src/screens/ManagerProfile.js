@@ -127,6 +127,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
   const isOwnProfile = managerId === currentUser?.uid;
 
   return (
+    <>
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -276,107 +277,108 @@ const ManagerProfile = ({ managerId, onBack }) => {
           </View>
         )}
       </ScrollView>
-
-      {isEditing && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Manager Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Enter manager name"
-                placeholderTextColor="#888"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Club Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editClub}
-                onChangeText={setEditClub}
-                placeholder="Enter club name"
-                placeholderTextColor="#888"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Country</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editCountry}
-                onChangeText={setEditCountry}
-                placeholder="Enter country"
-                placeholderTextColor="#888"
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setIsEditing(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={saveProfile}
-              >
-                <Text style={styles.submitButtonText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {selectedPlayer && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
-            <Text style={styles.modalSubtitle}>Market Value: {formatCurrency(selectedPlayer.price)}</Text>
-
-            <View style={styles.offerInputContainer}>
-              <Text style={styles.dollarSign}>$</Text>
-              <TextInput
-                style={styles.offerInput}
-                placeholder="Amount in millions"
-                placeholderTextColor="#888"
-                value={offerAmount}
-                onChangeText={setOfferAmount}
-                keyboardType="numeric"
-              />
-              <Text style={styles.millionText}>M</Text>
-            </View>
-
-            <Text style={styles.modalNote}>
-              Your offer will be sent to {manager.managerName}. They can accept, reject, or counter your offer.
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setSelectedPlayer(null);
-                  setOfferAmount('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={submitOffer}
-              >
-                <Text style={styles.submitButtonText}>Send Offer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
     </View>
+
+    {isEditing && (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Edit Profile</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Manager Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Enter manager name"
+              placeholderTextColor="#888"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Club Name</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editClub}
+              onChangeText={setEditClub}
+              placeholder="Enter club name"
+              placeholderTextColor="#888"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Country</Text>
+            <TextInput
+              style={styles.textInput}
+              value={editCountry}
+              onChangeText={setEditCountry}
+              placeholder="Enter country"
+              placeholderTextColor="#888"
+            />
+          </View>
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setIsEditing(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={saveProfile}
+            >
+              <Text style={styles.submitButtonText}>Save Changes</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    )}
+
+    {selectedPlayer && (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
+          <Text style={styles.modalSubtitle}>Market Value: {formatCurrency(selectedPlayer.price)}</Text>
+
+          <View style={styles.offerInputContainer}>
+            <Text style={styles.dollarSign}>$</Text>
+            <TextInput
+              style={styles.offerInput}
+              placeholder="Amount in millions"
+              placeholderTextColor="#888"
+              value={offerAmount}
+              onChangeText={setOfferAmount}
+              keyboardType="numeric"
+            />
+            <Text style={styles.millionText}>M</Text>
+          </View>
+
+          <Text style={styles.modalNote}>
+            Your offer will be sent to {manager.managerName}. They can accept, reject, or counter your offer.
+          </Text>
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setSelectedPlayer(null);
+                setOfferAmount('');
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={submitOffer}
+            >
+              <Text style={styles.submitButtonText}>Send Offer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    )}
+  </>
   );
 };
 
@@ -628,23 +630,25 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
-  modal: {
+  modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    width: '100vw',
+    height: '100vh',
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 15,
-    zIndex: 1000,
+    zIndex: 9999,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
     borderRadius: 20,
     padding: 25,
-    width: '100%',
+    width: '90%',
     maxWidth: 400,
     borderWidth: 1,
     borderColor: '#2d3561',
@@ -668,25 +672,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#252b54',
     borderRadius: 10,
     padding: 10,
+    paddingHorizontal: 12,
     marginBottom: 15,
   },
   dollarSign: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#ffffff',
     fontWeight: 'bold',
-    marginRight: 5,
+    marginRight: 8,
   },
   offerInput: {
     flex: 1,
     color: '#ffffff',
     fontSize: 18,
-    padding: 5,
+    padding: 0,
+    minWidth: 0,
   },
   millionText: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#ffffff',
     fontWeight: 'bold',
-    marginLeft: 5,
+    marginLeft: 8,
+    flexShrink: 0,
   },
   modalNote: {
     fontSize: 13,
