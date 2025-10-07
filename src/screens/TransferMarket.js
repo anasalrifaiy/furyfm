@@ -353,10 +353,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
     zIndex: 1000,
+    overflow: 'auto',
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
@@ -366,6 +368,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     borderWidth: 1,
     borderColor: '#2d3561',
+    margin: 'auto',
   },
   modalTitle: {
     fontSize: 22,
