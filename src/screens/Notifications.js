@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
-import { ref, get, update, remove, push } from 'firebase/database';
+import { ref, get, update, remove, push, set } from 'firebase/database';
 import { showAlert } from '../utils/alert';
 
-const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
+const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChallenge }) => {
   const { currentUser, managerProfile, updateManagerProfile } = useAuth();
   const [notifications, setNotifications] = useState([]);
 
@@ -77,9 +77,65 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
         return '❌';
       case 'trade_counter':
         return '🔄';
+      case 'match_challenge':
+        return '⚽';
+      case 'match_finished':
+        return '🏆';
       default:
         return '🔔';
     }
+  };
+
+  const acceptMatchChallenge = async (notification) => {
+    const matchRef = ref(database, `matches/${notification.matchId}`);
+    const snapshot = await get(matchRef);
+
+    if (!snapshot.exists()) {
+      showAlert('Error', 'Match not found.');
+      await deleteNotification(notification.id);
+      return;
+    }
+
+    const matchData = snapshot.val();
+
+    // Mark myself as ready
+    await update(ref(database, `matches/${notification.matchId}/awayManager`), { ready: true });
+
+    // Check if both are ready
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatch = updatedSnapshot.val();
+
+    if (updatedMatch.homeManager.ready && updatedMatch.awayManager.ready) {
+      await update(ref(database, `matches/${notification.matchId}`), { state: 'ready' });
+    }
+
+    // Delete notification and navigate to match
+    await deleteNotification(notification.id);
+
+    // Trigger callback to open match screen
+    if (onAcceptMatchChallenge) {
+      onAcceptMatchChallenge(notification.matchId);
+    }
+
+    showAlert('Challenge Accepted!', 'Get ready for the match!');
+  };
+
+  const rejectMatchChallenge = async (notification) => {
+    // Delete the match from database
+    await remove(ref(database, `matches/${notification.matchId}`));
+
+    // Notify challenger
+    await push(ref(database, `managers/${notification.from}/notifications`), {
+      type: 'match_rejected',
+      from: currentUser.uid,
+      fromName: managerProfile.managerName,
+      message: `${managerProfile.managerName} declined your match challenge.`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    await deleteNotification(notification.id);
+    showAlert('Declined', 'Match challenge declined.');
   };
 
   const formatTime = (timestamp) => {
@@ -303,6 +359,23 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
                       onPress={() => rejectTradeOffer(notification)}
                     >
                       <Text style={styles.rejectButtonText}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {notification.type === 'match_challenge' && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptMatchChallenge(notification)}
+                    >
+                      <Text style={styles.acceptButtonText}>Accept</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() => rejectMatchChallenge(notification)}
+                    >
+                      <Text style={styles.rejectButtonText}>Decline</Text>
                     </TouchableOpacity>
                   </View>
                 )}

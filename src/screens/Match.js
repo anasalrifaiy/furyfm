@@ -1,27 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
-import { ref, get, update, push } from 'firebase/database';
+import { ref, get, update, push, set, onValue, off } from 'firebase/database';
 import { showAlert } from '../utils/alert';
 
-const Match = ({ onBack }) => {
+const Match = ({ onBack, activeMatchId }) => {
   const { currentUser, managerProfile, updateManagerProfile } = useAuth();
   const [friends, setFriends] = useState([]);
-  const [selectedOpponent, setSelectedOpponent] = useState(null);
-  const [matchState, setMatchState] = useState('select'); // 'select', 'playing', 'halftime', 'finished'
+  const [matchState, setMatchState] = useState('select'); // 'select', 'waiting', 'ready', 'playing', 'halftime', 'finished'
+  const [currentMatch, setCurrentMatch] = useState(null);
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [minute, setMinute] = useState(0);
   const [events, setEvents] = useState([]);
-  const [myFormation, setMyFormation] = useState([]);
-  const [opponentFormation, setOpponentFormation] = useState([]);
+  const [isHome, setIsHome] = useState(true);
 
   useEffect(() => {
     if (managerProfile) {
       loadFriends();
     }
   }, [managerProfile]);
+
+  // Load active match when activeMatchId changes
+  useEffect(() => {
+    if (activeMatchId) {
+      loadActiveMatch(activeMatchId);
+    }
+  }, [activeMatchId]);
+
+  const loadActiveMatch = async (matchId) => {
+    const matchRef = ref(database, `matches/${matchId}`);
+    const snapshot = await get(matchRef);
+
+    if (snapshot.exists()) {
+      const matchData = snapshot.val();
+      const amHome = matchData.homeManager.uid === currentUser.uid;
+      setIsHome(amHome);
+      setCurrentMatch(matchData);
+      setMatchState(matchData.state);
+    }
+  };
+
+  // Listen for match updates when in a match
+  useEffect(() => {
+    if (!currentMatch?.id) return;
+
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    const unsubscribe = onValue(matchRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const matchData = snapshot.val();
+
+        // Update match state based on Firebase data
+        setMatchState(matchData.state);
+        setHomeScore(matchData.homeScore || 0);
+        setAwayScore(matchData.awayScore || 0);
+        setMinute(matchData.minute || 0);
+        setEvents(matchData.events || []);
+
+        // Check if match is finished
+        if (matchData.state === 'finished' && matchState !== 'finished') {
+          handleMatchFinished(matchData);
+        }
+      }
+    });
+
+    return () => off(matchRef);
+  }, [currentMatch?.id]);
 
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {
@@ -40,9 +85,8 @@ const Match = ({ onBack }) => {
     setFriends(friendsData);
   };
 
-  const selectOpponent = (opponent) => {
-    setSelectedOpponent(opponent);
-    // Get starting XI from both teams
+  const challengeFriend = async (opponent) => {
+    // Validate squads
     const myStarting = (managerProfile.squad || []).slice(0, 11);
     const opponentStarting = (opponent.squad || []).slice(0, 11);
 
@@ -56,115 +100,304 @@ const Match = ({ onBack }) => {
       return;
     }
 
-    setMyFormation(myStarting);
-    setOpponentFormation(opponentStarting);
-  };
+    // Create match in database
+    const matchesRef = ref(database, 'matches');
+    const newMatchRef = push(matchesRef);
+    const matchId = newMatchRef.key;
 
-  const startMatch = () => {
-    if (!selectedOpponent) return;
+    const matchData = {
+      id: matchId,
+      homeManager: {
+        uid: currentUser.uid,
+        name: managerProfile.managerName,
+        squad: myStarting,
+        ready: false
+      },
+      awayManager: {
+        uid: opponent.uid,
+        name: opponent.managerName,
+        squad: opponentStarting,
+        ready: false
+      },
+      state: 'waiting',
+      homeScore: 0,
+      awayScore: 0,
+      minute: 0,
+      events: [],
+      createdAt: Date.now()
+    };
 
-    setMatchState('playing');
-    setHomeScore(0);
-    setAwayScore(0);
-    setMinute(0);
-    setEvents([]);
-
-    // Start match simulation
-    simulateMatch();
-  };
-
-  const simulateMatch = () => {
-    let currentMinute = 0;
-    const matchEvents = [];
-
-    const interval = setInterval(() => {
-      currentMinute++;
-      setMinute(currentMinute);
-
-      // Random chance of goal (5% per minute)
-      if (Math.random() < 0.05) {
-        const isHomeGoal = Math.random() < 0.5;
-        const scorer = isHomeGoal
-          ? myFormation[Math.floor(Math.random() * myFormation.length)]
-          : opponentFormation[Math.floor(Math.random() * opponentFormation.length)];
-
-        if (isHomeGoal) {
-          setHomeScore(prev => prev + 1);
-          matchEvents.unshift(`${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${managerProfile.managerName}!`);
-        } else {
-          setAwayScore(prev => prev + 1);
-          matchEvents.unshift(`${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${selectedOpponent.managerName}!`);
-        }
-        setEvents([...matchEvents]);
-      }
-
-      // Half time at 60 seconds (1 minute)
-      if (currentMinute === 60) {
-        clearInterval(interval);
-        setMatchState('halftime');
-      }
-
-      // Full time at 120 seconds (2 minutes)
-      if (currentMinute === 120) {
-        clearInterval(interval);
-        finishMatch(homeScore, awayScore);
-      }
-    }, 1000); // 1 second = 1 minute in game
-  };
-
-  const resumeFromHalftime = () => {
-    setMatchState('playing');
-    simulateMatch();
-  };
-
-  const finishMatch = async (finalHome, finalAway) => {
-    setMatchState('finished');
-
-    let result = '';
-    let pointsGained = 0;
-    let wins = managerProfile.wins || 0;
-    let draws = managerProfile.draws || 0;
-    let losses = managerProfile.losses || 0;
-
-    if (finalHome > finalAway) {
-      result = 'WIN';
-      pointsGained = 3;
-      wins++;
-    } else if (finalHome < finalAway) {
-      result = 'LOSS';
-      pointsGained = 0;
-      losses++;
-    } else {
-      result = 'DRAW';
-      pointsGained = 1;
-      draws++;
-    }
-
-    const newPoints = (managerProfile.points || 0) + pointsGained;
-
-    await updateManagerProfile({
-      wins,
-      draws,
-      losses,
-      points: newPoints
-    });
+    await set(newMatchRef, matchData);
 
     // Send notification to opponent
-    const notificationRef = ref(database, `managers/${selectedOpponent.uid}/notifications`);
+    const notificationRef = ref(database, `managers/${opponent.uid}/notifications`);
     await push(notificationRef, {
-      type: 'match_result',
+      type: 'match_challenge',
       from: currentUser.uid,
       fromName: managerProfile.managerName,
-      message: `${managerProfile.managerName} challenged you to a match! Result: ${finalHome}-${finalAway}`,
+      matchId: matchId,
+      message: `${managerProfile.managerName} challenges you to a match!`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    setCurrentMatch(matchData);
+    setIsHome(true);
+    setMatchState('waiting');
+
+    // Mark myself as ready
+    await update(ref(database, `matches/${matchId}/homeManager`), { ready: true });
+
+    showAlert('Challenge Sent!', 'Waiting for opponent to accept...');
+  };
+
+  const acceptMatchChallenge = async (matchId) => {
+    const matchRef = ref(database, `matches/${matchId}`);
+    const snapshot = await get(matchRef);
+
+    if (!snapshot.exists()) {
+      showAlert('Error', 'Match not found.');
+      return;
+    }
+
+    const matchData = snapshot.val();
+
+    // Determine if I'm home or away
+    const amHome = matchData.homeManager.uid === currentUser.uid;
+    setIsHome(amHome);
+    setCurrentMatch(matchData);
+    setMatchState('waiting');
+
+    // Mark myself as ready
+    const myPath = amHome ? 'homeManager' : 'awayManager';
+    await update(ref(database, `matches/${matchId}/${myPath}`), { ready: true });
+
+    // Check if both are ready
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatch = updatedSnapshot.val();
+
+    if (updatedMatch.homeManager.ready && updatedMatch.awayManager.ready) {
+      // Start match
+      await update(ref(database, `matches/${matchId}`), { state: 'ready' });
+    }
+  };
+
+  const startMatch = async () => {
+    if (!currentMatch) return;
+
+    await update(ref(database, `matches/${currentMatch.id}`), {
+      state: 'playing',
+      startedAt: Date.now()
+    });
+
+    // Only home manager runs the simulation to avoid duplicates
+    if (isHome) {
+      simulateMatch();
+    }
+  };
+
+  const simulateMatch = async () => {
+    if (!currentMatch) return;
+
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    let currentMinute = 0;
+
+    const interval = setInterval(async () => {
+      currentMinute++;
+
+      // Random chance of goal (5% per minute)
+      const goalChance = Math.random();
+      let newEvents = [];
+
+      if (goalChance < 0.05) {
+        const isHomeGoal = Math.random() < 0.5;
+        const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+        const scorer = team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        const newScore = isHomeGoal
+          ? { homeScore: (await get(matchRef)).val().homeScore + 1 }
+          : { awayScore: (await get(matchRef)).val().awayScore + 1 };
+
+        await update(matchRef, newScore);
+
+        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+
+        // Get current events and prepend new one
+        const currentData = (await get(matchRef)).val();
+        newEvents = [eventText, ...(currentData.events || [])];
+        await update(matchRef, { events: newEvents });
+      }
+
+      // Update minute
+      await update(matchRef, { minute: currentMinute });
+
+      // Half time at 60 seconds
+      if (currentMinute === 60) {
+        clearInterval(interval);
+        await update(matchRef, { state: 'halftime' });
+      }
+
+      // Full time at 120 seconds
+      if (currentMinute === 120) {
+        clearInterval(interval);
+        await finishMatch();
+      }
+    }, 1000);
+  };
+
+  const resumeFromHalftime = async () => {
+    if (!currentMatch) return;
+
+    await update(ref(database, `matches/${currentMatch.id}`), {
+      state: 'playing'
+    });
+
+    // Only home manager continues simulation
+    if (isHome) {
+      simulateSecondHalf();
+    }
+  };
+
+  const simulateSecondHalf = async () => {
+    if (!currentMatch) return;
+
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+
+    const interval = setInterval(async () => {
+      const currentData = (await get(matchRef)).val();
+      const currentMinute = currentData.minute + 1;
+
+      // Random chance of goal (5% per minute)
+      const goalChance = Math.random();
+
+      if (goalChance < 0.05) {
+        const isHomeGoal = Math.random() < 0.5;
+        const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+        const scorer = team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        const newScore = isHomeGoal
+          ? { homeScore: currentData.homeScore + 1 }
+          : { awayScore: currentData.awayScore + 1 };
+
+        await update(matchRef, newScore);
+
+        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+        const newEvents = [eventText, ...(currentData.events || [])];
+        await update(matchRef, { events: newEvents });
+      }
+
+      // Update minute
+      await update(matchRef, { minute: currentMinute });
+
+      // Full time at 120 seconds
+      if (currentMinute >= 120) {
+        clearInterval(interval);
+        await finishMatch();
+      }
+    }, 1000);
+  };
+
+  const finishMatch = async () => {
+    if (!currentMatch) return;
+
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    const matchData = (await get(matchRef)).val();
+
+    await update(matchRef, {
+      state: 'finished',
+      finishedAt: Date.now()
+    });
+
+    // Only process stats once per manager
+    if (!matchData.statsProcessed) {
+      await update(matchRef, { statsProcessed: true });
+      await updateMatchStats(matchData);
+    }
+  };
+
+  const updateMatchStats = async (matchData) => {
+    const finalHomeScore = matchData.homeScore || 0;
+    const finalAwayScore = matchData.awayScore || 0;
+
+    // Update home manager stats
+    const homeManagerRef = ref(database, `managers/${matchData.homeManager.uid}`);
+    const homeSnapshot = await get(homeManagerRef);
+    if (homeSnapshot.exists()) {
+      const homeData = homeSnapshot.val();
+      let homeUpdate = {
+        wins: homeData.wins || 0,
+        draws: homeData.draws || 0,
+        losses: homeData.losses || 0,
+        points: homeData.points || 0
+      };
+
+      if (finalHomeScore > finalAwayScore) {
+        homeUpdate.wins++;
+        homeUpdate.points += 3;
+      } else if (finalHomeScore < finalAwayScore) {
+        homeUpdate.losses++;
+      } else {
+        homeUpdate.draws++;
+        homeUpdate.points += 1;
+      }
+
+      await update(homeManagerRef, homeUpdate);
+    }
+
+    // Update away manager stats
+    const awayManagerRef = ref(database, `managers/${matchData.awayManager.uid}`);
+    const awaySnapshot = await get(awayManagerRef);
+    if (awaySnapshot.exists()) {
+      const awayData = awaySnapshot.val();
+      let awayUpdate = {
+        wins: awayData.wins || 0,
+        draws: awayData.draws || 0,
+        losses: awayData.losses || 0,
+        points: awayData.points || 0
+      };
+
+      if (finalAwayScore > finalHomeScore) {
+        awayUpdate.wins++;
+        awayUpdate.points += 3;
+      } else if (finalAwayScore < finalHomeScore) {
+        awayUpdate.losses++;
+      } else {
+        awayUpdate.draws++;
+        awayUpdate.points += 1;
+      }
+
+      await update(awayManagerRef, awayUpdate);
+    }
+
+    // Send notification to both managers
+    await push(ref(database, `managers/${matchData.homeManager.uid}/notifications`), {
+      type: 'match_finished',
+      message: `Match finished: ${matchData.homeManager.name} ${finalHomeScore} - ${finalAwayScore} ${matchData.awayManager.name}`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    await push(ref(database, `managers/${matchData.awayManager.uid}/notifications`), {
+      type: 'match_finished',
+      message: `Match finished: ${matchData.homeManager.name} ${finalHomeScore} - ${finalAwayScore} ${matchData.awayManager.name}`,
       timestamp: Date.now(),
       read: false
     });
   };
 
-  const makeSubstitution = (outPlayerIndex) => {
-    // Get bench players (squad members not in starting XI)
+  const handleMatchFinished = (matchData) => {
+    // Already handled by updateMatchStats
+  };
+
+  const makeSubstitution = async (outPlayerIndex) => {
+    if (!currentMatch) return;
+
+    const myTeam = isHome ? 'homeManager' : 'awayManager';
+    const mySquad = isHome ? currentMatch.homeManager.squad : currentMatch.awayManager.squad;
+
+    // Get bench players
     const bench = (managerProfile.squad || []).filter(p =>
-      !myFormation.some(fp => fp.id === p.id)
+      !mySquad.some(fp => fp.id === p.id)
     );
 
     if (bench.length === 0) {
@@ -172,13 +405,20 @@ const Match = ({ onBack }) => {
       return;
     }
 
-    // For simplicity, substitute with first bench player
-    const newFormation = [...myFormation];
-    newFormation[outPlayerIndex] = bench[0];
-    setMyFormation(newFormation);
+    // Substitute
+    const newSquad = [...mySquad];
+    const outPlayer = newSquad[outPlayerIndex];
+    newSquad[outPlayerIndex] = bench[0];
 
-    const newEvent = `${minute}' 🔄 Substitution: ${bench[0].name} replaces ${myFormation[outPlayerIndex].name}`;
-    setEvents([newEvent, ...events]);
+    // Update in Firebase
+    const matchRef = ref(database, `matches/${currentMatch.id}/${myTeam}`);
+    await update(matchRef, { squad: newSquad });
+
+    const newEvent = `${minute}' 🔄 ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}: ${bench[0].name} replaces ${outPlayer.name}`;
+    const currentEvents = (await get(ref(database, `matches/${currentMatch.id}`))).val().events || [];
+    await update(ref(database, `matches/${currentMatch.id}`), {
+      events: [newEvent, ...currentEvents]
+    });
 
     showAlert('Substitution Made', `${bench[0].name} is now on the pitch.`);
   };
@@ -200,14 +440,14 @@ const Match = ({ onBack }) => {
   }
 
   // Select Opponent Screen
-  if (matchState === 'select' && !selectedOpponent) {
+  if (matchState === 'select') {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Match - Select Opponent</Text>
+          <Text style={styles.title}>Match - Challenge a Friend</Text>
         </View>
 
         <ScrollView style={styles.content}>
@@ -224,7 +464,7 @@ const Match = ({ onBack }) => {
               <TouchableOpacity
                 key={friend.uid}
                 style={styles.friendCard}
-                onPress={() => selectOpponent(friend)}
+                onPress={() => challengeFriend(friend)}
               >
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{friend.managerName.charAt(0)}</Text>
@@ -247,47 +487,63 @@ const Match = ({ onBack }) => {
     );
   }
 
-  // Pre-match screen (after selecting opponent)
-  if (matchState === 'select' && selectedOpponent) {
+  // Waiting for opponent
+  if (matchState === 'waiting') {
+    const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+    const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setSelectedOpponent(null)} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+          <TouchableOpacity onPress={() => {
+            setMatchState('select');
+            setCurrentMatch(null);
+          }} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Match Preview</Text>
+          <Text style={styles.title}>Waiting...</Text>
+        </View>
+
+        <View style={styles.content}>
+          <View style={styles.waitingCard}>
+            <Text style={styles.waitingIcon}>⏳</Text>
+            <Text style={styles.waitingTitle}>Waiting for Opponent</Text>
+            <Text style={styles.waitingDesc}>
+              {opponent.name} {opponentReady ? 'is ready!' : 'hasn\'t accepted yet...'}
+            </Text>
+            <Text style={styles.waitingStatus}>
+              You: ✓ Ready {'\n'}
+              {opponent.name}: {opponentReady ? '✓ Ready' : '⏳ Waiting...'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Both ready - show start button
+  if (matchState === 'ready') {
+    const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Match Ready!</Text>
         </View>
 
         <ScrollView style={styles.content}>
           <View style={styles.matchupCard}>
             <View style={styles.teamColumn}>
-              <Text style={styles.teamName}>{managerProfile.managerName}</Text>
-              <Text style={styles.teamRecord}>
-                {managerProfile.wins || 0}W - {managerProfile.draws || 0}D - {managerProfile.losses || 0}L
-              </Text>
-              <Text style={styles.teamPoints}>{managerProfile.points || 0} pts</Text>
+              <Text style={styles.teamName}>{currentMatch.homeManager.name}</Text>
+              <Text style={styles.teamReady}>✓ Ready</Text>
             </View>
 
             <Text style={styles.vs}>VS</Text>
 
             <View style={styles.teamColumn}>
-              <Text style={styles.teamName}>{selectedOpponent.managerName}</Text>
-              <Text style={styles.teamRecord}>
-                {selectedOpponent.wins || 0}W - {selectedOpponent.draws || 0}D - {selectedOpponent.losses || 0}L
-              </Text>
-              <Text style={styles.teamPoints}>{selectedOpponent.points || 0} pts</Text>
+              <Text style={styles.teamName}>{currentMatch.awayManager.name}</Text>
+              <Text style={styles.teamReady}>✓ Ready</Text>
             </View>
-          </View>
-
-          <View style={styles.formationPreview}>
-            <Text style={styles.sectionTitle}>Your Starting XI</Text>
-            {myFormation.map((player, index) => (
-              <View key={player.id} style={styles.playerRow}>
-                <Text style={styles.playerPosition}>{player.position}</Text>
-                <Text style={styles.playerRowName}>{player.name}</Text>
-                <Text style={styles.playerRowRating}>{player.overall}</Text>
-              </View>
-            ))}
           </View>
 
           <TouchableOpacity style={styles.startMatchButton} onPress={startMatch}>
@@ -300,6 +556,9 @@ const Match = ({ onBack }) => {
 
   // Half-time screen
   if (matchState === 'halftime') {
+    const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+    const mySquad = myTeam.squad;
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -310,16 +569,16 @@ const Match = ({ onBack }) => {
           <View style={styles.scoreBoard}>
             <Text style={styles.scoreBoardTitle}>Half Time Score</Text>
             <View style={styles.scoreRow}>
-              <Text style={styles.scoreTeam}>{managerProfile.managerName}</Text>
+              <Text style={styles.scoreTeam}>{currentMatch.homeManager.name}</Text>
               <Text style={styles.score}>{homeScore} - {awayScore}</Text>
-              <Text style={styles.scoreTeam}>{selectedOpponent.managerName}</Text>
+              <Text style={styles.scoreTeam}>{currentMatch.awayManager.name}</Text>
             </View>
           </View>
 
           <View style={styles.substitutionSection}>
             <Text style={styles.sectionTitle}>Make Substitutions</Text>
             <Text style={styles.sectionDesc}>Tap a player to substitute them</Text>
-            {myFormation.map((player, index) => (
+            {mySquad.map((player, index) => (
               <TouchableOpacity
                 key={player.id}
                 style={styles.playerRow}
@@ -357,13 +616,13 @@ const Match = ({ onBack }) => {
             </View>
             <View style={styles.liveScoreRow}>
               <View style={styles.liveTeam}>
-                <Text style={styles.liveTeamName}>{managerProfile.managerName}</Text>
+                <Text style={styles.liveTeamName}>{currentMatch.homeManager.name}</Text>
                 <Text style={styles.liveScore}>{homeScore}</Text>
               </View>
               <Text style={styles.liveDash}>-</Text>
               <View style={styles.liveTeam}>
                 <Text style={styles.liveScore}>{awayScore}</Text>
-                <Text style={styles.liveTeamName}>{selectedOpponent.managerName}</Text>
+                <Text style={styles.liveTeamName}>{currentMatch.awayManager.name}</Text>
               </View>
             </View>
           </View>
@@ -371,7 +630,7 @@ const Match = ({ onBack }) => {
           <ScrollView style={styles.eventsContainer}>
             <Text style={styles.eventsTitle}>Match Events</Text>
             {events.length === 0 ? (
-              <Text style={styles.noEvents}>No goals yet...</Text>
+              <Text style={styles.noEvents}>No events yet...</Text>
             ) : (
               events.map((event, index) => (
                 <View key={index} style={styles.eventRow}>
@@ -387,13 +646,19 @@ const Match = ({ onBack }) => {
 
   // Finished screen
   if (matchState === 'finished') {
-    const result = homeScore > awayScore ? 'WIN' : homeScore < awayScore ? 'LOSS' : 'DRAW';
+    const myScore = isHome ? homeScore : awayScore;
+    const opponentScore = isHome ? awayScore : homeScore;
+    const result = myScore > opponentScore ? 'WIN' : myScore < opponentScore ? 'LOSS' : 'DRAW';
     const resultColor = result === 'WIN' ? '#43e97b' : result === 'LOSS' ? '#f5576c' : '#ffa726';
 
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={() => {
+            setMatchState('select');
+            setCurrentMatch(null);
+            onBack();
+          }} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back to Menu</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Full Time</Text>
@@ -403,9 +668,9 @@ const Match = ({ onBack }) => {
           <View style={styles.resultCard}>
             <Text style={[styles.resultText, { color: resultColor }]}>{result}</Text>
             <View style={styles.finalScoreRow}>
-              <Text style={styles.finalTeam}>{managerProfile.managerName}</Text>
+              <Text style={styles.finalTeam}>{currentMatch.homeManager.name}</Text>
               <Text style={styles.finalScore}>{homeScore} - {awayScore}</Text>
-              <Text style={styles.finalTeam}>{selectedOpponent.managerName}</Text>
+              <Text style={styles.finalTeam}>{currentMatch.awayManager.name}</Text>
             </View>
             <Text style={styles.pointsEarned}>
               Points earned: {result === 'WIN' ? '+3' : result === 'DRAW' ? '+1' : '0'}
@@ -417,7 +682,7 @@ const Match = ({ onBack }) => {
             {events.length === 0 ? (
               <Text style={styles.noEvents}>0-0 Goalless draw</Text>
             ) : (
-              events.reverse().map((event, index) => (
+              events.slice().reverse().map((event, index) => (
                 <View key={index} style={styles.summaryEvent}>
                   <Text style={styles.summaryEventText}>{event}</Text>
                 </View>
@@ -427,7 +692,7 @@ const Match = ({ onBack }) => {
 
           <TouchableOpacity style={styles.newMatchButton} onPress={() => {
             setMatchState('select');
-            setSelectedOpponent(null);
+            setCurrentMatch(null);
             setHomeScore(0);
             setAwayScore(0);
             setMinute(0);
@@ -559,6 +824,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+  waitingCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 40,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    marginTop: 60,
+  },
+  waitingIcon: {
+    fontSize: 60,
+    marginBottom: 20,
+  },
+  waitingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  waitingDesc: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  waitingStatus: {
+    fontSize: 16,
+    color: '#43e97b',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
   matchupCard: {
     backgroundColor: '#1a1f3a',
     borderRadius: 15,
@@ -581,68 +877,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  teamRecord: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 4,
-  },
-  teamPoints: {
+  teamReady: {
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#43e97b',
+    fontWeight: 'bold',
   },
   vs: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffa726',
     marginHorizontal: 20,
-  },
-  formationPreview: {
-    backgroundColor: '#1a1f3a',
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#2d3561',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 15,
-  },
-  sectionDesc: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 15,
-  },
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#252b54',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  playerPosition: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#ffa726',
-    width: 50,
-  },
-  playerRowName: {
-    flex: 1,
-    fontSize: 14,
-    color: '#ffffff',
-  },
-  playerRowRating: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#43e97b',
-    marginRight: 10,
-  },
-  subIcon: {
-    fontSize: 16,
   },
   startMatchButton: {
     background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
@@ -695,6 +939,45 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#2d3561',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 15,
+  },
+  sectionDesc: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 15,
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#252b54',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  playerPosition: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffa726',
+    width: 50,
+  },
+  playerRowName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  playerRowRating: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    marginRight: 10,
+  },
+  subIcon: {
+    fontSize: 16,
   },
   continueButton: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',

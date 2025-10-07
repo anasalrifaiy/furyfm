@@ -20,6 +20,7 @@ const MainApp = () => {
   const [authScreen, setAuthScreen] = useState('login');
   const [selectedManagerId, setSelectedManagerId] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [activeMatchId, setActiveMatchId] = useState(null);
 
   useEffect(() => {
     // Check if running on web - native driver is not supported on web
@@ -55,6 +56,11 @@ const MainApp = () => {
   const handleViewProfile = (managerId) => {
     setSelectedManagerId(managerId);
     setCurrentScreen('profile');
+  };
+
+  const handleAcceptMatchChallenge = (matchId) => {
+    setActiveMatchId(matchId);
+    setCurrentScreen('match');
   };
 
   if (!currentUser) {
@@ -184,13 +190,13 @@ const MainApp = () => {
       case 'formation':
         return <Formation onBack={() => setCurrentScreen('home')} />;
       case 'match':
-        return <Match onBack={() => setCurrentScreen('home')} />;
+        return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'friends':
         return <Friends onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
       case 'leaderboard':
         return <Leaderboard onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
       case 'notifications':
-        return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+        return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
       case 'profile':
         return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
       default:
