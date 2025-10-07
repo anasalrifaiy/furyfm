@@ -46,21 +46,11 @@ const TransferMarket = ({ onBack }) => {
   const handleMakeOffer = (player) => {
     setSelectedPlayer(player);
     setOfferAmount((player.price / 1000000).toString());
-
-    // Prevent body scroll when modal opens
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = 'hidden';
-    }
   };
 
   const closeModal = () => {
     setSelectedPlayer(null);
     setOfferAmount('');
-
-    // Restore body scroll
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = 'auto';
-    }
   };
 
   const submitOffer = async () => {
@@ -359,29 +349,28 @@ const styles = StyleSheet.create({
   },
   modal: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '100%',
+    height: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
-    overflow: 'hidden',
-    padding: 0,
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#1a1f3a',
     borderRadius: 20,
     padding: 25,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
-    maxHeight: '80vh',
+    maxHeight: '90vh',
     borderWidth: 1,
     borderColor: '#2d3561',
-    overflow: 'auto',
-    position: 'relative',
+    overflowY: 'auto',
   },
   modalTitle: {
     fontSize: 22,
