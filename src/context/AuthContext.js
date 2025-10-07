@@ -63,14 +63,42 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed:', user?.uid);
       setCurrentUser(user);
 
       if (user) {
-        // Fetch manager profile
-        const managerRef = ref(database, `managers/${user.uid}`);
-        const snapshot = await get(managerRef);
-        if (snapshot.exists()) {
-          setManagerProfile(snapshot.val());
+        try {
+          // Fetch manager profile
+          const managerRef = ref(database, `managers/${user.uid}`);
+          const snapshot = await get(managerRef);
+          console.log('Profile snapshot exists:', snapshot.exists());
+
+          if (snapshot.exists()) {
+            const profileData = snapshot.val();
+            console.log('Loaded profile:', profileData);
+            setManagerProfile(profileData);
+          } else {
+            console.error('No manager profile found for user:', user.uid);
+            // Create profile if it doesn't exist
+            const managerData = {
+              uid: user.uid,
+              email: user.email,
+              managerName: user.email.split('@')[0],
+              budget: 200000000,
+              squad: [],
+              friends: [],
+              notifications: [],
+              createdAt: Date.now(),
+              wins: 0,
+              draws: 0,
+              losses: 0,
+              points: 0
+            };
+            await set(ref(database, `managers/${user.uid}`), managerData);
+            setManagerProfile(managerData);
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
         }
       } else {
         setManagerProfile(null);
