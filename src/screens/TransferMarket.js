@@ -46,6 +46,21 @@ const TransferMarket = ({ onBack }) => {
   const handleMakeOffer = (player) => {
     setSelectedPlayer(player);
     setOfferAmount((player.price / 1000000).toString());
+
+    // Prevent body scroll when modal opens
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
+  };
+
+  const closeModal = () => {
+    setSelectedPlayer(null);
+    setOfferAmount('');
+
+    // Restore body scroll
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'auto';
+    }
   };
 
   const submitOffer = async () => {
@@ -77,8 +92,7 @@ const TransferMarket = ({ onBack }) => {
       await updateManagerProfile({ squad: newSquad, budget: newBudget });
 
       showAlert('Success!', `${selectedPlayer.name} has joined your squad for ${formatCurrency(offerValue)}!`);
-      setSelectedPlayer(null);
-      setOfferAmount('');
+      closeModal();
       loadMarketPlayers();
     } else {
       showAlert('Offer Rejected', 'The club has rejected your offer. Try increasing your bid.');
@@ -192,10 +206,7 @@ const TransferMarket = ({ onBack }) => {
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => {
-                  setSelectedPlayer(null);
-                  setOfferAmount('');
-                }}
+                onPress={closeModal}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
