@@ -131,6 +131,98 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
     showAlert('Rejected', 'Friend request rejected.');
   };
 
+  const acceptTradeOffer = async (notification) => {
+    // Load the trade offer
+    const offerRef = ref(database, `tradeOffers/${notification.offerId}`);
+    const offerSnapshot = await get(offerRef);
+
+    if (!offerSnapshot.exists()) {
+      showAlert('Error', 'This trade offer no longer exists.');
+      await deleteNotification(notification.id);
+      return;
+    }
+
+    const offer = offerSnapshot.val();
+
+    // Transfer player from my squad to buyer
+    const mySquad = managerProfile.squad || [];
+    const playerToSell = mySquad.find(p => p.id === offer.player.id);
+
+    if (!playerToSell) {
+      showAlert('Error', 'You no longer own this player.');
+      await deleteNotification(notification.id);
+      return;
+    }
+
+    // Remove player from my squad
+    const newMySquad = mySquad.filter(p => p.id !== offer.player.id);
+    const newMyBudget = (managerProfile.budget || 0) + offer.offerAmount;
+
+    await updateManagerProfile({
+      squad: newMySquad,
+      budget: newMyBudget
+    });
+
+    // Add player to buyer's squad
+    const buyerRef = ref(database, `managers/${offer.from}`);
+    const buyerSnapshot = await get(buyerRef);
+
+    if (buyerSnapshot.exists()) {
+      const buyerData = buyerSnapshot.val();
+      const buyerSquad = buyerData.squad || [];
+      const newBuyerSquad = [...buyerSquad, playerToSell];
+      const newBuyerBudget = (buyerData.budget || 0) - offer.offerAmount;
+
+      await update(buyerRef, {
+        squad: newBuyerSquad,
+        budget: newBuyerBudget
+      });
+
+      // Send notification to buyer
+      const buyerNotifRef = ref(database, `managers/${offer.from}/notifications`);
+      await push(buyerNotifRef, {
+        type: 'trade_accepted',
+        from: currentUser.uid,
+        fromName: managerProfile.managerName,
+        message: `${managerProfile.managerName} accepted your offer for ${playerToSell.name}!`,
+        timestamp: Date.now(),
+        read: false
+      });
+    }
+
+    // Update offer status
+    await update(offerRef, { status: 'accepted' });
+
+    // Delete notification
+    await deleteNotification(notification.id);
+    showAlert('Success', `Trade completed! You sold ${playerToSell.name} for $${(offer.offerAmount / 1000000).toFixed(1)}M`);
+  };
+
+  const rejectTradeOffer = async (notification) => {
+    // Update offer status
+    const offerRef = ref(database, `tradeOffers/${notification.offerId}`);
+    const offerSnapshot = await get(offerRef);
+
+    if (offerSnapshot.exists()) {
+      const offer = offerSnapshot.val();
+      await update(offerRef, { status: 'rejected' });
+
+      // Send notification to buyer
+      const buyerNotifRef = ref(database, `managers/${offer.from}/notifications`);
+      await push(buyerNotifRef, {
+        type: 'trade_rejected',
+        from: currentUser.uid,
+        fromName: managerProfile.managerName,
+        message: `${managerProfile.managerName} rejected your offer for ${offer.player.name}`,
+        timestamp: Date.now(),
+        read: false
+      });
+    }
+
+    await deleteNotification(notification.id);
+    showAlert('Rejected', 'Trade offer rejected.');
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -192,6 +284,23 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer }) => {
                     <TouchableOpacity
                       style={styles.rejectButton}
                       onPress={() => rejectFriendRequest(notification)}
+                    >
+                      <Text style={styles.rejectButtonText}>Reject</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {notification.type === 'trade_offer' && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptTradeOffer(notification)}
+                    >
+                      <Text style={styles.acceptButtonText}>Accept Offer</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() => rejectTradeOffer(notification)}
                     >
                       <Text style={styles.rejectButtonText}>Reject</Text>
                     </TouchableOpacity>
