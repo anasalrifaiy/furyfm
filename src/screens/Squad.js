@@ -163,8 +163,9 @@ const Squad = ({ onBack }) => {
               <TouchableOpacity
                 style={styles.sellButton}
                 onPress={() => {
+                  const playerToSell = selectedPlayer;
                   setSelectedPlayer(null);
-                  handleSellPlayer(selectedPlayer);
+                  handleSellPlayer(playerToSell);
                 }}
               >
                 <Text style={styles.sellButtonText}>Sell Player</Text>
