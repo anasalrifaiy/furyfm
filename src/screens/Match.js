@@ -229,13 +229,19 @@ const Match = ({ onBack, activeMatchId }) => {
 
   const simulateMatch = async (matchData) => {
     const match = matchData || currentMatch;
-    if (!match) return;
+    if (!match) {
+      console.error('No match data available for simulation');
+      return;
+    }
 
+    console.log('Starting match simulation for match:', match.id);
     const matchRef = ref(database, `matches/${match.id}`);
 
     // Calculate team strengths
     const homeStrength = calculateTeamStrength(match.homeManager.squad);
     const awayStrength = calculateTeamStrength(match.awayManager.squad);
+
+    console.log('Team strengths - Home:', homeStrength, 'Away:', awayStrength);
 
     if (homeStrength === 0 || awayStrength === 0) {
       console.error('Squad strength is 0, cannot simulate match');
@@ -248,10 +254,15 @@ const Match = ({ onBack, activeMatchId }) => {
     const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
     const awayChance = (awayStrength / totalStrength) * 0.55;
 
-    let currentMinute = 0;
+    let currentSecond = 0;
 
+    console.log('Setting up match interval...');
     const interval = setInterval(async () => {
-      currentMinute++;
+      currentSecond++;
+      // Convert seconds to match minutes (180 seconds = 90 minutes)
+      const matchMinute = Math.floor(currentSecond / 2);
+
+      console.log(`Match second ${currentSecond}, minute ${matchMinute}`);
 
       try {
         // Goal chance based on team strength (4% per minute scaled by strength)
@@ -275,25 +286,29 @@ const Match = ({ onBack, activeMatchId }) => {
 
           await update(matchRef, newScore);
 
-          const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
 
           // Get current events and prepend new one
           const updatedData = (await get(matchRef)).val();
           const newEvents = [eventText, ...(updatedData.events || [])];
           await update(matchRef, { events: newEvents });
+
+          console.log('GOAL!', eventText);
         }
 
-        // Update minute
-        await update(matchRef, { minute: currentMinute });
+        // Update minute in Firebase
+        await update(matchRef, { minute: matchMinute, second: currentSecond });
 
-        // Half time at 60 seconds
-        if (currentMinute === 60) {
+        // Half time at 90 seconds (45 match minutes)
+        if (currentSecond === 90) {
+          console.log('Half time reached');
           clearInterval(interval);
           await update(matchRef, { state: 'halftime' });
         }
 
-        // Full time at 120 seconds
-        if (currentMinute === 120) {
+        // Full time at 180 seconds (90 match minutes)
+        if (currentSecond === 180) {
+          console.log('Full time reached');
           clearInterval(interval);
           await finishMatch();
         }
@@ -332,6 +347,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const simulateSecondHalf = async () => {
     if (!currentMatch) return;
 
+    console.log('Starting second half simulation');
     const matchRef = ref(database, `matches/${currentMatch.id}`);
 
     // Calculate team strengths
@@ -345,7 +361,10 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
-      const currentMinute = currentData.minute + 1;
+      const currentSecond = (currentData.second || 90) + 1;
+      const matchMinute = Math.floor(currentSecond / 2);
+
+      console.log(`Second half - second ${currentSecond}, minute ${matchMinute}`);
 
       // Goal chance based on team strength (4% per minute scaled by strength)
       const goalRoll = Math.random();
@@ -367,16 +386,19 @@ const Match = ({ onBack, activeMatchId }) => {
 
         await update(matchRef, newScore);
 
-        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
         const newEvents = [eventText, ...(currentData.events || [])];
         await update(matchRef, { events: newEvents });
+
+        console.log('GOAL!', eventText);
       }
 
-      // Update minute
-      await update(matchRef, { minute: currentMinute });
+      // Update minute and second
+      await update(matchRef, { minute: matchMinute, second: currentSecond });
 
-      // Full time at 120 seconds
-      if (currentMinute >= 120) {
+      // Full time at 180 seconds (90 match minutes)
+      if (currentSecond >= 180) {
+        console.log('Full time reached');
         clearInterval(interval);
         await finishMatch();
       }
