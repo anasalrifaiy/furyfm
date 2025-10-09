@@ -51,6 +51,7 @@ const Match = ({ onBack, activeMatchId }) => {
     const unsubscribe = onValue(matchRef, (snapshot) => {
       if (snapshot.exists()) {
         const matchData = snapshot.val();
+        const previousState = matchState;
 
         // Update match state based on Firebase data
         setMatchState(matchData.state);
@@ -58,6 +59,13 @@ const Match = ({ onBack, activeMatchId }) => {
         setAwayScore(matchData.awayScore || 0);
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
+        setCurrentMatch(matchData);
+
+        // Detect state change to 'playing' - start simulation if home manager
+        if (matchData.state === 'playing' && previousState === 'ready' && isHome) {
+          console.log('Match state changed to playing - starting simulation');
+          simulateMatch(matchData);
+        }
 
         // Check if match is finished
         if (matchData.state === 'finished' && matchState !== 'finished') {
@@ -67,7 +75,7 @@ const Match = ({ onBack, activeMatchId }) => {
     });
 
     return () => off(matchRef);
-  }, [currentMatch?.id]);
+  }, [currentMatch?.id, matchState, isHome]);
 
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {
@@ -205,18 +213,14 @@ const Match = ({ onBack, activeMatchId }) => {
 
     if (updatedMatch.homeKickoffReady && updatedMatch.awayKickoffReady) {
       // Both ready - start the match
+      console.log('Both managers ready - transitioning to playing state');
       await update(matchRef, {
         state: 'playing',
         startedAt: Date.now(),
-        minute: 0
+        minute: 0,
+        second: 0
       });
-
-      // Only home manager runs the simulation to avoid duplicates
-      if (isHome) {
-        // Update currentMatch with latest data before simulation
-        setCurrentMatch(updatedMatch);
-        simulateMatch(updatedMatch);
-      }
+      // The listener will detect the state change and start simulation
     }
   };
 
