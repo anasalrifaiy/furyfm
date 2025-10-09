@@ -53,22 +53,10 @@ const Match = ({ onBack, activeMatchId }) => {
         const matchData = snapshot.val();
         const previousState = matchState;
 
-        // Detect goal scored
-        const newHomeScore = matchData.homeScore || 0;
-        const newAwayScore = matchData.awayScore || 0;
-
-        if (homeScore !== newHomeScore || awayScore !== newAwayScore) {
-          // A goal was scored
-          const homeScored = newHomeScore > homeScore;
-          const awayScored = newAwayScore > awayScore;
-          const myTeamScored = (isHome && homeScored) || (!isHome && awayScored);
-          playGoalSound(myTeamScored);
-        }
-
         // Update match state based on Firebase data
         setMatchState(matchData.state);
-        setHomeScore(newHomeScore);
-        setAwayScore(newAwayScore);
+        setHomeScore(matchData.homeScore || 0);
+        setAwayScore(matchData.awayScore || 0);
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
         setCurrentMatch(matchData);
@@ -249,51 +237,6 @@ const Match = ({ onBack, activeMatchId }) => {
     return avgRating;
   };
 
-  // Play goal sound effect
-  const playGoalSound = (isMyTeam) => {
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      if (isMyTeam) {
-        // Happy sound for scoring
-        oscillator.frequency.value = 523.25; // C5
-        oscillator.type = 'sine';
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-
-        // Add a second higher note
-        setTimeout(() => {
-          const osc2 = audioContext.createOscillator();
-          const gain2 = audioContext.createGain();
-          osc2.connect(gain2);
-          gain2.connect(audioContext.destination);
-          osc2.frequency.value = 659.25; // E5
-          osc2.type = 'sine';
-          gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
-          gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-          osc2.start(audioContext.currentTime);
-          osc2.stop(audioContext.currentTime + 0.5);
-        }, 100);
-      } else {
-        // Sad sound for conceding
-        oscillator.frequency.value = 261.63; // C4
-        oscillator.type = 'sawtooth';
-        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.8);
-      }
-    } catch (error) {
-      console.log('Could not play sound:', error);
-    }
-  };
 
   const simulateMatch = async (matchData) => {
     const match = matchData || currentMatch;

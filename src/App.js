@@ -11,6 +11,7 @@ import Leaderboard from './screens/Leaderboard';
 import Notifications from './screens/Notifications';
 import ManagerProfile from './screens/ManagerProfile';
 import Match from './screens/Match';
+import MatchHistory from './screens/MatchHistory';
 import { database } from './firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -157,6 +158,12 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Challenge friends to play</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('matchHistory')}>
+          <Text style={styles.menuIcon}>📊</Text>
+          <Text style={styles.menuTitle}>Match History</Text>
+          <Text style={styles.menuDesc}>View past match results</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('friends')}>
           <Text style={styles.menuIcon}>👥</Text>
           <Text style={styles.menuTitle}>Friends</Text>
@@ -207,6 +214,8 @@ const MainApp = () => {
         return <Formation onBack={() => setCurrentScreen('home')} />;
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
+      case 'matchHistory':
+        return <MatchHistory onBack={() => setCurrentScreen('home')} />;
       case 'friends':
         return <Friends onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
       case 'leaderboard':
