@@ -29,8 +29,8 @@ const MatchHistory = ({ onBack }) => {
           });
         });
 
-        // Sort by date, newest first
-        historyData.sort((a, b) => b.date - a.date);
+        // Sort by date, newest first (using playedAt timestamp)
+        historyData.sort((a, b) => (b.playedAt || b.date || 0) - (a.playedAt || a.date || 0));
         setMatches(historyData);
       } else {
         setMatches([]);

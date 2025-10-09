@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { migrateBudgetsToTarget } from '../utils/migrateBudgets';
+import { migrateMarketPlayers } from '../utils/migrateMarketPlayers';
 
 const AdminMigration = ({ onBack }) => {
   const [migrating, setMigrating] = useState(false);
   const [result, setResult] = useState(null);
+  const [migratingPlayers, setMigratingPlayers] = useState(false);
+  const [playersResult, setPlayersResult] = useState(null);
 
   const runMigration = async () => {
     if (!window.confirm('Are you sure you want to migrate all user budgets to 900M? This action will update all users with budgets below 900M.')) {
@@ -27,6 +30,27 @@ const AdminMigration = ({ onBack }) => {
     }
   };
 
+  const runPlayersMigration = async () => {
+    if (!window.confirm('Are you sure you want to add the 200 new players to the market?')) {
+      return;
+    }
+
+    setMigratingPlayers(true);
+    setPlayersResult(null);
+
+    try {
+      const migrationResult = await migrateMarketPlayers();
+      setPlayersResult(migrationResult);
+    } catch (error) {
+      setPlayersResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setMigratingPlayers(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -37,6 +61,53 @@ const AdminMigration = ({ onBack }) => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>⚽</Text>
+          <Text style={styles.warningTitle}>Add 200 New Players</Text>
+          <Text style={styles.warningText}>
+            This will add 200 new players (IDs 201-400) to the transfer market.
+          </Text>
+          <Text style={styles.warningText}>
+            • Players that already exist will be skipped
+          </Text>
+          <Text style={styles.warningText}>
+            • New players will be immediately available on the market
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.migrateButton, migratingPlayers && styles.migrateButtonDisabled]}
+          onPress={runPlayersMigration}
+          disabled={migratingPlayers}
+        >
+          <Text style={styles.migrateButtonText}>
+            {migratingPlayers ? 'Adding Players...' : 'Add 200 New Players'}
+          </Text>
+        </TouchableOpacity>
+
+        {playersResult && (
+          <View style={[styles.resultCard, playersResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {playersResult.success ? '✓ Players Added' : '✗ Migration Failed'}
+            </Text>
+
+            {playersResult.success ? (
+              <>
+                <Text style={styles.resultText}>
+                  Added: {playersResult.addedCount} players
+                </Text>
+                {playersResult.message && (
+                  <Text style={styles.resultText}>
+                    {playersResult.message}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <Text style={styles.errorText}>Error: {playersResult.error}</Text>
+            )}
+          </View>
+        )}
+
         <View style={styles.warningCard}>
           <Text style={styles.warningIcon}>⚠️</Text>
           <Text style={styles.warningTitle}>Budget Migration Tool</Text>

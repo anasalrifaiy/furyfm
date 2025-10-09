@@ -142,13 +142,13 @@ const Formation = ({ onBack }) => {
   };
 
   const renderFormation = () => {
-    const pitchWidth = 300;
-    const pitchHeight = 450;
+    const pitchWidth = 350;
+    const pitchHeight = 550;
 
-    // Helper to calculate centered positions
+    // Helper to calculate centered positions (25 is half of 50px slot size)
     const pos = (topPercent, leftPercent) => ({
-      top: (pitchHeight * topPercent / 100) - 35,
-      left: (pitchWidth * leftPercent / 100) - 35
+      top: (pitchHeight * topPercent / 100) - 25,
+      left: (pitchWidth * leftPercent / 100) - 25
     });
 
     switch (selectedFormation) {
@@ -401,8 +401,8 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderWidth: 3,
     borderColor: '#ffffff',
-    width: 300,
-    height: 450,
+    width: 350,
+    height: 550,
     maxWidth: '100%',
     alignSelf: 'center',
     // Add grass-like gradient effect
@@ -410,17 +410,17 @@ const styles = StyleSheet.create({
   },
   positionSlot: {
     position: 'absolute',
-    width: 70,
-    height: 70,
+    width: 50,
+    height: 50,
   },
   playerSlot: {
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -429,31 +429,32 @@ const styles = StyleSheet.create({
   },
   playerSlotName: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: 'bold',
     textAlign: 'center',
+    lineHeight: 10,
   },
   playerSlotRating: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginTop: 2,
+    marginTop: 1,
   },
   emptySlot: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.6)',
     borderStyle: 'dashed',
     backdropFilter: 'blur(5px)',
   },
   emptySlotText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   actions: {
