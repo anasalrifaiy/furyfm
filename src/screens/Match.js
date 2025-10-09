@@ -183,26 +183,37 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   };
 
-  const startMatch = async () => {
+  const markReadyToKickoff = async () => {
     if (!currentMatch) return;
 
     const matchRef = ref(database, `matches/${currentMatch.id}`);
     const snapshot = await get(matchRef);
     const matchData = snapshot.val();
 
-    // Check if match already started
+    // Check if match is in ready state
     if (matchData.state !== 'ready') {
       return;
     }
 
-    await update(matchRef, {
-      state: 'playing',
-      startedAt: Date.now()
-    });
+    // Mark myself as ready for kickoff
+    const readyField = isHome ? 'homeKickoffReady' : 'awayKickoffReady';
+    await update(matchRef, { [readyField]: true });
 
-    // Only home manager runs the simulation to avoid duplicates
-    if (isHome) {
-      simulateMatch();
+    // Check if both are ready for kickoff
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatch = updatedSnapshot.val();
+
+    if (updatedMatch.homeKickoffReady && updatedMatch.awayKickoffReady) {
+      // Both ready - start the match
+      await update(matchRef, {
+        state: 'playing',
+        startedAt: Date.now()
+      });
+
+      // Only home manager runs the simulation to avoid duplicates
+      if (isHome) {
+        simulateMatch();
+      }
     }
   };
 
@@ -641,6 +652,8 @@ const Match = ({ onBack, activeMatchId }) => {
   // Both ready - show start button
   if (matchState === 'ready') {
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+    const myKickoffReady = isHome ? currentMatch.homeKickoffReady : currentMatch.awayKickoffReady;
+    const opponentKickoffReady = isHome ? currentMatch.awayKickoffReady : currentMatch.homeKickoffReady;
 
     return (
       <View style={styles.container}>
@@ -652,19 +665,31 @@ const Match = ({ onBack, activeMatchId }) => {
           <View style={styles.matchupCard}>
             <View style={styles.teamColumn}>
               <Text style={styles.teamName}>{currentMatch.homeManager.name}</Text>
-              <Text style={styles.teamReady}>✓ Ready</Text>
+              <Text style={styles.teamReady}>{currentMatch.homeKickoffReady ? '⚽ Ready to Start' : '⏳ Waiting...'}</Text>
             </View>
 
             <Text style={styles.vs}>VS</Text>
 
             <View style={styles.teamColumn}>
               <Text style={styles.teamName}>{currentMatch.awayManager.name}</Text>
-              <Text style={styles.teamReady}>✓ Ready</Text>
+              <Text style={styles.teamReady}>{currentMatch.awayKickoffReady ? '⚽ Ready to Start' : '⏳ Waiting...'}</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.startMatchButton} onPress={startMatch}>
-            <Text style={styles.startMatchButtonText}>⚽ Start Match</Text>
+          <View style={styles.kickoffInfo}>
+            <Text style={styles.kickoffInfoText}>
+              Both managers must click "Start Match" to begin
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.startMatchButton, myKickoffReady && styles.startMatchButtonDisabled]}
+            onPress={markReadyToKickoff}
+            disabled={myKickoffReady}
+          >
+            <Text style={styles.startMatchButtonText}>
+              {myKickoffReady ? '✓ Waiting for opponent...' : '⚽ Start Match'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -1059,12 +1084,31 @@ const styles = StyleSheet.create({
     color: '#ffa726',
     marginHorizontal: 20,
   },
+  kickoffInfo: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 10,
+    padding: 15,
+    marginTop: 20,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  kickoffInfoText: {
+    color: '#888',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   startMatchButton: {
     background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
     padding: 18,
     borderRadius: 15,
     alignItems: 'center',
     marginTop: 10,
+  },
+  startMatchButtonDisabled: {
+    background: 'linear-gradient(135deg, #2d3561 0%, #1a1f3a 100%)',
+    opacity: 0.6,
   },
   startMatchButtonText: {
     fontSize: 18,
