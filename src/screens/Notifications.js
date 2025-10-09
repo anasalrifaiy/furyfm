@@ -380,6 +380,17 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
                     </TouchableOpacity>
                   </View>
                 )}
+
+                {notification.type === 'match_finished' && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.dismissButton}
+                      onPress={() => deleteNotification(notification.id)}
+                    >
+                      <Text style={styles.dismissButtonText}>Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity
@@ -553,6 +564,19 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   rejectButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  dismissButton: {
+    flex: 1,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  dismissButtonText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: 'bold',
