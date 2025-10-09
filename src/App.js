@@ -11,6 +11,8 @@ import Leaderboard from './screens/Leaderboard';
 import Notifications from './screens/Notifications';
 import ManagerProfile from './screens/ManagerProfile';
 import Match from './screens/Match';
+import { database } from './firebase';
+import { ref, onValue } from 'firebase/database';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
@@ -42,12 +44,26 @@ const MainApp = () => {
   }, []);
 
   useEffect(() => {
-    // Load unread notifications count
-    if (managerProfile?.notifications) {
-      const count = Object.values(managerProfile.notifications).filter(n => !n.read).length;
-      setUnreadNotifications(count);
-    }
-  }, [managerProfile]);
+    // Real-time listener for unread notifications count
+    if (!currentUser) return;
+
+    const notificationsRef = ref(database, `managers/${currentUser.uid}/notifications`);
+
+    const unsubscribe = onValue(notificationsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const notifData = [];
+        snapshot.forEach(childSnapshot => {
+          notifData.push(childSnapshot.val());
+        });
+        const count = notifData.filter(n => !n.read).length;
+        setUnreadNotifications(count);
+      } else {
+        setUnreadNotifications(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const formatCurrency = (amount) => {
     return `$${(amount / 1000000).toFixed(1)}M`;

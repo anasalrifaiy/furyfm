@@ -186,7 +186,16 @@ const Match = ({ onBack, activeMatchId }) => {
   const startMatch = async () => {
     if (!currentMatch) return;
 
-    await update(ref(database, `matches/${currentMatch.id}`), {
+    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    const snapshot = await get(matchRef);
+    const matchData = snapshot.val();
+
+    // Check if match already started
+    if (matchData.state !== 'ready') {
+      return;
+    }
+
+    await update(matchRef, {
       state: 'playing',
       startedAt: Date.now()
     });

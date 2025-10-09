@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, update } from 'firebase/database';
-import { showAlert } from '../utils/alert';
+import { showAlert, showConfirm } from '../utils/alert';
 import Portal from '../components/Portal';
 
 const Squad = ({ onBack }) => {
@@ -31,25 +31,22 @@ const Squad = ({ onBack }) => {
   };
 
   const handleSellPlayer = async (player) => {
-    showAlert(
+    showConfirm(
       'Sell Player',
       `Are you sure you want to list ${player.name} on the transfer market?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'List for Sale',
-          onPress: async () => {
-            // Remove from squad
-            const newSquad = managerProfile.squad.filter(p => p.id !== player.id);
+      async () => {
+        // Confirmed - sell the player
+        const newSquad = managerProfile.squad.filter(p => p.id !== player.id);
 
-            // Add back to market
-            await update(ref(database, `market/${player.id}`), { onMarket: true, ownerId: null });
-            await updateManagerProfile({ squad: newSquad });
+        // Add back to market
+        await update(ref(database, `market/${player.id}`), { onMarket: true, ownerId: null });
+        await updateManagerProfile({ squad: newSquad });
 
-            showAlert('Success', `${player.name} has been listed on the transfer market.`);
-          }
-        }
-      ]
+        showAlert('Success', `${player.name} has been listed on the transfer market.`);
+      },
+      () => {
+        // Cancelled - do nothing
+      }
     );
   };
 
