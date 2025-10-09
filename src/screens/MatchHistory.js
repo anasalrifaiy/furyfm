@@ -54,6 +54,31 @@ const MatchHistory = ({ onBack }) => {
     });
   };
 
+  const getMatchResult = (match) => {
+    const isHome = match.homeManager.uid === currentUser.uid;
+    const myScore = isHome ? match.homeScore : match.awayScore;
+    const opponentScore = isHome ? match.awayScore : match.homeScore;
+
+    if (myScore > opponentScore) return 'WIN';
+    if (myScore < opponentScore) return 'LOSS';
+    return 'DRAW';
+  };
+
+  const getOpponentName = (match) => {
+    const isHome = match.homeManager.uid === currentUser.uid;
+    return isHome ? match.awayManager.name : match.homeManager.name;
+  };
+
+  const getMyScore = (match) => {
+    const isHome = match.homeManager.uid === currentUser.uid;
+    return isHome ? match.homeScore : match.awayScore;
+  };
+
+  const getOpponentScore = (match) => {
+    const isHome = match.homeManager.uid === currentUser.uid;
+    return isHome ? match.awayScore : match.homeScore;
+  };
+
   const getResultColor = (result) => {
     if (result === 'WIN') return '#43e97b';
     if (result === 'LOSS') return '#f5576c';
@@ -94,40 +119,54 @@ const MatchHistory = ({ onBack }) => {
             <Text style={styles.emptyDesc}>Challenge your friends to start building your match history!</Text>
           </View>
         ) : (
-          matches.map(match => (
-            <View key={match.id} style={styles.matchCard}>
-              <View style={styles.matchHeader}>
-                <Text style={styles.matchDate}>{formatDate(match.date)}</Text>
-                <View style={[styles.resultBadge, { backgroundColor: getResultColor(match.result) }]}>
-                  <Text style={styles.resultText}>{match.result}</Text>
+          matches.map(match => {
+            const result = getMatchResult(match);
+            const opponentName = getOpponentName(match);
+            const myScore = getMyScore(match);
+            const opponentScore = getOpponentScore(match);
+
+            return (
+              <View key={match.id} style={styles.matchCard}>
+                <View style={styles.matchHeader}>
+                  <Text style={styles.matchDate}>{formatDate(match.playedAt)}</Text>
+                  <View style={[styles.resultBadge, { backgroundColor: getResultColor(result) }]}>
+                    <Text style={styles.resultText}>{result}</Text>
+                  </View>
                 </View>
+
+                <View style={styles.matchDetails}>
+                  <View style={styles.teamSection}>
+                    <Text style={[styles.teamName, result === 'WIN' && styles.winnerText]}>
+                      {managerProfile?.managerName || 'You'}
+                    </Text>
+                    <Text style={styles.teamScore}>{myScore}</Text>
+                  </View>
+
+                  <Text style={styles.vs}>VS</Text>
+
+                  <View style={styles.teamSection}>
+                    <Text style={styles.teamScore}>{opponentScore}</Text>
+                    <Text style={[styles.teamName, result === 'LOSS' && styles.winnerText]}>
+                      {opponentName}
+                    </Text>
+                  </View>
+                </View>
+
+                {match.matchReport && (
+                  <View style={styles.matchReport}>
+                    <Text style={styles.reportTitle}>📋 Match Analysis</Text>
+                    <Text style={styles.reportText}>{match.matchReport}</Text>
+                  </View>
+                )}
+
+                {match.events && match.events.length > 0 && (
+                  <View style={styles.matchFooter}>
+                    <Text style={styles.footerText}>⚽ Goals: {match.events.length}</Text>
+                  </View>
+                )}
               </View>
-
-              <View style={styles.matchDetails}>
-                <View style={styles.teamSection}>
-                  <Text style={[styles.teamName, match.result === 'WIN' && styles.winnerText]}>
-                    {managerProfile?.managerName || 'You'}
-                  </Text>
-                  <Text style={styles.teamScore}>{match.myScore}</Text>
-                </View>
-
-                <Text style={styles.vs}>VS</Text>
-
-                <View style={styles.teamSection}>
-                  <Text style={styles.teamScore}>{match.opponentScore}</Text>
-                  <Text style={[styles.teamName, match.result === 'LOSS' && styles.winnerText]}>
-                    {match.opponentName}
-                  </Text>
-                </View>
-              </View>
-
-              {match.topScorer && (
-                <View style={styles.matchFooter}>
-                  <Text style={styles.footerText}>⚽ Top Scorer: {match.topScorer}</Text>
-                </View>
-              )}
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -260,11 +299,28 @@ const styles = StyleSheet.create({
     color: '#888',
     marginHorizontal: 15,
   },
+  matchReport: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 15,
+  },
+  reportTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  reportText: {
+    fontSize: 13,
+    color: '#ccc',
+    lineHeight: 20,
+  },
   matchFooter: {
     borderTopWidth: 1,
     borderTopColor: '#2d3561',
     paddingTop: 10,
-    marginTop: 5,
+    marginTop: 10,
   },
   footerText: {
     fontSize: 12,
