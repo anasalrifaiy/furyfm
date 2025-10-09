@@ -39,9 +39,24 @@ const Squad = ({ onBack }) => {
         const newSquad = managerProfile.squad.filter(p => p.id !== player.id);
         const newBudget = managerProfile.budget + player.price;
 
+        // Remove player from lineup if they're in it
+        const currentLineup = managerProfile.lineup || {};
+        const updatedLineup = {};
+        Object.keys(currentLineup).forEach(position => {
+          if (currentLineup[position]?.id !== player.id) {
+            updatedLineup[position] = currentLineup[position];
+          } else {
+            updatedLineup[position] = null;
+          }
+        });
+
         // Add back to market
         await update(ref(database, `market/${player.id}`), { onMarket: true, ownerId: null });
-        await updateManagerProfile({ squad: newSquad, budget: newBudget });
+        await updateManagerProfile({
+          squad: newSquad,
+          budget: newBudget,
+          lineup: updatedLineup
+        });
 
         showAlert('Success', `${player.name} has been sold for ${formatCurrency(player.price)}!`);
       },
