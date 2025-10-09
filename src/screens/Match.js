@@ -207,12 +207,15 @@ const Match = ({ onBack, activeMatchId }) => {
       // Both ready - start the match
       await update(matchRef, {
         state: 'playing',
-        startedAt: Date.now()
+        startedAt: Date.now(),
+        minute: 0
       });
 
       // Only home manager runs the simulation to avoid duplicates
       if (isHome) {
-        simulateMatch();
+        // Update currentMatch with latest data before simulation
+        setCurrentMatch(updatedMatch);
+        simulateMatch(updatedMatch);
       }
     }
   };
@@ -224,14 +227,21 @@ const Match = ({ onBack, activeMatchId }) => {
     return avgRating;
   };
 
-  const simulateMatch = async () => {
-    if (!currentMatch) return;
+  const simulateMatch = async (matchData) => {
+    const match = matchData || currentMatch;
+    if (!match) return;
 
-    const matchRef = ref(database, `matches/${currentMatch.id}`);
+    const matchRef = ref(database, `matches/${match.id}`);
 
     // Calculate team strengths
-    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
-    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    const homeStrength = calculateTeamStrength(match.homeManager.squad);
+    const awayStrength = calculateTeamStrength(match.awayManager.squad);
+
+    if (homeStrength === 0 || awayStrength === 0) {
+      console.error('Squad strength is 0, cannot simulate match');
+      return;
+    }
+
     const totalStrength = homeStrength + awayStrength;
 
     // Home advantage bonus
@@ -243,48 +253,53 @@ const Match = ({ onBack, activeMatchId }) => {
     const interval = setInterval(async () => {
       currentMinute++;
 
-      // Goal chance based on team strength (4% per minute scaled by strength)
-      const goalRoll = Math.random();
-      let newEvents = [];
+      try {
+        // Goal chance based on team strength (4% per minute scaled by strength)
+        const goalRoll = Math.random();
 
-      if (goalRoll < 0.04) {
-        const teamRoll = Math.random();
-        const isHomeGoal = teamRoll < homeChance;
-        const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+        if (goalRoll < 0.04) {
+          const teamRoll = Math.random();
+          const isHomeGoal = teamRoll < homeChance;
+          const team = isHomeGoal ? match.homeManager : match.awayManager;
 
-        // More likely to score with attacking players
-        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
-        const scorer = attackers.length > 0 && Math.random() > 0.3
-          ? attackers[Math.floor(Math.random() * attackers.length)]
-          : team.squad[Math.floor(Math.random() * team.squad.length)];
+          // More likely to score with attacking players
+          const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+          const scorer = attackers.length > 0 && Math.random() > 0.3
+            ? attackers[Math.floor(Math.random() * attackers.length)]
+            : team.squad[Math.floor(Math.random() * team.squad.length)];
 
-        const newScore = isHomeGoal
-          ? { homeScore: (await get(matchRef)).val().homeScore + 1 }
-          : { awayScore: (await get(matchRef)).val().awayScore + 1 };
+          const currentData = (await get(matchRef)).val();
+          const newScore = isHomeGoal
+            ? { homeScore: (currentData.homeScore || 0) + 1 }
+            : { awayScore: (currentData.awayScore || 0) + 1 };
 
-        await update(matchRef, newScore);
+          await update(matchRef, newScore);
 
-        const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+          const eventText = `${currentMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
 
-        // Get current events and prepend new one
-        const currentData = (await get(matchRef)).val();
-        newEvents = [eventText, ...(currentData.events || [])];
-        await update(matchRef, { events: newEvents });
-      }
+          // Get current events and prepend new one
+          const updatedData = (await get(matchRef)).val();
+          const newEvents = [eventText, ...(updatedData.events || [])];
+          await update(matchRef, { events: newEvents });
+        }
 
-      // Update minute
-      await update(matchRef, { minute: currentMinute });
+        // Update minute
+        await update(matchRef, { minute: currentMinute });
 
-      // Half time at 60 seconds
-      if (currentMinute === 60) {
+        // Half time at 60 seconds
+        if (currentMinute === 60) {
+          clearInterval(interval);
+          await update(matchRef, { state: 'halftime' });
+        }
+
+        // Full time at 120 seconds
+        if (currentMinute === 120) {
+          clearInterval(interval);
+          await finishMatch();
+        }
+      } catch (error) {
+        console.error('Error during match simulation:', error);
         clearInterval(interval);
-        await update(matchRef, { state: 'halftime' });
-      }
-
-      // Full time at 120 seconds
-      if (currentMinute === 120) {
-        clearInterval(interval);
-        await finishMatch();
       }
     }, 1000);
   };
