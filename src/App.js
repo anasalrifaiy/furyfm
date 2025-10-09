@@ -14,6 +14,8 @@ import Match from './screens/Match';
 import MatchHistory from './screens/MatchHistory';
 import Training from './screens/Training';
 import AdminMigration from './screens/AdminMigration';
+import CoachingStaff from './screens/CoachingStaff';
+import ClubFacilities from './screens/ClubFacilities';
 import { database } from './firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -165,6 +167,18 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Improve your players' skills</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('coaching')}>
+          <Text style={styles.menuIcon}>👨‍🏫</Text>
+          <Text style={styles.menuTitle}>Coaching Staff</Text>
+          <Text style={styles.menuDesc}>Hire specialized coaches</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('facilities')}>
+          <Text style={styles.menuIcon}>🏗️</Text>
+          <Text style={styles.menuTitle}>Club Facilities</Text>
+          <Text style={styles.menuDesc}>Upgrade stadium and infrastructure</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
           <Text style={styles.menuIcon}>🏟️</Text>
           <Text style={styles.menuTitle}>Match</Text>
@@ -236,6 +250,10 @@ const MainApp = () => {
         return <Formation onBack={() => setCurrentScreen('home')} />;
       case 'training':
         return <Training onBack={() => setCurrentScreen('home')} />;
+      case 'coaching':
+        return <CoachingStaff onBack={() => setCurrentScreen('home')} />;
+      case 'facilities':
+        return <ClubFacilities onBack={() => setCurrentScreen('home')} />;
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':

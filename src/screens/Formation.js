@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const Formation = ({ onBack }) => {
   const { managerProfile, updateManagerProfile, loading } = useAuth();
   const [selectedFormation, setSelectedFormation] = useState(managerProfile?.formation || '4-3-3');
+  const [selectedTactic, setSelectedTactic] = useState(managerProfile?.tactic || 'Balanced');
   const [lineup, setLineup] = useState(managerProfile?.lineup || {
     GK: null,
     LB: null,
@@ -110,9 +111,25 @@ const Formation = ({ onBack }) => {
   const saveFormation = async () => {
     await updateManagerProfile({
       formation: selectedFormation,
+      tactic: selectedTactic,
       lineup: lineup
     });
-    showAlert('Success', 'Your formation has been saved!');
+    showAlert('Success', 'Your formation and tactics have been saved!');
+  };
+
+  const tactics = ['Defensive', 'Balanced', 'Attacking'];
+
+  const getTacticDescription = (tactic) => {
+    switch(tactic) {
+      case 'Defensive':
+        return '+15% Defense, -10% Attack';
+      case 'Balanced':
+        return 'Standard performance';
+      case 'Attacking':
+        return '+15% Attack, -10% Defense';
+      default:
+        return '';
+    }
   };
 
   const PositionSlot = ({ position, label, top, left }) => {
@@ -262,6 +279,7 @@ const Formation = ({ onBack }) => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.formationSelector}>
+          <Text style={styles.selectorLabel}>Formation</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {Object.keys(formations).map(formation => (
               <TouchableOpacity
@@ -281,6 +299,30 @@ const Formation = ({ onBack }) => {
               </TouchableOpacity>
             ))}
           </ScrollView>
+        </View>
+
+        <View style={styles.tacticsSelector}>
+          <Text style={styles.selectorLabel}>Tactics</Text>
+          <View style={styles.tacticsGrid}>
+            {tactics.map(tactic => (
+              <TouchableOpacity
+                key={tactic}
+                style={[
+                  styles.tacticCard,
+                  selectedTactic === tactic && styles.tacticCardActive
+                ]}
+                onPress={() => setSelectedTactic(tactic)}
+              >
+                <Text style={[
+                  styles.tacticTitle,
+                  selectedTactic === tactic && styles.tacticTitleActive
+                ]}>
+                  {tactic}
+                </Text>
+                <Text style={styles.tacticDesc}>{getTacticDescription(tactic)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.pitch}>
@@ -369,6 +411,48 @@ const styles = StyleSheet.create({
   formationSelector: {
     padding: 15,
     paddingBottom: 10,
+  },
+  selectorLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  tacticsSelector: {
+    padding: 15,
+    paddingTop: 0,
+  },
+  tacticsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  tacticCard: {
+    flex: 1,
+    backgroundColor: '#1a1f3a',
+    padding: 12,
+    borderRadius: 10,
+    marginHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#2d3561',
+    alignItems: 'center',
+  },
+  tacticCardActive: {
+    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    borderColor: '#f5576c',
+  },
+  tacticTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#888',
+    marginBottom: 4,
+  },
+  tacticTitleActive: {
+    color: '#ffffff',
+  },
+  tacticDesc: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'center',
   },
   formationChip: {
     backgroundColor: '#1a1f3a',

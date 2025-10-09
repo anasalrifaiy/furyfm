@@ -1,0 +1,390 @@
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { showAlert, showConfirm } from '../utils/alert';
+
+const ClubFacilities = ({ onBack }) => {
+  const { managerProfile, updateManagerProfile } = useAuth();
+
+  const facilities = [
+    {
+      id: 'stadium',
+      name: 'Stadium',
+      icon: '🏟️',
+      description: 'Upgrade your stadium to earn more revenue from matches',
+      levels: [
+        { level: 1, cost: 20000000, revenue: 2000000, capacity: 20000, description: 'Small Stadium' },
+        { level: 2, cost: 50000000, revenue: 5000000, capacity: 40000, description: 'Medium Stadium' },
+        { level: 3, cost: 100000000, revenue: 10000000, capacity: 60000, description: 'Large Stadium' },
+        { level: 4, cost: 200000000, revenue: 20000000, capacity: 80000, description: 'Elite Stadium' },
+      ]
+    },
+    {
+      id: 'training_ground',
+      name: 'Training Ground',
+      icon: '🎓',
+      description: 'Better training facilities reduce training costs and improve effectiveness',
+      levels: [
+        { level: 1, cost: 15000000, discount: 10, bonus: 5, description: 'Basic Training Ground' },
+        { level: 2, cost: 35000000, discount: 20, bonus: 10, description: 'Modern Training Ground' },
+        { level: 3, cost: 70000000, discount: 30, bonus: 15, description: 'Advanced Training Ground' },
+        { level: 4, cost: 150000000, discount: 40, bonus: 20, description: 'World-Class Training Ground' },
+      ]
+    },
+    {
+      id: 'youth_academy',
+      name: 'Youth Academy',
+      icon: '👦',
+      description: 'Develop young talents and reduce costs for training youth players',
+      levels: [
+        { level: 1, cost: 10000000, discount: 15, description: 'Basic Youth Academy' },
+        { level: 2, cost: 25000000, discount: 30, description: 'Professional Youth Academy' },
+        { level: 3, cost: 50000000, discount: 45, description: 'Elite Youth Academy' },
+        { level: 4, cost: 100000000, discount: 60, description: 'World-Class Youth Academy' },
+      ]
+    },
+    {
+      id: 'medical_center',
+      name: 'Medical Center',
+      icon: '🏥',
+      description: 'Reduce injury risks and improve player recovery',
+      levels: [
+        { level: 1, cost: 12000000, reduction: 10, description: 'Basic Medical Center' },
+        { level: 2, cost: 30000000, reduction: 20, description: 'Advanced Medical Center' },
+        { level: 3, cost: 60000000, reduction: 35, description: 'State-of-the-art Medical Center' },
+      ]
+    },
+  ];
+
+  const formatCurrency = (amount) => {
+    return `$${(amount / 1000000).toFixed(1)}M`;
+  };
+
+  const getCurrentLevel = (facilityId) => {
+    return managerProfile?.facilities?.[facilityId] || 0;
+  };
+
+  const handleUpgrade = (facility, level) => {
+    const currentLevel = getCurrentLevel(facility.id);
+
+    if (currentLevel >= level) {
+      showAlert('Already Owned', `You already have ${facility.name} at level ${currentLevel}.`);
+      return;
+    }
+
+    if (currentLevel !== level - 1) {
+      showAlert('Locked', `You must upgrade ${facility.name} to level ${level - 1} first.`);
+      return;
+    }
+
+    const levelData = facility.levels[level - 1];
+
+    if (managerProfile.budget < levelData.cost) {
+      showAlert('Insufficient Budget', `You need ${formatCurrency(levelData.cost)} to upgrade.`);
+      return;
+    }
+
+    const benefitText = facility.id === 'stadium'
+      ? `\n\n+${formatCurrency(levelData.revenue)} per match win\nCapacity: ${levelData.capacity.toLocaleString()}`
+      : facility.id === 'training_ground'
+      ? `\n\n-${levelData.discount}% training costs\n+${levelData.bonus}% training effectiveness`
+      : facility.id === 'youth_academy'
+      ? `\n\n-${levelData.discount}% youth training costs`
+      : `\n\n-${levelData.reduction}% injury risk`;
+
+    showConfirm(
+      'Upgrade Facility',
+      `Upgrade ${facility.name} to Level ${level}?\n\nCost: ${formatCurrency(levelData.cost)}${benefitText}`,
+      async () => {
+        const newFacilities = {
+          ...(managerProfile.facilities || {}),
+          [facility.id]: level
+        };
+
+        await updateManagerProfile({
+          facilities: newFacilities,
+          budget: managerProfile.budget - levelData.cost
+        });
+
+        showAlert('Success!', `${facility.name} upgraded to Level ${level}!`);
+      }
+    );
+  };
+
+  if (!managerProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Club Facilities</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>Club Facilities</Text>
+        <Text style={styles.budget}>Budget: {formatCurrency(managerProfile.budget)}</Text>
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoText}>
+            Invest in your club's infrastructure to gain long-term benefits!
+          </Text>
+        </View>
+
+        {facilities.map(facility => {
+          const currentLevel = getCurrentLevel(facility.id);
+
+          return (
+            <View key={facility.id} style={styles.facilityCard}>
+              <View style={styles.facilityHeader}>
+                <Text style={styles.facilityIcon}>{facility.icon}</Text>
+                <View style={styles.facilityInfo}>
+                  <Text style={styles.facilityName}>{facility.name}</Text>
+                  <Text style={styles.facilityDesc}>{facility.description}</Text>
+                </View>
+                {currentLevel > 0 && (
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelBadgeText}>Lv.{currentLevel}</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.levelsContainer}>
+                {facility.levels.map((levelData) => {
+                  const isOwned = currentLevel >= levelData.level;
+                  const isNext = currentLevel === levelData.level - 1;
+                  const isLocked = currentLevel < levelData.level - 1;
+
+                  let benefitText = '';
+                  if (facility.id === 'stadium') {
+                    benefitText = `+${formatCurrency(levelData.revenue)}/win • ${(levelData.capacity / 1000).toFixed(0)}k capacity`;
+                  } else if (facility.id === 'training_ground') {
+                    benefitText = `-${levelData.discount}% cost, +${levelData.bonus}% effectiveness`;
+                  } else if (facility.id === 'youth_academy') {
+                    benefitText = `-${levelData.discount}% youth training cost`;
+                  } else {
+                    benefitText = `-${levelData.reduction}% injury risk`;
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={levelData.level}
+                      style={[
+                        styles.levelCard,
+                        isOwned && styles.levelCardOwned,
+                        isNext && styles.levelCardNext,
+                        isLocked && styles.levelCardLocked
+                      ]}
+                      onPress={() => !isOwned && !isLocked && handleUpgrade(facility, levelData.level)}
+                      disabled={isOwned || isLocked}
+                    >
+                      <View style={styles.levelHeader}>
+                        <Text style={[styles.levelTitle, isOwned && styles.levelTitleOwned]}>
+                          Level {levelData.level}
+                        </Text>
+                        {isOwned && <Text style={styles.ownedBadge}>✓</Text>}
+                        {isLocked && <Text style={styles.lockedBadge}>🔒</Text>}
+                      </View>
+                      <Text style={styles.levelDesc}>{levelData.description}</Text>
+                      <Text style={styles.levelBonus}>{benefitText}</Text>
+                      {!isOwned && (
+                        <View style={styles.levelCost}>
+                          <Text style={styles.levelCostText}>{formatCurrency(levelData.cost)}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0a0e27',
+  },
+  header: {
+    position: 'sticky',
+    top: 0,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    padding: 15,
+    paddingTop: 20,
+    zIndex: 100,
+  },
+  backButton: {
+    marginBottom: 8,
+  },
+  backButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 5,
+  },
+  budget: {
+    fontSize: 16,
+    color: '#ffffff',
+    opacity: 0.9,
+  },
+  content: {
+    flex: 1,
+    padding: 15,
+  },
+  infoCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#ffffff',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  facilityCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  facilityHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  facilityIcon: {
+    fontSize: 36,
+    marginRight: 12,
+  },
+  facilityInfo: {
+    flex: 1,
+  },
+  facilityName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  facilityDesc: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
+  levelBadge: {
+    backgroundColor: '#43e97b',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  levelBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  levelsContainer: {
+    gap: 8,
+  },
+  levelCard: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 2,
+    borderColor: '#2d3561',
+    marginBottom: 8,
+  },
+  levelCardOwned: {
+    backgroundColor: '#1a3a2d',
+    borderColor: '#43e97b',
+  },
+  levelCardNext: {
+    borderColor: '#f5576c',
+  },
+  levelCardLocked: {
+    opacity: 0.5,
+  },
+  levelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  levelTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  levelTitleOwned: {
+    color: '#43e97b',
+  },
+  ownedBadge: {
+    fontSize: 14,
+    color: '#43e97b',
+  },
+  lockedBadge: {
+    fontSize: 12,
+  },
+  levelDesc: {
+    fontSize: 13,
+    color: '#ccc',
+    marginBottom: 4,
+  },
+  levelBonus: {
+    fontSize: 12,
+    color: '#f093fb',
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  levelCost: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  levelCostText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+});
+
+export default ClubFacilities;

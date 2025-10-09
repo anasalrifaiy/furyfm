@@ -15,10 +15,64 @@ const Training = ({ onBack }) => {
   };
 
   const getTrainingCost = (player) => {
-    // Training cost increases with player rating
-    // Much more affordable: 0.5M + (rating * 0.1M)
-    // Example: 70 rated = 0.5M + 7M = 7.5M
-    return 500000 + (player.overall * 100000);
+    const age = player.age;
+    let baseCost = 500000 + (player.overall * 100000);
+
+    // Age-based discounts
+    if (age <= 21) {
+      baseCost = baseCost * 0.3; // 70% cheaper for young talents (21 and under)
+    } else if (age <= 24) {
+      baseCost = baseCost * 0.5; // 50% cheaper for young players (22-24)
+    } else if (age <= 27) {
+      baseCost = baseCost * 0.8; // 20% cheaper for prime age (25-27)
+    } else if (age >= 32) {
+      baseCost = baseCost * 1.5; // 50% more expensive for veterans (32+)
+    }
+
+    // Apply training ground discount if available
+    const trainingGroundLevel = managerProfile?.facilities?.training_ground || 0;
+    if (trainingGroundLevel > 0) {
+      const discounts = [0, 10, 20, 30, 40];
+      baseCost = baseCost * (1 - discounts[trainingGroundLevel] / 100);
+    }
+
+    // Apply youth academy discount for young players
+    if (age <= 23) {
+      const youthAcademyLevel = managerProfile?.facilities?.youth_academy || 0;
+      if (youthAcademyLevel > 0) {
+        const discounts = [0, 15, 30, 45, 60];
+        baseCost = baseCost * (1 - discounts[youthAcademyLevel] / 100);
+      }
+    }
+
+    return Math.floor(baseCost);
+  };
+
+  const getTrainingSuccessRate = (player) => {
+    const age = player.age;
+    let successRate = 100;
+
+    // Age affects success rate
+    if (age <= 21) {
+      successRate = 95; // 95% chance for young talents
+    } else if (age <= 24) {
+      successRate = 90; // 90% chance for young players
+    } else if (age <= 27) {
+      successRate = 85; // 85% chance for prime age
+    } else if (age <= 30) {
+      successRate = 70; // 70% chance for experienced
+    } else {
+      successRate = 50; // 50% chance for veterans
+    }
+
+    // Training ground bonus
+    const trainingGroundLevel = managerProfile?.facilities?.training_ground || 0;
+    if (trainingGroundLevel > 0) {
+      const bonuses = [0, 5, 10, 15, 20];
+      successRate = Math.min(100, successRate + bonuses[trainingGroundLevel]);
+    }
+
+    return successRate;
   };
 
   const getXPForNextLevel = (player) => {
@@ -30,38 +84,51 @@ const Training = ({ onBack }) => {
 
   const trainWithMoney = (player) => {
     const cost = getTrainingCost(player);
+    const successRate = getTrainingSuccessRate(player);
 
     if (managerProfile.budget < cost) {
       showAlert('Insufficient Funds', `You need ${formatCurrency(cost)} to train ${player.name}.`);
       return;
     }
 
+    const ageBonus = player.age <= 21 ? '\n\n🌟 Young Talent Bonus: 70% cheaper!' :
+                     player.age <= 24 ? '\n\n⭐ Youth Bonus: 50% cheaper!' : '';
+
     showConfirm(
       'Train Player',
-      `Train ${player.name} for ${formatCurrency(cost)}? This will increase their rating by 1.`,
+      `Train ${player.name} (Age ${player.age}) for ${formatCurrency(cost)}?\n\nSuccess Rate: ${successRate}%${ageBonus}`,
       async () => {
-        // Find player in squad and update
-        const updatedSquad = managerProfile.squad.map(p => {
-          if (p.id === player.id) {
-            const newRating = Math.min(99, p.overall + 1);
-            const newPrice = Math.floor(p.price * 1.15); // Price increases by 15%
-            return {
-              ...p,
-              overall: newRating,
-              price: newPrice
-            };
-          }
-          return p;
-        });
-
         const newBudget = managerProfile.budget - cost;
 
-        await updateManagerProfile({
-          squad: updatedSquad,
-          budget: newBudget
-        });
+        // Check if training succeeds
+        const success = Math.random() * 100 < successRate;
 
-        showAlert('Success!', `${player.name} has been trained! New rating: ${Math.min(99, player.overall + 1)}`);
+        if (success) {
+          // Find player in squad and update
+          const updatedSquad = managerProfile.squad.map(p => {
+            if (p.id === player.id) {
+              const newRating = Math.min(99, p.overall + 1);
+              const newPrice = Math.floor(p.price * 1.15); // Price increases by 15%
+              return {
+                ...p,
+                overall: newRating,
+                price: newPrice
+              };
+            }
+            return p;
+          });
+
+          await updateManagerProfile({
+            squad: updatedSquad,
+            budget: newBudget
+          });
+
+          showAlert('Success!', `${player.name} has been trained successfully! New rating: ${Math.min(99, player.overall + 1)}`);
+        } else {
+          await updateManagerProfile({ budget: newBudget });
+          showAlert('Training Failed', `${player.name}'s training was unsuccessful. The cost was still spent, but no improvement gained.`);
+        }
+
         setSelectedPlayer(null);
       },
       () => {}
@@ -140,9 +207,10 @@ const Training = ({ onBack }) => {
             <Text style={styles.infoTitle}>🎓 Training System</Text>
             <Text style={styles.infoText}>• Train players to improve their rating</Text>
             <Text style={styles.infoText}>• Pay with money or use XP from scoring goals</Text>
-            <Text style={styles.infoText}>• Each training increases rating by +1</Text>
-            <Text style={styles.infoText}>• Player value increases by 15% per level</Text>
-            <Text style={styles.infoText}>• Players gain 50 XP per goal scored</Text>
+            <Text style={styles.infoText}>• Younger players (≤21) train 70% cheaper!</Text>
+            <Text style={styles.infoText}>• Young players (22-24) train 50% cheaper!</Text>
+            <Text style={styles.infoText}>• Veterans (32+) train 50% more expensive</Text>
+            <Text style={styles.infoText}>• Success rates vary by age (younger = better)</Text>
           </View>
 
           {squad.length === 0 ? (
@@ -154,9 +222,14 @@ const Training = ({ onBack }) => {
           ) : (
             squad.map(player => {
               const trainingCost = getTrainingCost(player);
+              const successRate = getTrainingSuccessRate(player);
               const xpNeeded = getXPForNextLevel(player);
               const currentXP = player.xp || 0;
               const xpProgress = (currentXP / xpNeeded) * 100;
+
+              const ageLabel = player.age <= 21 ? '🌟' :
+                              player.age <= 24 ? '⭐' :
+                              player.age >= 32 ? '👴' : '';
 
               return (
                 <TouchableOpacity
@@ -165,11 +238,13 @@ const Training = ({ onBack }) => {
                   onPress={() => setSelectedPlayer(player)}
                 >
                   <View style={styles.playerInfo}>
-                    <Text style={styles.playerName}>{player.name}</Text>
+                    <Text style={styles.playerName}>{ageLabel} {player.name}</Text>
                     <Text style={styles.playerDetails}>
                       {player.position} • {player.age} years • {player.nationality}
                     </Text>
-                    <Text style={styles.playerClub}>{player.club}</Text>
+                    <Text style={styles.trainingInfo}>
+                      Cost: {formatCurrency(trainingCost)} • Success: {successRate}%
+                    </Text>
                   </View>
 
                   <View style={styles.playerStats}>
@@ -337,6 +412,12 @@ const styles = StyleSheet.create({
   playerClub: {
     fontSize: 12,
     color: '#667eea',
+  },
+  trainingInfo: {
+    fontSize: 11,
+    color: '#f093fb',
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   playerStats: {
     flexDirection: 'row',
