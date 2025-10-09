@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
       uid: user.uid,
       email: user.email,
       managerName: managerName,
-      budget: 500000000, // $500M starting budget
+      budget: 900000000, // $900M starting budget
       squad: [],
       friends: [],
       notifications: [],
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
               uid: user.uid,
               email: user.email,
               managerName: user.email.split('@')[0],
-              budget: 500000000,
+              budget: 900000000,
               squad: [],
               friends: [],
               notifications: [],

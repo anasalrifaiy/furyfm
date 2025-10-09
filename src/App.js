@@ -13,6 +13,7 @@ import ManagerProfile from './screens/ManagerProfile';
 import Match from './screens/Match';
 import MatchHistory from './screens/MatchHistory';
 import Training from './screens/Training';
+import AdminMigration from './screens/AdminMigration';
 import { database } from './firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -207,6 +208,12 @@ const MainApp = () => {
           <Text style={styles.menuTitle}>Logout</Text>
           <Text style={styles.menuDesc}>Sign out of your account</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('adminMigration')}>
+          <Text style={styles.menuIcon}>⚙️</Text>
+          <Text style={styles.menuTitle}>Admin: Budget Migration</Text>
+          <Text style={styles.menuDesc}>Run once to update budgets</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -233,6 +240,8 @@ const MainApp = () => {
         return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
       case 'profile':
         return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
+      case 'adminMigration':
+        return <AdminMigration onBack={() => setCurrentScreen('home')} />;
       default:
         return (
           <>
