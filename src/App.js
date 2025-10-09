@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
 import TransferMarket from './screens/TransferMarket';
@@ -21,6 +22,7 @@ import { ref, onValue } from 'firebase/database';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
+  const { t, language, switchLanguage, isRTL } = useLanguage();
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
   const [currentScreen, setCurrentScreen] = useState('home');
@@ -95,20 +97,28 @@ const MainApp = () => {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerContent}>
-        <Text style={styles.logo}>🔥 Fury FM</Text>
-        <Text style={styles.subtitle}>Advanced Football Manager</Text>
+        <Text style={styles.logo}>🔥 {t('appTitle')}</Text>
+        <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
+      <TouchableOpacity
+        style={styles.languageButton}
+        onPress={() => switchLanguage(language === 'en' ? 'ar' : 'en')}
+      >
+        <Text style={styles.languageButtonText}>
+          {language === 'en' ? 'العربية' : 'English'}
+        </Text>
+      </TouchableOpacity>
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Manager</Text>
+          <Text style={styles.statLabel}>{t('manager')}</Text>
           <Text style={styles.statValue}>{managerProfile?.managerName}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Budget</Text>
+          <Text style={styles.statLabel}>{t('budget')}</Text>
           <Text style={styles.statValue}>{formatCurrency(managerProfile?.budget || 0)}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Points</Text>
+          <Text style={styles.statLabel}>{t('points')}</Text>
           <Text style={styles.statValue}>{managerProfile?.points || 0}</Text>
         </View>
       </View>
@@ -123,20 +133,20 @@ const MainApp = () => {
     return (
     <ScrollView style={styles.content}>
       <View style={styles.welcomeCard}>
-        <Text style={styles.welcomeTitle}>Welcome back, {managerProfile?.managerName}!</Text>
-        <Text style={styles.welcomeSubtitle}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
+        <Text style={styles.welcomeTitle}>{t('welcomeBack')}, {managerProfile?.managerName}!</Text>
+        <Text style={styles.welcomeSubtitle}>{t('budget')}: {formatCurrency(managerProfile?.budget || 0)}</Text>
 
         <View style={styles.quickStats}>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Squad Size</Text>
+            <Text style={styles.statCardLabel}>{t('squadSize')}</Text>
             <Text style={styles.statCardValue}>{managerProfile?.squad?.length || 0}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Wins</Text>
+            <Text style={styles.statCardLabel}>{t('wins')}</Text>
             <Text style={styles.statCardValue}>{managerProfile?.wins || 0}</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>Friends</Text>
+            <Text style={styles.statCardLabel}>{t('friends')}</Text>
             <Text style={styles.statCardValue}>{managerProfile?.friends?.length || 0}</Text>
           </View>
         </View>
@@ -302,9 +312,11 @@ const MainApp = () => {
 
 const App = () => {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 
@@ -328,7 +340,20 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  languageButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  languageButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   logo: {
     fontSize: 32,
