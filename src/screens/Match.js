@@ -299,10 +299,17 @@ const Match = ({ onBack, activeMatchId }) => {
 
           const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
 
+          // Track goalscorer for XP rewards
+          const goalscorers = (await get(matchRef)).val().goalscorers || {};
+          if (!goalscorers[scorer.id]) {
+            goalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+          }
+          goalscorers[scorer.id].goals++;
+
           // Get current events and prepend new one
           const updatedData = (await get(matchRef)).val();
           const newEvents = [eventText, ...(updatedData.events || [])];
-          await update(matchRef, { events: newEvents });
+          await update(matchRef, { events: newEvents, goalscorers });
 
           console.log('GOAL!', eventText);
         }
@@ -405,8 +412,16 @@ const Match = ({ onBack, activeMatchId }) => {
         await update(matchRef, newScore);
 
         const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+
+        // Track goalscorer for XP rewards
+        const goalscorers = currentData.goalscorers || {};
+        if (!goalscorers[scorer.id]) {
+          goalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+        }
+        goalscorers[scorer.id].goals++;
+
         const newEvents = [eventText, ...(currentData.events || [])];
-        await update(matchRef, { events: newEvents });
+        await update(matchRef, { events: newEvents, goalscorers });
 
         console.log('GOAL!', eventText);
       }
@@ -572,6 +587,33 @@ const Match = ({ onBack, activeMatchId }) => {
       timestamp: Date.now(),
       read: false
     });
+
+    // Award XP to goalscorers (50 XP per goal)
+    const goalscorers = matchData.goalscorers || {};
+    for (const scorerId in goalscorers) {
+      const scorerData = goalscorers[scorerId];
+      const managerId = scorerData.managerId;
+      const xpEarned = scorerData.goals * 50;
+
+      const managerRef = ref(database, `managers/${managerId}`);
+      const managerSnapshot = await get(managerRef);
+
+      if (managerSnapshot.exists()) {
+        const managerData = managerSnapshot.val();
+        const updatedSquad = (managerData.squad || []).map(player => {
+          if (player.id === scorerData.playerId) {
+            return {
+              ...player,
+              xp: (player.xp || 0) + xpEarned
+            };
+          }
+          return player;
+        });
+
+        await update(managerRef, { squad: updatedSquad });
+        console.log(`Awarded ${xpEarned} XP to player ${scorerData.playerId}`);
+      }
+    }
   };
 
   const handleMatchFinished = (matchData) => {

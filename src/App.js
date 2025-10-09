@@ -12,6 +12,7 @@ import Notifications from './screens/Notifications';
 import ManagerProfile from './screens/ManagerProfile';
 import Match from './screens/Match';
 import MatchHistory from './screens/MatchHistory';
+import Training from './screens/Training';
 import { database } from './firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -152,6 +153,12 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Set your tactical lineup</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('training')}>
+          <Text style={styles.menuIcon}>🎓</Text>
+          <Text style={styles.menuTitle}>Training</Text>
+          <Text style={styles.menuDesc}>Improve your players' skills</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
           <Text style={styles.menuIcon}>🏟️</Text>
           <Text style={styles.menuTitle}>Match</Text>
@@ -212,6 +219,8 @@ const MainApp = () => {
         return <Squad onBack={() => setCurrentScreen('home')} />;
       case 'formation':
         return <Formation onBack={() => setCurrentScreen('home')} />;
+      case 'training':
+        return <Training onBack={() => setCurrentScreen('home')} />;
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':
