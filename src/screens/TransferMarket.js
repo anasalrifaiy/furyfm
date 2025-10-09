@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, update, onValue } from 'firebase/database';
 import { initialPlayers } from '../data/players';
+import { additionalPlayers } from '../data/additionalPlayers';
 import { showAlert } from '../utils/alert';
 import Portal from '../components/Portal';
 
@@ -15,6 +16,9 @@ const TransferMarket = ({ onBack }) => {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [offerAmount, setOfferAmount] = useState('');
 
+  // Merge all players (200 from players.js + 200 from additionalPlayers.js)
+  const allPlayers = [...initialPlayers, ...additionalPlayers];
+
   useEffect(() => {
     const marketRef = ref(database, 'market');
 
@@ -22,7 +26,7 @@ const TransferMarket = ({ onBack }) => {
     get(marketRef).then(snapshot => {
       if (!snapshot.exists()) {
         const marketData = {};
-        initialPlayers.forEach(player => {
+        allPlayers.forEach(player => {
           marketData[player.id] = player;
         });
         update(ref(database, 'market'), marketData);
@@ -92,7 +96,7 @@ const TransferMarket = ({ onBack }) => {
 
   const filteredPlayers = players.filter(player => {
     const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.club.toLowerCase().includes(searchTerm.toLowerCase());
+                         player.nationality.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPosition = filterPosition === 'All' || player.position === filterPosition;
 
     // Don't show players already in user's squad
@@ -128,13 +132,17 @@ const TransferMarket = ({ onBack }) => {
           </TouchableOpacity>
           <Text style={styles.title}>Transfer Market</Text>
           <Text style={styles.budget}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
+          <View style={styles.statsRow}>
+            <Text style={styles.statsText}>Available Players: {filteredPlayers.length}</Text>
+            <Text style={styles.statsText}>Total Database: {allPlayers.length}</Text>
+          </View>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.searchSection}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search players or clubs..."
+              placeholder="Search players or nationality..."
               placeholderTextColor="#888"
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -159,7 +167,6 @@ const TransferMarket = ({ onBack }) => {
                 <View style={styles.playerInfo}>
                   <Text style={styles.playerName}>{player.name}</Text>
                   <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
-                  <Text style={styles.playerClub}>{player.club} ({player.league})</Text>
                   <Text style={styles.playerRating}>Overall: {player.overall}</Text>
                 </View>
                 <View style={styles.playerActions}>
@@ -255,6 +262,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
+    marginBottom: 10,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    padding: 10,
+  },
+  statsText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
