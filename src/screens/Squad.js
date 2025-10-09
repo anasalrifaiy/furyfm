@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, update } from 'firebase/database';
+import { showAlert } from '../utils/alert';
+import Portal from '../components/Portal';
 
 const Squad = ({ onBack }) => {
   const { managerProfile, updateManagerProfile, loading } = useAuth();
@@ -120,13 +122,14 @@ const Squad = ({ onBack }) => {
     </View>
 
     {selectedPlayer && (
-      <View style={styles.modalOverlay} pointerEvents="auto">
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setSelectedPlayer(null)}
-        />
-        <View style={styles.modalContent}>
+      <Portal>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectedPlayer(null)}
+          />
+          <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{selectedPlayer.name}</Text>
             <Text style={styles.modalSubtitle}>{selectedPlayer.position} • {selectedPlayer.club}</Text>
 
@@ -173,6 +176,7 @@ const Squad = ({ onBack }) => {
             </View>
           </View>
         </View>
+      </Portal>
     )}
   </>
   );

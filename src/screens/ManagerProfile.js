@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, push, update } from 'firebase/database';
 import { showAlert } from '../utils/alert';
+import Portal from '../components/Portal';
 
 const ManagerProfile = ({ managerId, onBack }) => {
   const { currentUser, managerProfile: currentManagerProfile, updateManagerProfile, loading } = useAuth();
@@ -280,13 +281,14 @@ const ManagerProfile = ({ managerId, onBack }) => {
     </View>
 
     {isEditing && (
-      <View style={styles.modalOverlay} pointerEvents="auto">
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setIsEditing(false)}
-        />
-        <View style={styles.modalContent}>
+      <Portal>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setIsEditing(false)}
+          />
+          <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Edit Profile</Text>
 
           <View style={styles.inputGroup}>
@@ -336,21 +338,23 @@ const ManagerProfile = ({ managerId, onBack }) => {
               <Text style={styles.submitButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </View>
-      </View>
+      </Portal>
     )}
 
     {selectedPlayer && (
-      <View style={styles.modalOverlay} pointerEvents="auto">
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => {
-            setSelectedPlayer(null);
-            setOfferAmount('');
-          }}
-        />
-        <View style={styles.modalContent}>
+      <Portal>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setSelectedPlayer(null);
+              setOfferAmount('');
+            }}
+          />
+          <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
           <Text style={styles.modalSubtitle}>Market Value: {formatCurrency(selectedPlayer.price)}</Text>
 
@@ -388,8 +392,9 @@ const ManagerProfile = ({ managerId, onBack }) => {
               <Text style={styles.submitButtonText}>Send Offer</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </View>
-      </View>
+      </Portal>
     )}
   </>
   );

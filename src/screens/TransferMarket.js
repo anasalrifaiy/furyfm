@@ -5,6 +5,7 @@ import { database } from '../firebase';
 import { ref, get, update, onValue } from 'firebase/database';
 import { initialPlayers } from '../data/players';
 import { showAlert } from '../utils/alert';
+import Portal from '../components/Portal';
 
 const TransferMarket = ({ onBack }) => {
   const { currentUser, managerProfile, updateManagerProfile, loading } = useAuth();
@@ -177,13 +178,14 @@ const TransferMarket = ({ onBack }) => {
       </View>
 
       {selectedPlayer && (
-        <View style={styles.modalOverlay} pointerEvents="auto">
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={closeModal}
-          />
-          <View style={styles.modalContent}>
+        <Portal>
+          <View style={styles.modalOverlay} pointerEvents="auto">
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={closeModal}
+            />
+            <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
             <Text style={styles.modalSubtitle}>Asking Price: {formatCurrency(selectedPlayer.price)}</Text>
 
@@ -214,8 +216,9 @@ const TransferMarket = ({ onBack }) => {
                 <Text style={styles.submitButtonText}>Submit Offer</Text>
               </TouchableOpacity>
             </View>
+            </View>
           </View>
-        </View>
+        </Portal>
       )}
     </>
   );
