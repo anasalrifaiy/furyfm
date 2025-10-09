@@ -53,10 +53,22 @@ const Match = ({ onBack, activeMatchId }) => {
         const matchData = snapshot.val();
         const previousState = matchState;
 
+        // Detect goal scored
+        const newHomeScore = matchData.homeScore || 0;
+        const newAwayScore = matchData.awayScore || 0;
+
+        if (homeScore !== newHomeScore || awayScore !== newAwayScore) {
+          // A goal was scored
+          const homeScored = newHomeScore > homeScore;
+          const awayScored = newAwayScore > awayScore;
+          const myTeamScored = (isHome && homeScored) || (!isHome && awayScored);
+          playGoalSound(myTeamScored);
+        }
+
         // Update match state based on Firebase data
         setMatchState(matchData.state);
-        setHomeScore(matchData.homeScore || 0);
-        setAwayScore(matchData.awayScore || 0);
+        setHomeScore(newHomeScore);
+        setAwayScore(newAwayScore);
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
         setCurrentMatch(matchData);
@@ -65,6 +77,12 @@ const Match = ({ onBack, activeMatchId }) => {
         if (matchData.state === 'playing' && previousState === 'ready' && isHome) {
           console.log('Match state changed to playing - starting simulation');
           simulateMatch(matchData);
+        }
+
+        // Detect second half start
+        if (matchData.state === 'playing' && previousState === 'halftime' && isHome && matchData.secondHalfStarted) {
+          console.log('Second half starting - resuming simulation');
+          simulateSecondHalf();
         }
 
         // Check if match is finished
@@ -231,6 +249,52 @@ const Match = ({ onBack, activeMatchId }) => {
     return avgRating;
   };
 
+  // Play goal sound effect
+  const playGoalSound = (isMyTeam) => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      if (isMyTeam) {
+        // Happy sound for scoring
+        oscillator.frequency.value = 523.25; // C5
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+
+        // Add a second higher note
+        setTimeout(() => {
+          const osc2 = audioContext.createOscillator();
+          const gain2 = audioContext.createGain();
+          osc2.connect(gain2);
+          gain2.connect(audioContext.destination);
+          osc2.frequency.value = 659.25; // E5
+          osc2.type = 'sine';
+          gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+          osc2.start(audioContext.currentTime);
+          osc2.stop(audioContext.currentTime + 0.5);
+        }, 100);
+      } else {
+        // Sad sound for conceding
+        oscillator.frequency.value = 261.63; // C4
+        oscillator.type = 'sawtooth';
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.8);
+      }
+    } catch (error) {
+      console.log('Could not play sound:', error);
+    }
+  };
+
   const simulateMatch = async (matchData) => {
     const match = matchData || currentMatch;
     if (!match) {
@@ -329,22 +393,29 @@ const Match = ({ onBack, activeMatchId }) => {
     const matchRef = ref(database, `matches/${currentMatch.id}`);
     const matchData = (await get(matchRef)).val();
 
-    // Check if second half already started
-    if (matchData.secondHalfStarted) {
-      // Just update state to playing for this user
-      setMatchState('playing');
+    // Check if match is in halftime state
+    if (matchData.state !== 'halftime') {
       return;
     }
 
-    // Mark second half as started
-    await update(matchRef, {
-      state: 'playing',
-      secondHalfStarted: true
-    });
+    // Mark myself as ready for second half
+    const readyField = isHome ? 'homeSecondHalfReady' : 'awaySecondHalfReady';
+    await update(matchRef, { [readyField]: true });
 
-    // Only home manager continues simulation
-    if (isHome) {
-      simulateSecondHalf();
+    console.log(`${isHome ? 'Home' : 'Away'} manager ready for second half`);
+
+    // Check if both are ready for second half
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatch = updatedSnapshot.val();
+
+    if (updatedMatch.homeSecondHalfReady && updatedMatch.awaySecondHalfReady) {
+      // Both ready - continue to second half
+      console.log('Both managers ready - starting second half');
+      await update(matchRef, {
+        state: 'playing',
+        secondHalfStarted: true
+      });
+      // The listener will detect the state change and start simulation
     }
   };
 
@@ -741,6 +812,7 @@ const Match = ({ onBack, activeMatchId }) => {
   if (matchState === 'halftime') {
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
+    const mySecondHalfReady = isHome ? currentMatch.homeSecondHalfReady : currentMatch.awaySecondHalfReady;
 
     return (
       <View style={styles.container}>
@@ -755,6 +827,20 @@ const Match = ({ onBack, activeMatchId }) => {
               <Text style={styles.scoreTeam}>{currentMatch.homeManager.name}</Text>
               <Text style={styles.score}>{homeScore} - {awayScore}</Text>
               <Text style={styles.scoreTeam}>{currentMatch.awayManager.name}</Text>
+            </View>
+          </View>
+
+          <View style={styles.matchupCard}>
+            <View style={styles.teamColumn}>
+              <Text style={styles.teamName}>{currentMatch.homeManager.name}</Text>
+              <Text style={styles.teamReady}>{currentMatch.homeSecondHalfReady ? '✓ Ready' : '⏳ Waiting...'}</Text>
+            </View>
+
+            <Text style={styles.vs}>VS</Text>
+
+            <View style={styles.teamColumn}>
+              <Text style={styles.teamName}>{currentMatch.awayManager.name}</Text>
+              <Text style={styles.teamReady}>{currentMatch.awaySecondHalfReady ? '✓ Ready' : '⏳ Waiting...'}</Text>
             </View>
           </View>
 
@@ -775,8 +861,14 @@ const Match = ({ onBack, activeMatchId }) => {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.continueButton} onPress={resumeFromHalftime}>
-            <Text style={styles.continueButtonText}>Continue to 2nd Half</Text>
+          <TouchableOpacity
+            style={[styles.continueButton, mySecondHalfReady && styles.startMatchButtonDisabled]}
+            onPress={resumeFromHalftime}
+            disabled={mySecondHalfReady}
+          >
+            <Text style={styles.continueButtonText}>
+              {mySecondHalfReady ? '✓ Waiting for opponent...' : 'Continue to 2nd Half'}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
 
