@@ -33,16 +33,17 @@ const Squad = ({ onBack }) => {
   const handleSellPlayer = async (player) => {
     showConfirm(
       'Sell Player',
-      `Are you sure you want to list ${player.name} on the transfer market?`,
+      `Are you sure you want to sell ${player.name} for ${formatCurrency(player.price)}?`,
       async () => {
         // Confirmed - sell the player
         const newSquad = managerProfile.squad.filter(p => p.id !== player.id);
+        const newBudget = managerProfile.budget + player.price;
 
         // Add back to market
         await update(ref(database, `market/${player.id}`), { onMarket: true, ownerId: null });
-        await updateManagerProfile({ squad: newSquad });
+        await updateManagerProfile({ squad: newSquad, budget: newBudget });
 
-        showAlert('Success', `${player.name} has been listed on the transfer market.`);
+        showAlert('Success', `${player.name} has been sold for ${formatCurrency(player.price)}!`);
       },
       () => {
         // Cancelled - do nothing
