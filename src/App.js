@@ -113,7 +113,12 @@ const MainApp = () => {
     </View>
   );
 
-  const renderHomeScreen = () => (
+  const renderHomeScreen = () => {
+    // Debug: Check what email we're comparing
+    console.log('Current user email:', currentUser?.email);
+    console.log('Is admin?', currentUser?.email === 'anasalrifai90@gmail.com');
+
+    return (
     <ScrollView style={styles.content}>
       <View style={styles.welcomeCard}>
         <Text style={styles.welcomeTitle}>Welcome back, {managerProfile?.managerName}!</Text>
@@ -209,7 +214,7 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Sign out of your account</Text>
         </TouchableOpacity>
 
-        {managerProfile?.email === 'anasalrifai90@gmail.com' && (
+        {currentUser?.email === 'anasalrifai90@gmail.com' && (
           <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('adminMigration')}>
             <Text style={styles.menuIcon}>⚙️</Text>
             <Text style={styles.menuTitle}>Admin: Budget Migration</Text>
@@ -218,7 +223,8 @@ const MainApp = () => {
         )}
       </View>
     </ScrollView>
-  );
+    );
+  };
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
@@ -243,7 +249,14 @@ const MainApp = () => {
       case 'profile':
         return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
       case 'adminMigration':
-        return <AdminMigration onBack={() => setCurrentScreen('home')} />;
+        // Only allow admin user to access this screen
+        if (currentUser?.email === 'anasalrifai90@gmail.com') {
+          return <AdminMigration onBack={() => setCurrentScreen('home')} />;
+        } else {
+          // Redirect non-admin users back to home
+          setCurrentScreen('home');
+          return null;
+        }
       default:
         return (
           <>
