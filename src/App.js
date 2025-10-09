@@ -209,11 +209,13 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>Sign out of your account</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('adminMigration')}>
-          <Text style={styles.menuIcon}>⚙️</Text>
-          <Text style={styles.menuTitle}>Admin: Budget Migration</Text>
-          <Text style={styles.menuDesc}>Run once to update budgets</Text>
-        </TouchableOpacity>
+        {managerProfile?.email === 'anasalrifai90@gmail.com' && (
+          <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('adminMigration')}>
+            <Text style={styles.menuIcon}>⚙️</Text>
+            <Text style={styles.menuTitle}>Admin: Budget Migration</Text>
+            <Text style={styles.menuDesc}>Run once to update budgets</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
