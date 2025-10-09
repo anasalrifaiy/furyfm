@@ -288,9 +288,9 @@ export const translations = {
     yes: 'نعم',
     no: 'لا',
 
-    // App Title - عنوان التطبيق
-    appTitle: 'فيوري FM',
-    appSubtitle: 'مدير كرة القدم المتقدم',
+    // App Title - keep in English
+    appTitle: 'Fury FM',
+    appSubtitle: 'Advanced Football Manager',
 
     // Home Screen - الشاشة الرئيسية
     welcomeBack: 'مرحباً بعودتك',
@@ -299,32 +299,32 @@ export const translations = {
     wins: 'الانتصارات',
     friends: 'الأصدقاء',
 
-    // Menu Items - عناصر القائمة
-    mySquad: 'فريقي',
+    // Menu Items - keep titles in English, translate descriptions
+    mySquad: 'My Squad',
     mySquadDesc: 'عرض وإدارة لاعبيك',
-    transferMarket: 'سوق الانتقالات',
+    transferMarket: 'Transfer Market',
     transferMarketDesc: 'شراء وبيع اللاعبين',
-    formation: 'التشكيلة',
+    formation: 'Formation',
     formationDesc: 'ضبط تشكيلتك التكتيكية',
-    training: 'التدريب',
+    training: 'Training',
     trainingDesc: 'تحسين مهارات لاعبيك',
-    coachingStaff: 'الطاقم التدريبي',
+    coachingStaff: 'Coaching Staff',
     coachingStaffDesc: 'توظيف مدربين متخصصين',
-    clubFacilities: 'مرافق النادي',
+    clubFacilities: 'Club Facilities',
     clubFacilitiesDesc: 'ترقية الملعب والبنية التحتية',
-    match: 'مباراة',
+    match: 'Match',
     matchDesc: 'تحدي الأصدقاء للعب',
-    matchHistory: 'سجل المباريات',
+    matchHistory: 'Match History',
     matchHistoryDesc: 'عرض نتائج المباريات السابقة',
-    friendsMenu: 'الأصدقاء',
+    friendsMenu: 'Friends',
     friendsDesc: 'البحث وإضافة مدراء',
-    leaderboard: 'لوحة المتصدرين',
+    leaderboard: 'Leaderboard',
     leaderboardDesc: 'تنافس مع المدراء الآخرين',
-    notifications: 'الإشعارات',
+    notifications: 'Notifications',
     notificationsDesc: 'عرض تنبيهاتك',
-    myProfile: 'ملفي الشخصي',
+    myProfile: 'My Profile',
     myProfileDesc: 'عرض إحصائياتك',
-    logout: 'تسجيل خروج',
+    logout: 'Logout',
     logoutDesc: 'الخروج من حسابك',
 
     // Squad Screen - شاشة الفريق
@@ -358,24 +358,24 @@ export const translations = {
     offerRejectedDesc: 'رفض النادي عرضك. حاول زيادة عرضك.',
     playerJoined: 'انضم إلى فريقك مقابل',
 
-    // Formation - التشكيلة
-    formationTitle: 'التشكيلة',
-    tacticsTitle: 'التكتيكات',
-    defensive: 'دفاعي',
-    defensiveDesc: '+15% دفاع، -10% هجوم',
-    balanced: 'متوازن',
+    // Formation - keep names, translate descriptions
+    formationTitle: 'Formation',
+    tacticsTitle: 'Tactics',
+    defensive: 'Defensive',
+    defensiveDesc: 'دفاع +15%، هجوم -10%',
+    balanced: 'Balanced',
     balancedDesc: 'أداء قياسي',
-    attacking: 'هجومي',
-    attackingDesc: '+15% هجوم، -10% دفاع',
+    attacking: 'Attacking',
+    attackingDesc: 'هجوم +15%، دفاع -10%',
     tapToSelect: 'اضغط لاختيار لاعب • اضغط مطولاً للإزالة',
     saveFormation: 'حفظ التشكيلة',
     formationSaved: 'تم حفظ تشكيلتك وتكتيكاتك!',
     selectPlayerFor: 'اختر لاعباً لـ',
     currentlyAt: 'حالياً في',
 
-    // Training - التدريب
-    trainingCenter: 'مركز التدريب',
-    trainingSystem: 'نظام التدريب',
+    // Training - keep title
+    trainingCenter: 'Training Center',
+    trainingSystem: 'Training System',
     trainToImprove: '• درّب اللاعبين لتحسين تقييمهم',
     payWithMoney: '• ادفع بالمال أو استخدم نقاط الخبرة من تسجيل الأهداف',
     youngerCheaper: '• اللاعبون الأصغر سناً (≤21) تدريبهم أرخص بـ 70%!',
@@ -399,13 +399,13 @@ export const translations = {
     xpToImprove: 'XP لتحسين',
     ratingBy1: 'بمقدار 1؟',
 
-    // Coaching Staff - الطاقم التدريبي
-    coachingStaffTitle: 'الطاقم التدريبي',
+    // Coaching Staff - keep names
+    coachingStaffTitle: 'Coaching Staff',
     hireCoachesDesc: 'وظّف مدربين متخصصين لتعزيز أداء لاعبيك في المباريات!',
-    goalkeeperCoach: 'مدرب حراسة المرمى',
-    defenseCoach: 'مدرب الدفاع',
-    midfieldCoach: 'مدرب الوسط',
-    attackCoach: 'مدرب الهجوم',
+    goalkeeperCoach: 'Goalkeeper Coach',
+    defenseCoach: 'Defense Coach',
+    midfieldCoach: 'Midfield Coach',
+    attackCoach: 'Attack Coach',
     gkSpecialist: 'متخصص حراسة مرمى',
     defSpecialist: 'متخصص دفاع',
     midSpecialist: 'متخصص وسط',
@@ -424,16 +424,16 @@ export const translations = {
     toHireCoach: 'لتوظيف هذا المدرب.',
     coachHired: 'تم توظيفه!',
 
-    // Club Facilities - مرافق النادي
-    clubFacilitiesTitle: 'مرافق النادي',
+    // Club Facilities - keep names
+    clubFacilitiesTitle: 'Club Facilities',
     investInClub: 'استثمر في البنية التحتية لناديك للحصول على فوائد طويلة الأمد!',
-    stadium: 'الملعب',
+    stadium: 'Stadium',
     stadiumDesc: 'قم بترقية ملعبك لكسب المزيد من العائدات من المباريات',
-    trainingGround: 'مركز التدريب',
+    trainingGround: 'Training Ground',
     trainingGroundDesc: 'مرافق تدريب أفضل تقلل تكاليف التدريب وتحسن الفعالية',
-    youthAcademy: 'أكاديمية الناشئين',
+    youthAcademy: 'Youth Academy',
     youthAcademyDesc: 'طوّر المواهب الشابة وقلل تكاليف تدريب اللاعبين الشباب',
-    medicalCenter: 'المركز الطبي',
+    medicalCenter: 'Medical Center',
     medicalCenterDesc: 'قلل مخاطر الإصابات وحسّن تعافي اللاعبين',
     perWin: '/فوز',
     capacity: 'السعة',
