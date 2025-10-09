@@ -16,14 +16,16 @@ const Training = ({ onBack }) => {
 
   const getTrainingCost = (player) => {
     // Training cost increases with player rating
-    // Base cost is 1M per rating point
-    return player.overall * 1000000;
+    // Much more affordable: 0.5M + (rating * 0.1M)
+    // Example: 70 rated = 0.5M + 7M = 7.5M
+    return 500000 + (player.overall * 100000);
   };
 
   const getXPForNextLevel = (player) => {
     // XP needed increases with each level
-    // Base: 100 XP per level
-    return (player.overall - 60) * 100;
+    // Reduced: 20 XP per level above 60
+    // Example: 70 rated needs 200 XP (4 goals)
+    return Math.max(100, (player.overall - 60) * 20);
   };
 
   const trainWithMoney = (player) => {
