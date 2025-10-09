@@ -11,20 +11,20 @@ export const LanguageProvider = ({ children }) => {
     // Load saved language preference
     const savedLang = localStorage.getItem('preferredLanguage') || 'en';
     setLanguage(savedLang);
-    setDirection(savedLang === 'ar' ? 'rtl' : 'ltr');
+    setDirection('ltr'); // Always keep LTR layout
 
-    // Apply direction to document
-    document.documentElement.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
+    // Keep document direction LTR - only text direction changes
+    document.documentElement.dir = 'ltr';
     document.documentElement.lang = savedLang;
   }, []);
 
   const switchLanguage = (lang) => {
     setLanguage(lang);
-    setDirection(lang === 'ar' ? 'rtl' : 'ltr');
+    setDirection('ltr'); // Always keep LTR layout
     localStorage.setItem('preferredLanguage', lang);
 
-    // Apply direction to document
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    // Keep document direction LTR - only text direction changes
+    document.documentElement.dir = 'ltr';
     document.documentElement.lang = lang;
   };
 

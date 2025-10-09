@@ -155,62 +155,62 @@ const MainApp = () => {
       <View style={styles.menuGrid}>
         <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('squad')}>
           <Text style={styles.menuIcon}>👥</Text>
-          <Text style={styles.menuTitle}>My Squad</Text>
-          <Text style={styles.menuDesc}>View and manage your players</Text>
+          <Text style={styles.menuTitle}>{t('mySquad')}</Text>
+          <Text style={styles.menuDesc}>{t('mySquadDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('market')}>
           <Text style={styles.menuIcon}>💰</Text>
-          <Text style={styles.menuTitle}>Transfer Market</Text>
-          <Text style={styles.menuDesc}>Buy and sell players</Text>
+          <Text style={styles.menuTitle}>{t('transferMarket')}</Text>
+          <Text style={styles.menuDesc}>{t('transferMarketDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('formation')}>
           <Text style={styles.menuIcon}>⚽</Text>
-          <Text style={styles.menuTitle}>Formation</Text>
-          <Text style={styles.menuDesc}>Set your tactical lineup</Text>
+          <Text style={styles.menuTitle}>{t('formation')}</Text>
+          <Text style={styles.menuDesc}>{t('formationDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('training')}>
           <Text style={styles.menuIcon}>🎓</Text>
-          <Text style={styles.menuTitle}>Training</Text>
-          <Text style={styles.menuDesc}>Improve your players' skills</Text>
+          <Text style={styles.menuTitle}>{t('training')}</Text>
+          <Text style={styles.menuDesc}>{t('trainingDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('coaching')}>
           <Text style={styles.menuIcon}>👨‍🏫</Text>
-          <Text style={styles.menuTitle}>Coaching Staff</Text>
-          <Text style={styles.menuDesc}>Hire specialized coaches</Text>
+          <Text style={styles.menuTitle}>{t('coachingStaff')}</Text>
+          <Text style={styles.menuDesc}>{t('coachingStaffDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('facilities')}>
           <Text style={styles.menuIcon}>🏗️</Text>
-          <Text style={styles.menuTitle}>Club Facilities</Text>
-          <Text style={styles.menuDesc}>Upgrade stadium and infrastructure</Text>
+          <Text style={styles.menuTitle}>{t('clubFacilities')}</Text>
+          <Text style={styles.menuDesc}>{t('clubFacilitiesDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
           <Text style={styles.menuIcon}>🏟️</Text>
-          <Text style={styles.menuTitle}>Match</Text>
-          <Text style={styles.menuDesc}>Challenge friends to play</Text>
+          <Text style={styles.menuTitle}>{t('match')}</Text>
+          <Text style={styles.menuDesc}>{t('matchDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('matchHistory')}>
           <Text style={styles.menuIcon}>📊</Text>
-          <Text style={styles.menuTitle}>Match History</Text>
-          <Text style={styles.menuDesc}>View past match results</Text>
+          <Text style={styles.menuTitle}>{t('matchHistory')}</Text>
+          <Text style={styles.menuDesc}>{t('matchHistoryDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('friends')}>
           <Text style={styles.menuIcon}>👥</Text>
-          <Text style={styles.menuTitle}>Friends</Text>
-          <Text style={styles.menuDesc}>Find and add managers</Text>
+          <Text style={styles.menuTitle}>{t('friendsMenu')}</Text>
+          <Text style={styles.menuDesc}>{t('friendsDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('leaderboard')}>
           <Text style={styles.menuIcon}>🏆</Text>
-          <Text style={styles.menuTitle}>Leaderboard</Text>
-          <Text style={styles.menuDesc}>Compete with other managers</Text>
+          <Text style={styles.menuTitle}>{t('leaderboard')}</Text>
+          <Text style={styles.menuDesc}>{t('leaderboardDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('notifications')}>
@@ -222,20 +222,20 @@ const MainApp = () => {
               </View>
             )}
           </View>
-          <Text style={styles.menuTitle}>Notifications</Text>
-          <Text style={styles.menuDesc}>View your alerts</Text>
+          <Text style={styles.menuTitle}>{t('notifications')}</Text>
+          <Text style={styles.menuDesc}>{t('notificationsDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => handleViewProfile(currentUser.uid)}>
           <Text style={styles.menuIcon}>👤</Text>
-          <Text style={styles.menuTitle}>My Profile</Text>
-          <Text style={styles.menuDesc}>View your stats</Text>
+          <Text style={styles.menuTitle}>{t('myProfile')}</Text>
+          <Text style={styles.menuDesc}>{t('myProfileDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={logout}>
           <Text style={styles.menuIcon}>🚪</Text>
-          <Text style={styles.menuTitle}>Logout</Text>
-          <Text style={styles.menuDesc}>Sign out of your account</Text>
+          <Text style={styles.menuTitle}>{t('logout')}</Text>
+          <Text style={styles.menuDesc}>{t('logoutDesc')}</Text>
         </TouchableOpacity>
 
         {currentUser?.email === 'anasalrifai90@gmail.com' && (
