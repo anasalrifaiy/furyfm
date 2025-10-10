@@ -119,8 +119,9 @@ const Match = ({ onBack, activeMatchId }) => {
         }
 
         // Detect second half start
-        if (matchData.state === 'playing' && previousState === 'halftime' && isHome && matchData.secondHalfStarted) {
+        if (matchData.state === 'playing' && previousState === 'halftime' && isHome) {
           console.log('Second half starting - resuming simulation');
+          console.log('Match data:', matchData);
           simulateSecondHalf();
         }
 
@@ -766,7 +767,10 @@ const Match = ({ onBack, activeMatchId }) => {
         if (currentSecond === 60) {
           console.log('Half time reached');
           clearInterval(interval);
-          await update(matchRef, { state: 'halftime' });
+          await update(matchRef, {
+            state: 'halftime',
+            second: 60  // Save current second for second half
+          });
         }
 
         // Full time at 120 seconds (90 match minutes)
