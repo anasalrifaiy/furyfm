@@ -1050,8 +1050,18 @@ const Match = ({ onBack, activeMatchId }) => {
     // Already handled by updateMatchStats
   };
 
-  const startSubstitution = (player, index) => {
-    setSubstitutionMode({ playerOut: player, playerOutIndex: index });
+  const startSubstitution = async (player, index) => {
+    // Pause the match for both managers
+    if (!currentMatch.isPractice) {
+      const matchRef = ref(database, `matches/${currentMatch.id}`);
+      await update(matchRef, {
+        paused: true,
+        pausedBy: currentUser.uid,
+        pauseReason: 'substitution'
+      });
+    }
+
+    setSubstitutionMode({ playerOut: player, playerOutIndex: index, selecting: false });
   };
 
   const makeSubstitution = async (playerIn) => {
@@ -1729,24 +1739,23 @@ const Match = ({ onBack, activeMatchId }) => {
         const teamPath = isHome ? 'homeManager' : 'awayManager';
         await update(ref(database, `matches/${currentMatch.id}/${teamPath}`), { squad: newSquad });
 
-        // Pause match for 20 seconds
-        const pauseEndTime = Date.now() + 20000;
-        await update(matchRef, {
-          paused: true,
-          pausedBy: currentUser.uid,
-          pauseReason: 'substitution',
-          pauseEndTime: pauseEndTime
-        });
-
         // Add substitution event
         const eventText = `${minute}' 🔄 SUB: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
         const currentData = (await get(matchRef)).val();
         const newEvents = [eventText, ...(currentData.events || [])];
-        await update(matchRef, { events: newEvents });
+
+        // Resume match after substitution
+        await update(matchRef, {
+          events: newEvents,
+          paused: false,
+          pausedBy: null,
+          pauseReason: null
+        });
       }
 
       setSubstitutionsUsed(substitutionsUsed + 1);
       setSubstitutionMode(null);
+      showAlert('Substitution Complete', `${playerIn.name} is now on the pitch. Match resumed.`);
       setPauseCountdown(20);
     };
 
@@ -1829,7 +1838,18 @@ const Match = ({ onBack, activeMatchId }) => {
               {substitutionsUsed < 2 && !currentMatch.paused && (
                 <TouchableOpacity
                   style={styles.pauseSubButton}
-                  onPress={() => setSubstitutionMode({ selecting: true })}
+                  onPress={async () => {
+                    // Pause the match for both managers
+                    if (!currentMatch.isPractice) {
+                      const matchRef = ref(database, `matches/${currentMatch.id}`);
+                      await update(matchRef, {
+                        paused: true,
+                        pausedBy: currentUser.uid,
+                        pauseReason: 'substitution'
+                      });
+                    }
+                    setSubstitutionMode({ selecting: true });
+                  }}
                 >
                   <Text style={styles.pauseSubButtonText}>⏸️ Pause & Sub</Text>
                 </TouchableOpacity>
@@ -1877,17 +1897,44 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
         </ScrollView>
 
-        {/* Substitution Modal */}
-        {substitutionMode && (
+        {/* Substitution Modal with Formation View */}
+        {substitutionMode && !substitutionMode.selecting && (
           <View style={styles.modal}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>
-                Substitute {substitutionMode.playerOut.name}
+                ⏸️ Match Paused - Substitution
               </Text>
               <Text style={styles.modalSubtitle}>
-                Choose replacement from bench:
+                Substitute {substitutionMode.playerOut.name} ({substitutionMode.playerOut.position})
               </Text>
 
+              {/* Mini Formation View */}
+              <View style={styles.miniFormationContainer}>
+                <Text style={styles.miniFormationTitle}>Current Formation: {myFormation}</Text>
+                <View style={styles.miniFormation}>
+                  {mySquad.map((player, idx) => {
+                    const isPlayerOut = player.id === substitutionMode.playerOut.id;
+                    const layout = getFormationPositions(myFormation, mySquad);
+                    const pos = layout[idx];
+
+                    return (
+                      <View
+                        key={player.id}
+                        style={[
+                          styles.miniPlayer,
+                          isPlayerOut && styles.miniPlayerOut,
+                          { left: `${pos.baseX}%`, top: `${pos.baseY}%` }
+                        ]}
+                      >
+                        <Text style={styles.miniPlayerText}>{player.position}</Text>
+                        {isPlayerOut && <Text style={styles.miniPlayerOutIcon}>❌</Text>}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <Text style={styles.benchTitle}>Choose Replacement from Bench:</Text>
               <ScrollView style={styles.benchList}>
                 {(managerProfile.squad || [])
                   .filter(p => !mySquad.some(fp => fp.id === p.id))
@@ -1897,7 +1944,7 @@ const Match = ({ onBack, activeMatchId }) => {
                       style={styles.benchPlayerOption}
                       onPress={() => confirmSubstitution(player)}
                     >
-                      <View>
+                      <View style={styles.benchPlayerInfo}>
                         <Text style={styles.benchPlayerName}>{player.name}</Text>
                         <Text style={styles.benchPlayerDetails}>
                           {player.position} • OVR {player.overall}
@@ -1910,9 +1957,20 @@ const Match = ({ onBack, activeMatchId }) => {
 
               <TouchableOpacity
                 style={styles.cancelButton}
-                onPress={() => setSubstitutionMode(null)}
+                onPress={async () => {
+                  // Resume match if canceled
+                  if (!currentMatch.isPractice) {
+                    const matchRef = ref(database, `matches/${currentMatch.id}`);
+                    await update(matchRef, {
+                      paused: false,
+                      pausedBy: null,
+                      pauseReason: null
+                    });
+                  }
+                  setSubstitutionMode(null);
+                }}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>Cancel & Resume Match</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2715,6 +2773,65 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  miniFormationContainer: {
+    backgroundColor: '#252b54',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+  },
+  miniFormationTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  miniFormation: {
+    position: 'relative',
+    width: '100%',
+    height: 200,
+    backgroundColor: '#1a4d2e',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  miniPlayer: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#667eea',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+  },
+  miniPlayerOut: {
+    backgroundColor: '#f5576c',
+    borderColor: '#ff0000',
+    borderWidth: 3,
+  },
+  miniPlayerText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  miniPlayerOutIcon: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    fontSize: 16,
+  },
+  benchTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  benchPlayerInfo: {
+    flex: 1,
   },
   matchReportCard: {
     backgroundColor: '#1a1f3a',
