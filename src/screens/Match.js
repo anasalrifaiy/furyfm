@@ -403,10 +403,23 @@ const Match = ({ onBack, activeMatchId }) => {
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
 
-        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
-        const scorer = attackers.length > 0 && Math.random() > 0.3
-          ? attackers[Math.floor(Math.random() * attackers.length)]
-          : team.squad[Math.floor(Math.random() * team.squad.length)];
+        // Realistic goal scoring - weight by position
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+
+        let scorer;
+        const scorerRoll = Math.random();
+        if (scorerRoll < 0.70 && attackers.length > 0) {
+          scorer = attackers[Math.floor(Math.random() * attackers.length)];
+        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
+          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
+        } else if (defenders.length > 0) {
+          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+        } else {
+          const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+          scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
+        }
 
         if (isHomeGoal) {
           localHomeScore++;
@@ -574,11 +587,27 @@ const Match = ({ onBack, activeMatchId }) => {
           const isHomeGoal = teamRoll < homeChance;
           const team = isHomeGoal ? match.homeManager : match.awayManager;
 
-          // More likely to score with attacking players
-          const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
-          const scorer = attackers.length > 0 && Math.random() > 0.3
-            ? attackers[Math.floor(Math.random() * attackers.length)]
-            : team.squad[Math.floor(Math.random() * team.squad.length)];
+          // Realistic goal scoring - weight by position
+          const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+          const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+          const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+
+          let scorer;
+          const scorerRoll = Math.random();
+          if (scorerRoll < 0.70 && attackers.length > 0) {
+            // 70% chance for attackers
+            scorer = attackers[Math.floor(Math.random() * attackers.length)];
+          } else if (scorerRoll < 0.95 && midfielders.length > 0) {
+            // 25% chance for midfielders
+            scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
+          } else if (defenders.length > 0) {
+            // 5% chance for defenders (headers from set pieces)
+            scorer = defenders[Math.floor(Math.random() * defenders.length)];
+          } else {
+            // Fallback to any outfield player (excluding GK)
+            const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+            scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
+          }
 
           const currentData = (await get(matchRef)).val();
           const newScore = isHomeGoal
@@ -703,10 +732,23 @@ const Match = ({ onBack, activeMatchId }) => {
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
 
-        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
-        const scorer = attackers.length > 0 && Math.random() > 0.3
-          ? attackers[Math.floor(Math.random() * attackers.length)]
-          : team.squad[Math.floor(Math.random() * team.squad.length)];
+        // Realistic goal scoring - weight by position
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+
+        let scorer;
+        const scorerRoll = Math.random();
+        if (scorerRoll < 0.70 && attackers.length > 0) {
+          scorer = attackers[Math.floor(Math.random() * attackers.length)];
+        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
+          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
+        } else if (defenders.length > 0) {
+          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+        } else {
+          const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+          scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
+        }
 
         if (isHomeGoal) {
           localHomeScore++;
@@ -775,11 +817,23 @@ const Match = ({ onBack, activeMatchId }) => {
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
 
-        // More likely to score with attacking players
-        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
-        const scorer = attackers.length > 0 && Math.random() > 0.3
-          ? attackers[Math.floor(Math.random() * attackers.length)]
-          : team.squad[Math.floor(Math.random() * team.squad.length)];
+        // Realistic goal scoring - weight by position
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+
+        let scorer;
+        const scorerRoll = Math.random();
+        if (scorerRoll < 0.70 && attackers.length > 0) {
+          scorer = attackers[Math.floor(Math.random() * attackers.length)];
+        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
+          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
+        } else if (defenders.length > 0) {
+          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+        } else {
+          const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+          scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
+        }
 
         const newScore = isHomeGoal
           ? { homeScore: currentData.homeScore + 1 }
@@ -1503,6 +1557,70 @@ const Match = ({ onBack, activeMatchId }) => {
       setSubstitutionMode({ playerOut, playerOutIndex });
     };
 
+    const getPositionCoordinates = (position) => {
+      // Returns {x: 0-100%, y: 0-100%} for pitch positioning
+      const positionMap = {
+        // Goalkeeper
+        'GK': { x: 50, y: 95 },
+        // Defenders
+        'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
+        'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
+        // Midfielders
+        'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
+        'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
+        // Attackers
+        'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
+      };
+      return positionMap[position] || { x: 50, y: 50 };
+    };
+
+    const renderPitch = (homeSquad, awaySquad) => {
+      return (
+        <View style={styles.pitchContainer}>
+          <View style={styles.pitch}>
+            {/* Pitch markings */}
+            <View style={styles.pitchHalfLine} />
+            <View style={styles.pitchCenterCircle} />
+
+            {/* Home Team (bottom) */}
+            {homeSquad.map((player, idx) => {
+              const coords = getPositionCoordinates(player.position);
+              return (
+                <View
+                  key={`home-${idx}`}
+                  style={[
+                    styles.playerDot,
+                    styles.playerDotHome,
+                    { left: `${coords.x}%`, top: `${coords.y}%` }
+                  ]}
+                >
+                  <Text style={styles.playerDotText}>{player.position}</Text>
+                </View>
+              );
+            })}
+
+            {/* Away Team (top) - mirrored */}
+            {awaySquad.map((player, idx) => {
+              const coords = getPositionCoordinates(player.position);
+              const mirrored = { x: 100 - coords.x, y: 100 - coords.y };
+              return (
+                <View
+                  key={`away-${idx}`}
+                  style={[
+                    styles.playerDot,
+                    styles.playerDotAway,
+                    { left: `${mirrored.x}%`, top: `${mirrored.y}%` }
+                  ]}
+                >
+                  <Text style={styles.playerDotText}>{player.position}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      );
+    };
+
     const confirmSubstitution = async (playerIn) => {
       if (!substitutionMode) return;
 
@@ -1559,6 +1677,9 @@ const Match = ({ onBack, activeMatchId }) => {
               </View>
             </View>
           </View>
+
+          {/* Pitch Visualization */}
+          {renderPitch(currentMatch.homeManager.squad, currentMatch.awayManager.squad)}
 
           {/* Pause Countdown Banner */}
           {pauseCountdown > 0 && (
@@ -1708,6 +1829,68 @@ const Match = ({ onBack, activeMatchId }) => {
               </View>
             </View>
           </View>
+
+          {/* Pitch Visualization */}
+          {currentMatch.homeManager.squad && currentMatch.awayManager.squad && (
+            <View style={styles.pitchContainer}>
+              <View style={styles.pitch}>
+                {/* Pitch markings */}
+                <View style={styles.pitchHalfLine} />
+                <View style={styles.pitchCenterCircle} />
+
+                {/* Home Team (bottom) */}
+                {currentMatch.homeManager.squad.map((player, idx) => {
+                  const positionMap = {
+                    'GK': { x: 50, y: 95 },
+                    'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
+                    'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
+                    'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
+                    'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
+                    'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
+                  };
+                  const coords = positionMap[player.position] || { x: 50, y: 50 };
+                  return (
+                    <View
+                      key={`home-${idx}`}
+                      style={[
+                        styles.playerDot,
+                        styles.playerDotHome,
+                        { left: `${coords.x}%`, top: `${coords.y}%` }
+                      ]}
+                    >
+                      <Text style={styles.playerDotText}>{player.position}</Text>
+                    </View>
+                  );
+                })}
+
+                {/* Away Team (top) - mirrored */}
+                {currentMatch.awayManager.squad.map((player, idx) => {
+                  const positionMap = {
+                    'GK': { x: 50, y: 95 },
+                    'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
+                    'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
+                    'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
+                    'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
+                    'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
+                  };
+                  const coords = positionMap[player.position] || { x: 50, y: 50 };
+                  const mirrored = { x: 100 - coords.x, y: 100 - coords.y };
+                  return (
+                    <View
+                      key={`away-${idx}`}
+                      style={[
+                        styles.playerDot,
+                        styles.playerDotAway,
+                        { left: `${mirrored.x}%`, top: `${mirrored.y}%` }
+                      ]}
+                    >
+                      <Text style={styles.playerDotText}>{player.position}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {/* Match State Info */}
           {matchState === 'halftime' && (
@@ -2882,6 +3065,67 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#ffffff',
     fontWeight: '500',
+  },
+  // Pitch visualization styles
+  pitchContainer: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  pitch: {
+    backgroundColor: '#1b5e20',
+    borderRadius: 10,
+    height: 400,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  pitchHalfLine: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: '#ffffff',
+    opacity: 0.5,
+  },
+  pitchCenterCircle: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    opacity: 0.5,
+    transform: [{ translateX: -40 }, { translateY: -40 }],
+  },
+  playerDot: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+    borderWidth: 2,
+  },
+  playerDotHome: {
+    backgroundColor: '#667eea',
+    borderColor: '#ffffff',
+  },
+  playerDotAway: {
+    backgroundColor: '#f5576c',
+    borderColor: '#ffffff',
+  },
+  playerDotText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 });
 

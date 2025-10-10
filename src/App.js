@@ -17,6 +17,7 @@ import Training from './screens/Training';
 import AdminMigration from './screens/AdminMigration';
 import CoachingStaff from './screens/CoachingStaff';
 import ClubFacilities from './screens/ClubFacilities';
+import Bank from './screens/Bank';
 import { database } from './firebase';
 import { ref, onValue } from 'firebase/database';
 
@@ -225,6 +226,12 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>{t('clubFacilitiesDesc')}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('bank')}>
+          <Text style={styles.menuIcon}>🏦</Text>
+          <Text style={styles.menuTitle}>{t('bank')}</Text>
+          <Text style={styles.menuDesc}>{t('bankDesc')}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
           <Text style={styles.menuIcon}>🏟️</Text>
           <Text style={styles.menuTitle}>{t('match')}</Text>
@@ -300,6 +307,8 @@ const MainApp = () => {
         return <CoachingStaff onBack={() => setCurrentScreen('home')} />;
       case 'facilities':
         return <ClubFacilities onBack={() => setCurrentScreen('home')} />;
+      case 'bank':
+        return <Bank onBack={() => setCurrentScreen('home')} />;
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':
