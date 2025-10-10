@@ -166,6 +166,61 @@ const Match = ({ onBack, activeMatchId }) => {
     showAlert('Challenge Sent!', 'Waiting for opponent to accept...');
   };
 
+  const startAIPracticeMatch = async () => {
+    // Validate squad
+    const myStarting = (managerProfile.squad || []).slice(0, 11);
+
+    if (myStarting.length < 11) {
+      showAlert('Not Enough Players', 'You need at least 11 players in your squad to play a match.');
+      return;
+    }
+
+    // Generate AI team "Alkawaya Pro" with balanced squad
+    const aiSquad = generateAISquad();
+
+    // Create practice match (doesn't go to database, just local)
+    const matchData = {
+      id: `practice_${Date.now()}`,
+      isPractice: true, // Mark as practice match
+      homeManager: {
+        uid: currentUser.uid,
+        name: managerProfile.managerName,
+        squad: myStarting,
+        ready: true
+      },
+      awayManager: {
+        uid: 'ai_alkawaya_pro',
+        name: 'Alkawaya Pro',
+        squad: aiSquad,
+        ready: true
+      },
+      state: 'ready',
+      homeScore: 0,
+      awayScore: 0,
+      minute: 0,
+      events: [],
+      createdAt: Date.now()
+    };
+
+    setCurrentMatch(matchData);
+    setIsHome(true);
+    setMatchState('ready');
+  };
+
+  const generateAISquad = () => {
+    // Generate a balanced AI team with overall ratings 70-80
+    const positions = ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CM', 'LW', 'ST', 'RW'];
+    return positions.map((pos, index) => ({
+      id: `ai_player_${index}`,
+      name: `AI Player ${index + 1}`,
+      position: pos,
+      overall: 70 + Math.floor(Math.random() * 11), // 70-80 rating
+      age: 25,
+      nationality: 'AI',
+      price: 10000000
+    }));
+  };
+
   const acceptMatchChallenge = async (matchId) => {
     const matchRef = ref(database, `matches/${matchId}`);
     const snapshot = await get(matchRef);
@@ -199,6 +254,23 @@ const Match = ({ onBack, activeMatchId }) => {
 
   const markReadyToKickoff = async () => {
     if (!currentMatch) return;
+
+    // For practice matches, just start immediately (no Firebase)
+    if (currentMatch.isPractice) {
+      setCurrentMatch({
+        ...currentMatch,
+        state: 'playing',
+        homeKickoffReady: true,
+        awayKickoffReady: true,
+        startedAt: Date.now(),
+        minute: 0,
+        second: 0
+      });
+      setMatchState('playing');
+      // Start simulation immediately for practice match
+      simulatePracticeMatch();
+      return;
+    }
 
     const matchRef = ref(database, `matches/${currentMatch.id}`);
     const snapshot = await get(matchRef);
@@ -237,6 +309,153 @@ const Match = ({ onBack, activeMatchId }) => {
     return avgRating;
   };
 
+  // Simulate practice match locally (no Firebase)
+  const simulatePracticeMatch = () => {
+    console.log('Starting practice match simulation');
+
+    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    const totalStrength = homeStrength + awayStrength;
+
+    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    const awayChance = (awayStrength / totalStrength) * 0.55;
+
+    let currentSecond = 0;
+    let localHomeScore = 0;
+    let localAwayScore = 0;
+    let localEvents = [];
+    let localGoalscorers = {};
+
+    const interval = setInterval(() => {
+      currentSecond++;
+      const matchMinute = Math.floor(currentSecond / 2);
+
+      setMinute(matchMinute);
+
+      // Goal chance
+      const goalRoll = Math.random();
+      if (goalRoll < 0.04) {
+        const teamRoll = Math.random();
+        const isHomeGoal = teamRoll < homeChance;
+        const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        const scorer = attackers.length > 0 && Math.random() > 0.3
+          ? attackers[Math.floor(Math.random() * attackers.length)]
+          : team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        if (isHomeGoal) {
+          localHomeScore++;
+          setHomeScore(localHomeScore);
+        } else {
+          localAwayScore++;
+          setAwayScore(localAwayScore);
+        }
+
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        localEvents = [eventText, ...localEvents];
+        setEvents(localEvents);
+
+        // Track goalscorer for XP
+        if (!localGoalscorers[scorer.id]) {
+          localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+        }
+        localGoalscorers[scorer.id].goals++;
+
+        console.log('GOAL!', eventText);
+      }
+
+      // Half time at 90 seconds
+      if (currentSecond === 90) {
+        console.log('Half time reached in practice match');
+        clearInterval(interval);
+        setCurrentMatch({
+          ...currentMatch,
+          state: 'halftime',
+          homeScore: localHomeScore,
+          awayScore: localAwayScore,
+          minute: matchMinute,
+          events: localEvents,
+          goalscorers: localGoalscorers
+        });
+        setMatchState('halftime');
+      }
+
+      // Full time at 180 seconds
+      if (currentSecond === 180) {
+        console.log('Full time reached in practice match');
+        clearInterval(interval);
+        finishPracticeMatch(localHomeScore, localAwayScore, localEvents, localGoalscorers);
+      }
+    }, 1000);
+  };
+
+  // Finish practice match and award XP only
+  const finishPracticeMatch = async (finalHomeScore, finalAwayScore, matchEvents, goalscorers) => {
+    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+
+    // Generate match report
+    let matchReport = '';
+    if (finalHomeScore > finalAwayScore) {
+      matchReport = `${currentMatch.homeManager.name} won ${finalHomeScore}-${finalAwayScore} in practice. `;
+      if (homeStrength > awayStrength + 3) {
+        matchReport += 'Good warm-up against weaker opposition.';
+      } else {
+        matchReport += 'Excellent practice session with good results.';
+      }
+    } else if (finalAwayScore > finalHomeScore) {
+      matchReport = `Alkawaya Pro won ${finalAwayScore}-${finalHomeScore}. A tough practice match - room for improvement.`;
+    } else {
+      matchReport = `Practice match ended ${finalHomeScore}-${finalHomeScore}. Good training session.`;
+    }
+
+    setCurrentMatch({
+      ...currentMatch,
+      state: 'finished',
+      homeScore: finalHomeScore,
+      awayScore: finalAwayScore,
+      events: matchEvents,
+      goalscorers,
+      matchReport,
+      homeStrength: homeStrength.toFixed(1),
+      awayStrength: awayStrength.toFixed(1),
+      finishedAt: Date.now()
+    });
+    setMatchState('finished');
+
+    // Award XP to goalscorers (only benefit of practice matches)
+    for (const scorerId in goalscorers) {
+      const scorerData = goalscorers[scorerId];
+      const managerId = scorerData.managerId;
+
+      // Only award XP to the human player's squad
+      if (managerId === currentUser.uid) {
+        const xpEarned = scorerData.goals * 50;
+
+        const managerRef = ref(database, `managers/${managerId}`);
+        const managerSnapshot = await get(managerRef);
+
+        if (managerSnapshot.exists()) {
+          const managerData = managerSnapshot.val();
+          const updatedSquad = (managerData.squad || []).map(player => {
+            if (player.id === scorerData.playerId) {
+              return {
+                ...player,
+                xp: (player.xp || 0) + xpEarned
+              };
+            }
+            return player;
+          });
+
+          await update(managerRef, { squad: updatedSquad });
+          console.log(`Awarded ${xpEarned} XP to player ${scorerData.playerId} from practice match`);
+        }
+      }
+    }
+
+    showAlert('Practice Match Complete', 'Your goalscorers earned XP! No points or budget affected.');
+  };
 
   const simulateMatch = async (matchData) => {
     const match = matchData || currentMatch;
@@ -340,6 +559,20 @@ const Match = ({ onBack, activeMatchId }) => {
   const resumeFromHalftime = async () => {
     if (!currentMatch) return;
 
+    // For practice matches, resume immediately
+    if (currentMatch.isPractice) {
+      setCurrentMatch({
+        ...currentMatch,
+        state: 'playing',
+        homeSecondHalfReady: true,
+        awaySecondHalfReady: true,
+        secondHalfStarted: true
+      });
+      setMatchState('playing');
+      simulatePracticeSecondHalf();
+      return;
+    }
+
     const matchRef = ref(database, `matches/${currentMatch.id}`);
     const matchData = (await get(matchRef)).val();
 
@@ -367,6 +600,71 @@ const Match = ({ onBack, activeMatchId }) => {
       });
       // The listener will detect the state change and start simulation
     }
+  };
+
+  // Simulate practice match second half locally
+  const simulatePracticeSecondHalf = () => {
+    console.log('Starting practice match second half');
+
+    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    const totalStrength = homeStrength + awayStrength;
+
+    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    const awayChance = (awayStrength / totalStrength) * 0.55;
+
+    let currentSecond = 90;
+    let localHomeScore = currentMatch.homeScore || 0;
+    let localAwayScore = currentMatch.awayScore || 0;
+    let localEvents = currentMatch.events || [];
+    let localGoalscorers = currentMatch.goalscorers || {};
+
+    const interval = setInterval(() => {
+      currentSecond++;
+      const matchMinute = Math.floor(currentSecond / 2);
+
+      setMinute(matchMinute);
+
+      // Goal chance
+      const goalRoll = Math.random();
+      if (goalRoll < 0.04) {
+        const teamRoll = Math.random();
+        const isHomeGoal = teamRoll < homeChance;
+        const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+
+        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        const scorer = attackers.length > 0 && Math.random() > 0.3
+          ? attackers[Math.floor(Math.random() * attackers.length)]
+          : team.squad[Math.floor(Math.random() * team.squad.length)];
+
+        if (isHomeGoal) {
+          localHomeScore++;
+          setHomeScore(localHomeScore);
+        } else {
+          localAwayScore++;
+          setAwayScore(localAwayScore);
+        }
+
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        localEvents = [eventText, ...localEvents];
+        setEvents(localEvents);
+
+        // Track goalscorer for XP
+        if (!localGoalscorers[scorer.id]) {
+          localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+        }
+        localGoalscorers[scorer.id].goals++;
+
+        console.log('GOAL!', eventText);
+      }
+
+      // Full time at 180 seconds
+      if (currentSecond >= 180) {
+        console.log('Full time reached in practice match');
+        clearInterval(interval);
+        finishPracticeMatch(localHomeScore, localAwayScore, localEvents, localGoalscorers);
+      }
+    }, 1000);
   };
 
   const simulateSecondHalf = async () => {
@@ -676,6 +974,30 @@ const Match = ({ onBack, activeMatchId }) => {
         </View>
 
         <ScrollView style={styles.content}>
+          {/* AI Practice Match */}
+          <TouchableOpacity
+            style={styles.aiMatchCard}
+            onPress={() => startAIPracticeMatch()}
+          >
+            <View style={styles.aiHeader}>
+              <Text style={styles.aiIcon}>🤖</Text>
+              <View style={styles.aiInfo}>
+                <Text style={styles.aiTitle}>Practice vs AI</Text>
+                <Text style={styles.aiSubtitle}>Alkawaya Pro</Text>
+                <Text style={styles.aiDesc}>Train your players without affecting points or budget</Text>
+              </View>
+            </View>
+            <View style={styles.aiButton}>
+              <Text style={styles.aiButtonText}>Start Practice</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.sectionDivider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR CHALLENGE FRIENDS</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
           {friends.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>⚽</Text>
@@ -1599,6 +1921,72 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#667eea',
     marginHorizontal: 10,
+  },
+  aiMatchCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#667eea',
+    background: 'linear-gradient(135deg, #1a1f3a 0%, #2d3561 100%)',
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  aiIcon: {
+    fontSize: 50,
+    marginRight: 15,
+  },
+  aiInfo: {
+    flex: 1,
+  },
+  aiTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  aiSubtitle: {
+    fontSize: 16,
+    color: '#667eea',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  aiDesc: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
+  aiButton: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  aiButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 25,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#2d3561',
+  },
+  dividerText: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginHorizontal: 15,
   },
 });
 
