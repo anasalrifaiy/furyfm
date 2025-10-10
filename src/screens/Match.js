@@ -1557,65 +1557,133 @@ const Match = ({ onBack, activeMatchId }) => {
       setSubstitutionMode({ playerOut, playerOutIndex });
     };
 
-    const getPositionCoordinates = (position) => {
-      // Returns {x: 0-100%, y: 0-100%} for pitch positioning
-      const positionMap = {
-        // Goalkeeper
-        'GK': { x: 50, y: 95 },
-        // Defenders
-        'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
-        'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
-        // Midfielders
-        'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
-        'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
-        // Attackers
-        'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
+    const getFormationPositions = (formation, squad) => {
+      // Returns array of {position, x, y} based on formation
+      const formations = {
+        '4-3-3': [
+          { pos: 'GK', x: 50, y: 92 },
+          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+          { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
+          { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+        ],
+        '4-4-2': [
+          { pos: 'GK', x: 50, y: 92 },
+          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+          { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
+          { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+        ],
+        '3-5-2': [
+          { pos: 'GK', x: 50, y: 92 },
+          { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
+          { pos: 'LWB', x: 10, y: 60 }, { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 }, { pos: 'RWB', x: 90, y: 60 },
+          { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+        ],
+        '4-2-3-1': [
+          { pos: 'GK', x: 50, y: 92 },
+          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+          { pos: 'CDM', x: 40, y: 62 }, { pos: 'CDM', x: 60, y: 62 },
+          { pos: 'CAM', x: 20, y: 40 }, { pos: 'CAM', x: 50, y: 35 }, { pos: 'CAM', x: 80, y: 40 },
+          { pos: 'ST', x: 50, y: 18 }
+        ],
+        '3-4-3': [
+          { pos: 'GK', x: 50, y: 92 },
+          { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
+          { pos: 'LM', x: 15, y: 55 }, { pos: 'CM', x: 40, y: 58 }, { pos: 'CM', x: 60, y: 58 }, { pos: 'RM', x: 85, y: 55 },
+          { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+        ]
       };
-      return positionMap[position] || { x: 50, y: 50 };
+
+      const formationLayout = formations[formation] || formations['4-3-3'];
+
+      // Match squad players to formation positions
+      return squad.map((player, idx) => {
+        const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
+        return {
+          ...player,
+          baseX: layoutPos.x,
+          baseY: layoutPos.y,
+          currentX: layoutPos.x,
+          currentY: layoutPos.y
+        };
+      });
     };
 
-    const renderPitch = (homeSquad, awaySquad) => {
+    const renderPitch = (homeSquad, awaySquad, homeFormation = '4-3-3', awayFormation = '4-3-3') => {
+      const homePlayers = getFormationPositions(homeFormation, homeSquad);
+      const awayPlayers = getFormationPositions(awayFormation, awaySquad);
+
+      // Add random movement based on minute
+      const variance = Math.sin(minute / 10) * 3; // Small movement
+
       return (
         <View style={styles.pitchContainer}>
           <View style={styles.pitch}>
+            {/* Top Goal (Away) */}
+            <View style={styles.goalTop}>
+              <View style={styles.goalPost} />
+              <View style={styles.goalNet} />
+            </View>
+
+            {/* Bottom Goal (Home) */}
+            <View style={styles.goalBottom}>
+              <View style={styles.goalPost} />
+              <View style={styles.goalNet} />
+            </View>
+
             {/* Pitch markings */}
             <View style={styles.pitchHalfLine} />
             <View style={styles.pitchCenterCircle} />
+            <View style={styles.pitchCenterDot} />
+
+            {/* Penalty areas */}
+            <View style={styles.penaltyAreaTop} />
+            <View style={styles.penaltyAreaBottom} />
+
+            {/* Ball (center when no action) */}
+            <View style={[styles.ball, { left: '50%', top: '50%' }]} />
 
             {/* Home Team (bottom) */}
-            {homeSquad.map((player, idx) => {
-              const coords = getPositionCoordinates(player.position);
+            {homePlayers.map((player, idx) => {
+              const x = player.baseX + variance;
+              const y = player.baseY;
               return (
                 <View
                   key={`home-${idx}`}
                   style={[
                     styles.playerDot,
                     styles.playerDotHome,
-                    { left: `${coords.x}%`, top: `${coords.y}%` }
+                    { left: `${x}%`, top: `${y}%` }
                   ]}
                 >
                   <Text style={styles.playerDotText}>{player.position}</Text>
+                  <Text style={styles.playerNumber}>{idx + 1}</Text>
                 </View>
               );
             })}
 
             {/* Away Team (top) - mirrored */}
-            {awaySquad.map((player, idx) => {
-              const coords = getPositionCoordinates(player.position);
-              const mirrored = { x: 100 - coords.x, y: 100 - coords.y };
+            {awayPlayers.map((player, idx) => {
+              const x = 100 - player.baseX - variance;
+              const y = 100 - player.baseY;
               return (
                 <View
                   key={`away-${idx}`}
                   style={[
                     styles.playerDot,
                     styles.playerDotAway,
-                    { left: `${mirrored.x}%`, top: `${mirrored.y}%` }
+                    { left: `${x}%`, top: `${y}%` }
                   ]}
                 >
                   <Text style={styles.playerDotText}>{player.position}</Text>
+                  <Text style={styles.playerNumber}>{idx + 1}</Text>
                 </View>
               );
             })}
+          </View>
+
+          {/* Match Info Overlay */}
+          <View style={styles.pitchInfoOverlay}>
+            <Text style={styles.pitchInfoText}>⚽ Live Match Action</Text>
           </View>
         </View>
       );
@@ -1679,7 +1747,12 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
 
           {/* Pitch Visualization */}
-          {renderPitch(currentMatch.homeManager.squad, currentMatch.awayManager.squad)}
+          {renderPitch(
+            currentMatch.homeManager.squad,
+            currentMatch.awayManager.squad,
+            currentMatch.homeManager.formation || '4-3-3',
+            currentMatch.awayManager.formation || '4-3-3'
+          )}
 
           {/* Pause Countdown Banner */}
           {pauseCountdown > 0 && (
@@ -1831,66 +1904,65 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
 
           {/* Pitch Visualization */}
-          {currentMatch.homeManager.squad && currentMatch.awayManager.squad && (
-            <View style={styles.pitchContainer}>
-              <View style={styles.pitch}>
-                {/* Pitch markings */}
-                <View style={styles.pitchHalfLine} />
-                <View style={styles.pitchCenterCircle} />
+          {currentMatch.homeManager.squad && currentMatch.awayManager.squad && (() => {
+            const getFormationPositions = (formation, squad) => {
+              const formations = {
+                '4-3-3': [
+                  { pos: 'GK', x: 50, y: 92 },
+                  { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+                  { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
+                  { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+                ],
+                '4-4-2': [
+                  { pos: 'GK', x: 50, y: 92 },
+                  { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+                  { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
+                  { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+                ]
+              };
+              const formationLayout = formations[formation] || formations['4-3-3'];
+              return squad.map((player, idx) => {
+                const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
+                return { ...player, baseX: layoutPos.x, baseY: layoutPos.y };
+              });
+            };
 
-                {/* Home Team (bottom) */}
-                {currentMatch.homeManager.squad.map((player, idx) => {
-                  const positionMap = {
-                    'GK': { x: 50, y: 95 },
-                    'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
-                    'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
-                    'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
-                    'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
-                    'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
-                  };
-                  const coords = positionMap[player.position] || { x: 50, y: 50 };
-                  return (
-                    <View
-                      key={`home-${idx}`}
-                      style={[
-                        styles.playerDot,
-                        styles.playerDotHome,
-                        { left: `${coords.x}%`, top: `${coords.y}%` }
-                      ]}
-                    >
-                      <Text style={styles.playerDotText}>{player.position}</Text>
-                    </View>
-                  );
-                })}
+            const homePlayers = getFormationPositions(currentMatch.homeManager.formation || '4-3-3', currentMatch.homeManager.squad);
+            const awayPlayers = getFormationPositions(currentMatch.awayManager.formation || '4-3-3', currentMatch.awayManager.squad);
+            const variance = Math.sin(minute / 10) * 3;
 
-                {/* Away Team (top) - mirrored */}
-                {currentMatch.awayManager.squad.map((player, idx) => {
-                  const positionMap = {
-                    'GK': { x: 50, y: 95 },
-                    'LB': { x: 20, y: 80 }, 'LWB': { x: 15, y: 75 },
-                    'CB': { x: 50, y: 80 }, 'RB': { x: 80, y: 80 }, 'RWB': { x: 85, y: 75 },
-                    'CDM': { x: 50, y: 65 }, 'LM': { x: 20, y: 55 }, 'CM': { x: 50, y: 50 },
-                    'RM': { x: 80, y: 55 }, 'CAM': { x: 50, y: 35 },
-                    'LW': { x: 20, y: 20 }, 'ST': { x: 50, y: 15 }, 'RW': { x: 80, y: 20 },
-                  };
-                  const coords = positionMap[player.position] || { x: 50, y: 50 };
-                  const mirrored = { x: 100 - coords.x, y: 100 - coords.y };
-                  return (
-                    <View
-                      key={`away-${idx}`}
-                      style={[
-                        styles.playerDot,
-                        styles.playerDotAway,
-                        { left: `${mirrored.x}%`, top: `${mirrored.y}%` }
-                      ]}
-                    >
+            return (
+              <View style={styles.pitchContainer}>
+                <View style={styles.pitch}>
+                  <View style={styles.goalTop}><View style={styles.goalPost} /><View style={styles.goalNet} /></View>
+                  <View style={styles.goalBottom}><View style={styles.goalPost} /><View style={styles.goalNet} /></View>
+                  <View style={styles.pitchHalfLine} />
+                  <View style={styles.pitchCenterCircle} />
+                  <View style={styles.pitchCenterDot} />
+                  <View style={styles.penaltyAreaTop} />
+                  <View style={styles.penaltyAreaBottom} />
+                  <View style={[styles.ball, { left: '50%', top: '50%' }]} />
+
+                  {homePlayers.map((player, idx) => (
+                    <View key={`home-${idx}`} style={[styles.playerDot, styles.playerDotHome, { left: `${player.baseX + variance}%`, top: `${player.baseY}%` }]}>
                       <Text style={styles.playerDotText}>{player.position}</Text>
+                      <Text style={styles.playerNumber}>{idx + 1}</Text>
                     </View>
-                  );
-                })}
+                  ))}
+
+                  {awayPlayers.map((player, idx) => (
+                    <View key={`away-${idx}`} style={[styles.playerDot, styles.playerDotAway, { left: `${100 - player.baseX - variance}%`, top: `${100 - player.baseY}%` }]}>
+                      <Text style={styles.playerDotText}>{player.position}</Text>
+                      <Text style={styles.playerNumber}>{idx + 1}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.pitchInfoOverlay}>
+                  <Text style={styles.pitchInfoText}>⚽ Live Match Action</Text>
+                </View>
               </View>
-            </View>
-          )}
+            );
+          })()}
 
           {/* Match State Info */}
           {matchState === 'halftime' && (
@@ -3076,12 +3148,14 @@ const styles = StyleSheet.create({
     borderColor: '#2d3561',
   },
   pitch: {
-    backgroundColor: '#1b5e20',
+    backgroundColor: '#2d7a3e',
+    backgroundImage: 'repeating-linear-gradient(90deg, #2d7a3e 0px, #2d7a3e 40px, #247030 40px, #247030 80px)',
     borderRadius: 10,
-    height: 400,
+    height: 500,
     position: 'relative',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ffffff',
+    overflow: 'hidden',
   },
   pitchHalfLine: {
     position: 'absolute',
@@ -3123,9 +3197,109 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
   },
   playerDotText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  playerNumber: {
+    fontSize: 8,
+    color: '#ffffff',
+    marginTop: -2,
+  },
+  ball: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#000000',
+    transform: [{ translateX: -6 }, { translateY: -6 }],
+    zIndex: 1000,
+  },
+  pitchCenterDot: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+    transform: [{ translateX: -4 }, { translateY: -4 }],
+  },
+  goalTop: {
+    position: 'absolute',
+    top: 0,
+    left: '35%',
+    width: '30%',
+    height: 25,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  goalBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: '35%',
+    width: '30%',
+    height: 25,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderTopWidth: 3,
+    borderColor: '#ffffff',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  goalPost: {
+    position: 'absolute',
+    width: 4,
+    height: '100%',
+    backgroundColor: '#ffffff',
+    left: '50%',
+    transform: [{ translateX: -2 }],
+  },
+  goalNet: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  penaltyAreaTop: {
+    position: 'absolute',
+    top: 0,
+    left: '25%',
+    width: '50%',
+    height: '15%',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  penaltyAreaBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: '25%',
+    width: '50%',
+    height: '15%',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderTopWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  pitchInfoOverlay: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  pitchInfoText: {
+    fontSize: 12,
+    color: '#43e97b',
+    fontWeight: 'bold',
   },
 });
 
