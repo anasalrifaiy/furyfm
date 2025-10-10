@@ -116,6 +116,29 @@ const Match = ({ onBack, activeMatchId }) => {
     return () => clearInterval(interval);
   }, [currentMatch?.paused, currentMatch?.pauseEndTime, currentMatch?.id]);
 
+  // Load all live matches for spectator mode
+  useEffect(() => {
+    const matchesRef = ref(database, 'matches');
+
+    const unsubscribe = onValue(matchesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const allMatches = [];
+        snapshot.forEach(childSnapshot => {
+          const match = childSnapshot.val();
+          // Only show matches that are currently playing or at halftime
+          if (match.state === 'playing' || match.state === 'halftime') {
+            allMatches.push({ id: childSnapshot.key, ...match });
+          }
+        });
+        setLiveMatches(allMatches);
+      } else {
+        setLiveMatches([]);
+      }
+    });
+
+    return () => off(matchesRef);
+  }, []);
+
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {
       setFriends([]);
@@ -1039,6 +1062,48 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </TouchableOpacity>
 
+          {/* Live Matches - Spectator Mode */}
+          {liveMatches.length > 0 && (
+            <>
+              <View style={styles.sectionDivider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>LIVE MATCHES</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {liveMatches.map(match => (
+                <TouchableOpacity
+                  key={match.id}
+                  style={styles.liveMatchCard}
+                  onPress={() => {
+                    setCurrentMatch(match);
+                    setIsHome(false); // Spectator mode
+                    setMatchState('spectator');
+                  }}
+                >
+                  <View style={styles.liveMatchHeader}>
+                    <Text style={styles.liveMatchIcon}>🔴 LIVE</Text>
+                    <Text style={styles.liveMatchMinute}>{match.minute}'</Text>
+                  </View>
+                  <View style={styles.liveMatchTeams}>
+                    <View style={styles.liveMatchTeam}>
+                      <Text style={styles.liveMatchTeamName}>{match.homeManager.managerName}</Text>
+                      <Text style={styles.liveMatchScore}>{match.homeScore || 0}</Text>
+                    </View>
+                    <Text style={styles.liveMatchVs}>vs</Text>
+                    <View style={styles.liveMatchTeam}>
+                      <Text style={styles.liveMatchScore}>{match.awayScore || 0}</Text>
+                      <Text style={styles.liveMatchTeamName}>{match.awayManager.managerName}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.watchButton}>
+                    <Text style={styles.watchButtonText}>👁️ Watch</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
           <View style={styles.sectionDivider}>
             <View style={styles.dividerLine} />
             <Text style={styles.dividerText}>OR CHALLENGE FRIENDS</Text>
@@ -1561,6 +1626,110 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
         )}
+      </View>
+    );
+  }
+
+  // Spectator mode - watch live matches
+  if (matchState === 'spectator') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => {
+            setMatchState('select');
+            setCurrentMatch(null);
+          }} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>🔴 Watching Live Match</Text>
+        </View>
+
+        <ScrollView style={styles.content}>
+          <View style={styles.spectatorBanner}>
+            <Text style={styles.spectatorIcon}>👁️</Text>
+            <View style={styles.spectatorInfo}>
+              <Text style={styles.spectatorTitle}>Spectator Mode</Text>
+              <Text style={styles.spectatorDesc}>You are watching this match live</Text>
+            </View>
+          </View>
+
+          <View style={styles.liveScoreBoard}>
+            <View style={styles.minuteDisplay}>
+              <Text style={styles.minuteText}>{minute}'</Text>
+              <Text style={styles.liveIndicator}>● LIVE</Text>
+            </View>
+            <View style={styles.liveScoreRow}>
+              <View style={styles.liveTeam}>
+                <Text style={styles.liveTeamName}>{currentMatch.homeManager.managerName}</Text>
+                <Text style={styles.liveScore}>{homeScore}</Text>
+              </View>
+              <Text style={styles.liveDash}>-</Text>
+              <View style={styles.liveTeam}>
+                <Text style={styles.liveScore}>{awayScore}</Text>
+                <Text style={styles.liveTeamName}>{currentMatch.awayManager.managerName}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Match State Info */}
+          {matchState === 'halftime' && (
+            <View style={styles.halftimeBanner}>
+              <Text style={styles.halftimeIcon}>⏸️</Text>
+              <Text style={styles.halftimeTitle}>Half Time</Text>
+            </View>
+          )}
+
+          {pauseCountdown > 0 && (
+            <View style={styles.pauseBanner}>
+              <Text style={styles.pauseIcon}>⏸️</Text>
+              <View style={styles.pauseInfo}>
+                <Text style={styles.pauseTitle}>Match Paused - Substitution</Text>
+                <Text style={styles.pauseCountdown}>Resuming in {pauseCountdown} seconds</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Match Timeline */}
+          <View style={styles.eventsSection}>
+            <Text style={styles.eventsTitle}>Match Timeline</Text>
+            {events.length === 0 ? (
+              <Text style={styles.noEvents}>No events yet...</Text>
+            ) : (
+              events.map((event, index) => (
+                <View key={index} style={styles.eventItem}>
+                  <Text style={styles.eventText}>{event}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* Squads */}
+          <View style={styles.squadsSection}>
+            <Text style={styles.squadsTitle}>Starting XI</Text>
+
+            <View style={styles.teamSquadSection}>
+              <Text style={styles.teamSquadTitle}>{currentMatch.homeManager.managerName}</Text>
+              {currentMatch.homeManager.squad.map((player, idx) => (
+                <View key={player.id} style={styles.spectatorPlayerRow}>
+                  <Text style={styles.spectatorPlayerName}>{player.name}</Text>
+                  <Text style={styles.spectatorPlayerPos}>{player.position}</Text>
+                  <Text style={styles.spectatorPlayerRating}>{player.overall}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.teamSquadSection}>
+              <Text style={styles.teamSquadTitle}>{currentMatch.awayManager.managerName}</Text>
+              {currentMatch.awayManager.squad.map((player, idx) => (
+                <View key={player.id} style={styles.spectatorPlayerRow}>
+                  <Text style={styles.spectatorPlayerName}>{player.name}</Text>
+                  <Text style={styles.spectatorPlayerPos}>{player.position}</Text>
+                  <Text style={styles.spectatorPlayerRating}>{player.overall}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -2473,6 +2642,142 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     fontWeight: '600',
+  },
+  liveMatchCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#f5576c',
+  },
+  liveMatchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  liveMatchIcon: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#f5576c',
+  },
+  liveMatchMinute: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  liveMatchTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  liveMatchTeam: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  liveMatchTeamName: {
+    fontSize: 14,
+    color: '#ffffff',
+    marginBottom: 5,
+  },
+  liveMatchScore: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#667eea',
+  },
+  liveMatchVs: {
+    fontSize: 12,
+    color: '#888',
+    marginHorizontal: 10,
+  },
+  watchButton: {
+    backgroundColor: '#667eea',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  watchButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  spectatorBanner: {
+    backgroundColor: '#667eea',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  spectatorIcon: {
+    fontSize: 30,
+    marginRight: 15,
+  },
+  spectatorInfo: {
+    flex: 1,
+  },
+  spectatorTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  spectatorDesc: {
+    fontSize: 13,
+    color: '#ffffff',
+  },
+  squadsSection: {
+    marginTop: 20,
+  },
+  squadsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  teamSquadSection: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  teamSquadTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#667eea',
+    marginBottom: 10,
+  },
+  spectatorPlayerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2d3561',
+  },
+  spectatorPlayerName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#ffffff',
+  },
+  spectatorPlayerPos: {
+    fontSize: 12,
+    color: '#888',
+    marginRight: 10,
+    width: 40,
+    textAlign: 'center',
+  },
+  spectatorPlayerRating: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    width: 30,
+    textAlign: 'right',
   },
 });
 
