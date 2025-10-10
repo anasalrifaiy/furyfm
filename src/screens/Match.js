@@ -1343,13 +1343,64 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Playing screen
   if (matchState === 'playing') {
+    const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+    const mySquad = myTeam.squad;
+    const myTactic = isHome ? (currentMatch.homeTactic || 'Balanced') : (currentMatch.awayTactic || 'Balanced');
+
+    const changeTactic = async (newTactic) => {
+      setSelectedTactic(newTactic);
+      if (!currentMatch.isPractice) {
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+        const tacticField = isHome ? 'homeTactic' : 'awayTactic';
+        await update(matchRef, { [tacticField]: newTactic });
+      }
+    };
+
+    const requestSubstitution = async (playerOut, playerOutIndex) => {
+      if (substitutionsUsed >= 2) {
+        showAlert('No Substitutions Left', 'You have used all 2 substitutions.');
+        return;
+      }
+      setSubstitutionMode({ playerOut, playerOutIndex });
+    };
+
+    const confirmSubstitution = async (playerIn) => {
+      if (!substitutionMode) return;
+
+      const newSquad = [...mySquad];
+      newSquad[substitutionMode.playerOutIndex] = playerIn;
+
+      if (!currentMatch.isPractice) {
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+        const teamPath = isHome ? 'homeManager' : 'awayManager';
+        await update(ref(database, `matches/${currentMatch.id}/${teamPath}`), { squad: newSquad });
+
+        // Pause match for 20 seconds
+        await update(matchRef, {
+          paused: true,
+          pausedBy: currentUser.uid,
+          pauseReason: 'substitution'
+        });
+
+        // Add substitution event
+        const eventText = `${minute}' 🔄 SUB: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
+        const currentData = (await get(matchRef)).val();
+        const newEvents = [eventText, ...(currentData.events || [])];
+        await update(matchRef, { events: newEvents });
+      }
+
+      setSubstitutionsUsed(substitutionsUsed + 1);
+      setSubstitutionMode(null);
+      setPauseCountdown(20);
+    };
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Match in Progress</Text>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView style={styles.content}>
           <View style={styles.liveScoreBoard}>
             <View style={styles.minuteDisplay}>
               <Text style={styles.minuteText}>{minute}'</Text>
@@ -1368,7 +1419,39 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
 
-          <ScrollView style={styles.eventsContainer}>
+          {/* In-Match Tactics Switcher */}
+          <View style={styles.inMatchTactics}>
+            <Text style={styles.tacticsTitle}>Tactics: {myTactic}</Text>
+            <View style={styles.tacticsRow}>
+              {['Defensive', 'Balanced', 'Attacking'].map(tactic => (
+                <TouchableOpacity
+                  key={tactic}
+                  style={[
+                    styles.miniTacticBtn,
+                    myTactic === tactic && styles.miniTacticBtnActive
+                  ]}
+                  onPress={() => changeTactic(tactic)}
+                >
+                  <Text style={styles.miniTacticText}>
+                    {tactic === 'Defensive' ? '🛡️' : tactic === 'Attacking' ? '⚔️' : '⚖️'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Substitutions */}
+          <View style={styles.subsSection}>
+            <Text style={styles.subsTitle}>
+              Substitutions: {substitutionsUsed}/2 used
+            </Text>
+            {substitutionsUsed < 2 && (
+              <Text style={styles.subsHint}>Tap a player to substitute</Text>
+            )}
+          </View>
+
+          {/* Events */}
+          <View style={styles.eventsContainer}>
             <Text style={styles.eventsTitle}>Match Events</Text>
             {events.length === 0 ? (
               <Text style={styles.noEvents}>No events yet...</Text>
@@ -1379,8 +1462,49 @@ const Match = ({ onBack, activeMatchId }) => {
                 </View>
               ))
             )}
-          </ScrollView>
-        </View>
+          </View>
+        </ScrollView>
+
+        {/* Substitution Modal */}
+        {substitutionMode && (
+          <View style={styles.modal}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                Substitute {substitutionMode.playerOut.name}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                Choose replacement from bench:
+              </Text>
+
+              <ScrollView style={styles.benchList}>
+                {(managerProfile.squad || [])
+                  .filter(p => !mySquad.some(fp => fp.id === p.id))
+                  .map(player => (
+                    <TouchableOpacity
+                      key={player.id}
+                      style={styles.benchPlayerOption}
+                      onPress={() => confirmSubstitution(player)}
+                    >
+                      <View>
+                        <Text style={styles.benchPlayerName}>{player.name}</Text>
+                        <Text style={styles.benchPlayerDetails}>
+                          {player.position} • OVR {player.overall}
+                        </Text>
+                      </View>
+                      <Text style={styles.benchPlayerRating}>{player.overall}</Text>
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setSubstitutionMode(null)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     );
   }
@@ -2214,6 +2338,57 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  inMatchTactics: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  tacticsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  miniTacticBtn: {
+    flex: 1,
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  miniTacticBtnActive: {
+    borderColor: '#43e97b',
+    backgroundColor: '#2d3561',
+  },
+  miniTacticText: {
+    fontSize: 24,
+  },
+  subsSection: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  subsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  subsHint: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
   },
 });
 
