@@ -1425,6 +1425,16 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Waiting for opponent
   if (matchState === 'waiting') {
+    if (!currentMatch) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading match...</Text>
+          </View>
+        </View>
+      );
+    }
+
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
     const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;
 
@@ -1465,6 +1475,16 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Pre-match setup - adjust formation and tactics
   if (matchState === 'prematch') {
+    if (!currentMatch) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading match...</Text>
+          </View>
+        </View>
+      );
+    }
+
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
     const myFormation = myTeam.formation || '4-3-3';
@@ -1676,6 +1696,16 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Both ready - show start button
   if (matchState === 'ready') {
+    if (!currentMatch) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading match...</Text>
+          </View>
+        </View>
+      );
+    }
+
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
     const myKickoffReady = isHome ? currentMatch.homeKickoffReady : currentMatch.awayKickoffReady;
     const opponentKickoffReady = isHome ? currentMatch.awayKickoffReady : currentMatch.homeKickoffReady;
@@ -1723,6 +1753,16 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Half-time screen
   if (matchState === 'halftime') {
+    if (!currentMatch) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading match...</Text>
+          </View>
+        </View>
+      );
+    }
+
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
     const mySecondHalfReady = isHome ? currentMatch.homeSecondHalfReady : currentMatch.awaySecondHalfReady;
@@ -1826,6 +1866,16 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Playing screen
   if (matchState === 'playing') {
+    if (!currentMatch) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading match...</Text>
+          </View>
+        </View>
+      );
+    }
+
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
     const myTactic = isHome ? (currentMatch.homeTactic || 'Balanced') : (currentMatch.awayTactic || 'Balanced');
