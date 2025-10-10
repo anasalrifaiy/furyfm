@@ -8,7 +8,7 @@ import { showAlert } from '../utils/alert';
 const Match = ({ onBack, activeMatchId }) => {
   const { currentUser, managerProfile, updateManagerProfile } = useAuth();
   const [friends, setFriends] = useState([]);
-  const [matchState, setMatchState] = useState('select'); // 'select', 'waiting', 'ready', 'playing', 'halftime', 'finished'
+  const [matchState, setMatchState] = useState('select'); // 'select', 'waiting', 'prematch', 'ready', 'playing', 'halftime', 'paused', 'finished'
   const [currentMatch, setCurrentMatch] = useState(null);
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
@@ -16,6 +16,10 @@ const Match = ({ onBack, activeMatchId }) => {
   const [events, setEvents] = useState([]);
   const [isHome, setIsHome] = useState(true);
   const [substitutionMode, setSubstitutionMode] = useState(null); // { playerOut: player, playerOutIndex: number }
+  const [selectedTactic, setSelectedTactic] = useState('Balanced');
+  const [substitutionsUsed, setSubstitutionsUsed] = useState(0);
+  const [pauseCountdown, setPauseCountdown] = useState(0);
+  const [liveMatches, setLiveMatches] = useState([]);
 
   useEffect(() => {
     if (managerProfile) {
@@ -247,8 +251,8 @@ const Match = ({ onBack, activeMatchId }) => {
     const updatedMatch = updatedSnapshot.val();
 
     if (updatedMatch.homeManager.ready && updatedMatch.awayManager.ready) {
-      // Start match
-      await update(ref(database, `matches/${matchId}`), { state: 'ready' });
+      // Go to pre-match setup instead of starting immediately
+      await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
     }
   };
 
@@ -328,7 +332,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const interval = setInterval(() => {
       currentSecond++;
-      const matchMinute = Math.floor(currentSecond / 2);
+      const matchMinute = Math.floor(currentSecond / (120 / 90)); // 120 seconds = 90 minutes
 
       setMinute(matchMinute);
 
@@ -365,8 +369,8 @@ const Match = ({ onBack, activeMatchId }) => {
         console.log('GOAL!', eventText);
       }
 
-      // Half time at 90 seconds
-      if (currentSecond === 90) {
+      // Half time at 60 seconds (45 match minutes)
+      if (currentSecond === 60) {
         console.log('Half time reached in practice match');
         clearInterval(interval);
         setCurrentMatch({
@@ -381,8 +385,8 @@ const Match = ({ onBack, activeMatchId }) => {
         setMatchState('halftime');
       }
 
-      // Full time at 180 seconds
-      if (currentSecond === 180) {
+      // Full time at 120 seconds (90 match minutes)
+      if (currentSecond === 120) {
         console.log('Full time reached in practice match');
         clearInterval(interval);
         finishPracticeMatch(localHomeScore, localAwayScore, localEvents, localGoalscorers);
@@ -489,8 +493,8 @@ const Match = ({ onBack, activeMatchId }) => {
     console.log('Setting up match interval...');
     const interval = setInterval(async () => {
       currentSecond++;
-      // Convert seconds to match minutes (180 seconds = 90 minutes)
-      const matchMinute = Math.floor(currentSecond / 2);
+      // Convert seconds to match minutes (120 seconds = 90 minutes)
+      const matchMinute = Math.floor(currentSecond / (120 / 90));
 
       console.log(`Match second ${currentSecond}, minute ${matchMinute}`);
 
@@ -536,15 +540,15 @@ const Match = ({ onBack, activeMatchId }) => {
         // Update minute in Firebase
         await update(matchRef, { minute: matchMinute, second: currentSecond });
 
-        // Half time at 90 seconds (45 match minutes)
-        if (currentSecond === 90) {
+        // Half time at 60 seconds (45 match minutes)
+        if (currentSecond === 60) {
           console.log('Half time reached');
           clearInterval(interval);
           await update(matchRef, { state: 'halftime' });
         }
 
-        // Full time at 180 seconds (90 match minutes)
-        if (currentSecond === 180) {
+        // Full time at 120 seconds (90 match minutes)
+        if (currentSecond === 120) {
           console.log('Full time reached');
           clearInterval(interval);
           await finishMatch();
@@ -613,7 +617,7 @@ const Match = ({ onBack, activeMatchId }) => {
     const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
     const awayChance = (awayStrength / totalStrength) * 0.55;
 
-    let currentSecond = 90;
+    let currentSecond = 60;
     let localHomeScore = currentMatch.homeScore || 0;
     let localAwayScore = currentMatch.awayScore || 0;
     let localEvents = currentMatch.events || [];
@@ -621,7 +625,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const interval = setInterval(() => {
       currentSecond++;
-      const matchMinute = Math.floor(currentSecond / 2);
+      const matchMinute = Math.floor(currentSecond / (120 / 90)); // 120 seconds = 90 minutes
 
       setMinute(matchMinute);
 
@@ -658,8 +662,8 @@ const Match = ({ onBack, activeMatchId }) => {
         console.log('GOAL!', eventText);
       }
 
-      // Full time at 180 seconds
-      if (currentSecond >= 180) {
+      // Full time at 120 seconds (90 match minutes)
+      if (currentSecond >= 120) {
         console.log('Full time reached in practice match');
         clearInterval(interval);
         finishPracticeMatch(localHomeScore, localAwayScore, localEvents, localGoalscorers);
@@ -684,8 +688,8 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
-      const currentSecond = (currentData.second || 90) + 1;
-      const matchMinute = Math.floor(currentSecond / 2);
+      const currentSecond = (currentData.second || 60) + 1;
+      const matchMinute = Math.floor(currentSecond / (120 / 90));
 
       console.log(`Second half - second ${currentSecond}, minute ${matchMinute}`);
 
@@ -727,8 +731,8 @@ const Match = ({ onBack, activeMatchId }) => {
       // Update minute and second
       await update(matchRef, { minute: matchMinute, second: currentSecond });
 
-      // Full time at 180 seconds (90 match minutes)
-      if (currentSecond >= 180) {
+      // Full time at 120 seconds (90 match minutes)
+      if (currentSecond >= 120) {
         console.log('Full time reached');
         clearInterval(interval);
         await finishMatch();
@@ -1064,6 +1068,125 @@ const Match = ({ onBack, activeMatchId }) => {
             </Text>
           </View>
         </View>
+      </View>
+    );
+  }
+
+  // Pre-match setup - adjust formation and tactics
+  if (matchState === 'prematch') {
+    const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+    const mySquad = myTeam.squad;
+    const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
+    const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
+
+    const confirmPrematch = async () => {
+      if (!currentMatch.isPractice) {
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+        const readyField = isHome ? 'homePrematchReady' : 'awayPrematchReady';
+        const tacticField = isHome ? 'homeTactic' : 'awayTactic';
+
+        await update(matchRef, {
+          [readyField]: true,
+          [tacticField]: selectedTactic
+        });
+
+        // Check if both ready
+        const updatedSnapshot = await get(matchRef);
+        const updatedMatch = updatedSnapshot.val();
+
+        if (updatedMatch.homePrematchReady && updatedMatch.awayPrematchReady) {
+          await update(matchRef, { state: 'ready' });
+        }
+      } else {
+        // Practice match - go directly to ready
+        setCurrentMatch({
+          ...currentMatch,
+          state: 'ready',
+          homePrematchReady: true,
+          awayPrematchReady: true,
+          homeTactic: selectedTactic
+        });
+        setMatchState('ready');
+      }
+    };
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Pre-Match Setup</Text>
+        </View>
+
+        <ScrollView style={styles.content}>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoIcon}>⚽</Text>
+            <Text style={styles.infoTitle}>Review Your Team</Text>
+            <Text style={styles.infoDesc}>
+              Check your starting XI and tactics before the match begins
+            </Text>
+          </View>
+
+          {/* Tactics Selection */}
+          <View style={styles.prematchSection}>
+            <Text style={styles.sectionTitle}>Select Tactics</Text>
+            <View style={styles.tacticsRow}>
+              {['Defensive', 'Balanced', 'Attacking'].map(tactic => (
+                <TouchableOpacity
+                  key={tactic}
+                  style={[
+                    styles.tacticCard,
+                    selectedTactic === tactic && styles.tacticCardSelected
+                  ]}
+                  onPress={() => setSelectedTactic(tactic)}
+                >
+                  <Text style={[
+                    styles.tacticText,
+                    selectedTactic === tactic && styles.tacticTextSelected
+                  ]}>
+                    {tactic === 'Defensive' ? '🛡️' : tactic === 'Attacking' ? '⚔️' : '⚖️'}
+                  </Text>
+                  <Text style={[
+                    styles.tacticLabel,
+                    selectedTactic === tactic && styles.tacticLabelSelected
+                  ]}>
+                    {tactic}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Starting XI */}
+          <View style={styles.prematchSection}>
+            <Text style={styles.sectionTitle}>Starting XI</Text>
+            {mySquad.map((player, index) => (
+              <View key={player.id} style={styles.prematchPlayerRow}>
+                <Text style={styles.playerPosition}>{player.position}</Text>
+                <Text style={styles.playerRowName}>{player.name}</Text>
+                <Text style={styles.playerRowRating}>⭐ {player.overall}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Ready Status */}
+          <View style={styles.readyStatusCard}>
+            <Text style={styles.readyStatusText}>
+              You: {myPrematchReady ? '✓ Ready' : '⏳ Not Ready'}
+            </Text>
+            <Text style={styles.readyStatusText}>
+              Opponent: {opponentPrematchReady ? '✓ Ready' : '⏳ Not Ready'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.confirmButton, myPrematchReady && styles.confirmButtonDisabled]}
+            onPress={confirmPrematch}
+            disabled={myPrematchReady}
+          >
+            <Text style={styles.confirmButtonText}>
+              {myPrematchReady ? '✓ Waiting for Opponent...' : 'Confirm & Ready Up'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
     );
   }
@@ -1987,6 +2110,110 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginHorizontal: 15,
+  },
+  infoCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  infoIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  infoTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  infoDesc: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  prematchSection: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  tacticsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  tacticCard: {
+    flex: 1,
+    backgroundColor: '#252b54',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tacticCardSelected: {
+    borderColor: '#43e97b',
+    backgroundColor: '#2d3561',
+  },
+  tacticText: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  tacticTextSelected: {
+    transform: 'scale(1.1)',
+  },
+  tacticLabel: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: 'bold',
+  },
+  tacticLabelSelected: {
+    color: '#43e97b',
+  },
+  prematchPlayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#252b54',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  readyStatusCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  readyStatusText: {
+    fontSize: 16,
+    color: '#ffffff',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmButton: {
+    background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    padding: 18,
+    borderRadius: 15,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  confirmButtonDisabled: {
+    background: 'linear-gradient(135deg, #2d3561 0%, #1a1f3a 100%)',
+    opacity: 0.6,
+  },
+  confirmButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 });
 
