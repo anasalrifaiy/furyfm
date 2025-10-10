@@ -5,6 +5,7 @@ import { database } from '../firebase';
 import { ref, get, push, update } from 'firebase/database';
 import { showAlert } from '../utils/alert';
 import Portal from '../components/Portal';
+import { countries, getCountryFlag } from '../data/countries';
 
 const ManagerProfile = ({ managerId, onBack }) => {
   const { currentUser, managerProfile: currentManagerProfile, updateManagerProfile, loading } = useAuth();
@@ -16,6 +17,8 @@ const ManagerProfile = ({ managerId, onBack }) => {
   const [editName, setEditName] = useState('');
   const [editClub, setEditClub] = useState('');
   const [editCountry, setEditCountry] = useState('');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
 
   useEffect(() => {
     if (currentManagerProfile) {
@@ -142,7 +145,12 @@ const ManagerProfile = ({ managerId, onBack }) => {
         </View>
         <Text style={styles.managerName}>{manager.managerName}</Text>
         {manager.clubName && <Text style={styles.clubName}>{manager.clubName}</Text>}
-        {manager.country && <Text style={styles.countryText}>{manager.country}</Text>}
+        {manager.country && (
+          <View style={styles.countryContainer}>
+            <Text style={styles.countryFlag}>{getCountryFlag(manager.country)}</Text>
+            <Text style={styles.countryText}>{manager.country}</Text>
+          </View>
+        )}
         {isOwnProfile && (
           <>
             <Text style={styles.youBadge}>(Your Profile)</Text>
@@ -315,13 +323,19 @@ const ManagerProfile = ({ managerId, onBack }) => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Country</Text>
-            <TextInput
-              style={styles.textInput}
-              value={editCountry}
-              onChangeText={setEditCountry}
-              placeholder="Enter country"
-              placeholderTextColor="#888"
-            />
+            <TouchableOpacity
+              style={styles.countrySelector}
+              onPress={() => setShowCountryPicker(true)}
+            >
+              {editCountry ? (
+                <View style={styles.selectedCountry}>
+                  <Text style={styles.selectedCountryFlag}>{getCountryFlag(editCountry)}</Text>
+                  <Text style={styles.selectedCountryText}>{editCountry}</Text>
+                </View>
+              ) : (
+                <Text style={styles.placeholderText}>Select country</Text>
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={styles.modalButtons}>
@@ -338,6 +352,61 @@ const ManagerProfile = ({ managerId, onBack }) => {
               <Text style={styles.submitButtonText}>Save Changes</Text>
             </TouchableOpacity>
           </View>
+          </View>
+        </View>
+      </Portal>
+    )}
+
+    {showCountryPicker && (
+      <Portal>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => {
+              setShowCountryPicker(false);
+              setCountrySearch('');
+            }}
+          />
+          <View style={styles.countryPickerModal}>
+            <Text style={styles.modalTitle}>Select Country</Text>
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search countries..."
+              placeholderTextColor="#888"
+              value={countrySearch}
+              onChangeText={setCountrySearch}
+            />
+
+            <ScrollView style={styles.countryList}>
+              {countries
+                .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
+                .map(country => (
+                  <TouchableOpacity
+                    key={country.name}
+                    style={styles.countryOption}
+                    onPress={() => {
+                      setEditCountry(country.name);
+                      setShowCountryPicker(false);
+                      setCountrySearch('');
+                    }}
+                  >
+                    <Text style={styles.countryOptionFlag}>{country.flag}</Text>
+                    <Text style={styles.countryOptionName}>{country.name}</Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowCountryPicker(false);
+                setCountrySearch('');
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Portal>
@@ -809,6 +878,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#2d3561',
+  },
+  countryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 5,
+  },
+  countryFlag: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  countrySelector: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  selectedCountry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedCountryFlag: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  selectedCountryText: {
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  placeholderText: {
+    color: '#888',
+    fontSize: 16,
+  },
+  countryPickerModal: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '80%',
+  },
+  searchInput: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    color: '#ffffff',
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    marginBottom: 15,
+  },
+  countryList: {
+    maxHeight: 400,
+    marginBottom: 15,
+  },
+  countryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  countryOptionFlag: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  countryOptionName: {
+    color: '#ffffff',
+    fontSize: 16,
   },
 });
 
