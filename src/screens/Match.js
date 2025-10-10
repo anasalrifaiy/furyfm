@@ -193,6 +193,47 @@ const Match = ({ onBack, activeMatchId }) => {
   };
 
   const challengeFriend = async (opponent) => {
+    // Check if I'm already in an active match
+    const matchesRef = ref(database, 'matches');
+    const matchesSnapshot = await get(matchesRef);
+
+    if (matchesSnapshot.exists()) {
+      let myActiveMatch = null;
+      matchesSnapshot.forEach(childSnapshot => {
+        const match = childSnapshot.val();
+        if (
+          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+          (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
+        ) {
+          myActiveMatch = match;
+        }
+      });
+
+      if (myActiveMatch) {
+        showAlert('Match in Progress', 'You are already in an active match. Please finish or forfeit your current match first.');
+        return;
+      }
+    }
+
+    // Check if opponent is already in an active match
+    if (matchesSnapshot.exists()) {
+      let opponentActiveMatch = null;
+      matchesSnapshot.forEach(childSnapshot => {
+        const match = childSnapshot.val();
+        if (
+          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+          (match.homeManager?.uid === opponent.uid || match.awayManager?.uid === opponent.uid)
+        ) {
+          opponentActiveMatch = match;
+        }
+      });
+
+      if (opponentActiveMatch) {
+        showAlert('Opponent Busy', `${opponent.managerName} is currently in another match. Please try again later.`);
+        return;
+      }
+    }
+
     // Validate squads
     const myStarting = (managerProfile.squad || []).slice(0, 11);
     const opponentStarting = (opponent.squad || []).slice(0, 11);
@@ -1924,10 +1965,65 @@ const Match = ({ onBack, activeMatchId }) => {
       setPauseCountdown(20);
     };
 
+    const forfeitMatch = async () => {
+      if (typeof window !== 'undefined' && window.confirm) {
+        const confirmed = window.confirm('Are you sure you want to forfeit this match? The opponent will win by default.');
+        if (!confirmed) return;
+      }
+
+      if (!currentMatch.isPractice) {
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+
+        // Set final score based on who forfeited
+        const finalHomeScore = isHome ? 0 : 3;
+        const finalAwayScore = isHome ? 3 : 0;
+
+        await update(matchRef, {
+          state: 'finished',
+          homeScore: finalHomeScore,
+          awayScore: finalAwayScore,
+          minute: 90,
+          events: [`${minute}' ⚠️ Match forfeited by ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}`, ...(currentMatch.events || [])],
+          forfeitedBy: currentUser.uid,
+          forfeitedAt: Date.now()
+        });
+
+        // Notify opponent
+        const opponentUid = isHome ? currentMatch.awayManager.uid : currentMatch.homeManager.uid;
+        const notificationRef = ref(database, `managers/${opponentUid}/notifications`);
+        await push(notificationRef, {
+          type: 'match_forfeit',
+          message: `${managerProfile.managerName} forfeited the match. You win 3-0!`,
+          timestamp: Date.now(),
+          read: false
+        });
+      }
+
+      // Reset to selection screen
+      setCurrentMatch(null);
+      setMatchState('select');
+      setHomeScore(0);
+      setAwayScore(0);
+      setMinute(0);
+      setEvents([]);
+      setSubstitutionMode(null);
+      setSubstitutionsUsed(0);
+    };
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Match in Progress</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Match in Progress</Text>
+            {!currentMatch.spectators?.[currentUser?.uid] && (
+              <TouchableOpacity
+                style={styles.forfeitButton}
+                onPress={forfeitMatch}
+              >
+                <Text style={styles.forfeitButtonText}>⚠️ Forfeit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <ScrollView style={styles.content}>
@@ -2096,31 +2192,31 @@ const Match = ({ onBack, activeMatchId }) => {
                 )}
               </View>
 
-            {/* Squad List for Substitution */}
-            {substitutionMode?.selecting && (
-              <View style={styles.quickSubList}>
-                <Text style={styles.quickSubTitle}>Select player to substitute:</Text>
-                {mySquad.map((player, index) => (
+              {/* Squad List for Substitution */}
+              {substitutionMode?.selecting && (
+                <View style={styles.quickSubList}>
+                  <Text style={styles.quickSubTitle}>Select player to substitute:</Text>
+                  {mySquad.map((player, index) => (
+                    <TouchableOpacity
+                      key={player.id}
+                      style={styles.quickSubPlayer}
+                      onPress={() => startSubstitution(player, index)}
+                    >
+                      <Text style={styles.quickSubPlayerPos}>{player.position}</Text>
+                      <Text style={styles.quickSubPlayerName}>{player.name}</Text>
+                      <Text style={styles.quickSubPlayerRating}>{player.overall}</Text>
+                      <Text style={styles.quickSubIcon}>🔄</Text>
+                    </TouchableOpacity>
+                  ))}
                   <TouchableOpacity
-                    key={player.id}
-                    style={styles.quickSubPlayer}
-                    onPress={() => startSubstitution(player, index)}
+                    style={styles.quickSubCancel}
+                    onPress={() => setSubstitutionMode(null)}
                   >
-                    <Text style={styles.quickSubPlayerPos}>{player.position}</Text>
-                    <Text style={styles.quickSubPlayerName}>{player.name}</Text>
-                    <Text style={styles.quickSubPlayerRating}>{player.overall}</Text>
-                    <Text style={styles.quickSubIcon}>🔄</Text>
+                    <Text style={styles.quickSubCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                ))}
-                <TouchableOpacity
-                  style={styles.quickSubCancel}
-                  onPress={() => setSubstitutionMode(null)}
-                >
-                  <Text style={styles.quickSubCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+                </View>
+              )}
+            </View>
           )}
 
           {/* Events */}
@@ -2513,6 +2609,24 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  forfeitButton: {
+    backgroundColor: 'rgba(245, 87, 108, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ffffff',
+  },
+  forfeitButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
