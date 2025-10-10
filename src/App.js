@@ -30,6 +30,7 @@ const MainApp = () => {
   const [selectedManagerId, setSelectedManagerId] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [activeMatchId, setActiveMatchId] = useState(null);
+  const [activeMatch, setActiveMatch] = useState(null);
 
   useEffect(() => {
     // Check if running on web - native driver is not supported on web
@@ -66,6 +67,37 @@ const MainApp = () => {
         setUnreadNotifications(count);
       } else {
         setUnreadNotifications(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  useEffect(() => {
+    // Real-time listener for active matches
+    if (!currentUser) return;
+
+    const matchesRef = ref(database, 'matches');
+
+    const unsubscribe = onValue(matchesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        let foundActiveMatch = null;
+        snapshot.forEach(childSnapshot => {
+          const match = childSnapshot.val();
+          // Check if this match involves the current user and is in progress
+          if (
+            (match.homeManager.uid === currentUser.uid || match.awayManager.uid === currentUser.uid) &&
+            (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime')
+          ) {
+            foundActiveMatch = match;
+          }
+        });
+        setActiveMatch(foundActiveMatch);
+        if (foundActiveMatch && !activeMatchId) {
+          setActiveMatchId(foundActiveMatch.id);
+        }
+      } else {
+        setActiveMatch(null);
       }
     });
 
@@ -306,6 +338,39 @@ const MainApp = () => {
       ]}
     >
       {renderCurrentScreen()}
+
+      {/* Active Match Indicator Banner */}
+      {activeMatch && currentScreen !== 'match' && (
+        <TouchableOpacity
+          style={styles.activeMatchBanner}
+          onPress={() => {
+            setActiveMatchId(activeMatch.id);
+            setCurrentScreen('match');
+          }}
+        >
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerIcon}>⚽</Text>
+            <View style={styles.bannerInfo}>
+              <Text style={styles.bannerTitle}>
+                {activeMatch.state === 'waiting' ? 'Match Challenge Pending' :
+                 activeMatch.state === 'prematch' ? 'Pre-Match Setup' :
+                 activeMatch.state === 'ready' ? 'Match Starting...' :
+                 activeMatch.state === 'halftime' ? 'Half Time' :
+                 'Match in Progress'}
+              </Text>
+              <Text style={styles.bannerSubtitle}>
+                {activeMatch.homeManager.managerName} vs {activeMatch.awayManager.managerName}
+              </Text>
+              {(activeMatch.state === 'playing' || activeMatch.state === 'halftime') && (
+                <Text style={styles.bannerScore}>
+                  {activeMatch.homeScore || 0} - {activeMatch.awayScore || 0}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.bannerArrow}>→</Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 };
@@ -502,6 +567,55 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  activeMatchBanner: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    borderWidth: 2,
+    borderColor: '#667eea',
+    elevation: 10,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+  },
+  bannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bannerIcon: {
+    fontSize: 30,
+    marginRight: 15,
+  },
+  bannerInfo: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  bannerSubtitle: {
+    fontSize: 13,
+    color: '#a0aec0',
+    marginBottom: 3,
+  },
+  bannerScore: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#667eea',
+  },
+  bannerArrow: {
+    fontSize: 24,
+    color: '#667eea',
+    marginLeft: 10,
   },
 });
 

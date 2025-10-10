@@ -87,6 +87,35 @@ const Match = ({ onBack, activeMatchId }) => {
     return () => off(matchRef);
   }, [currentMatch?.id, matchState, isHome]);
 
+  // Handle pause countdown timer
+  useEffect(() => {
+    if (!currentMatch?.paused || !currentMatch?.pauseEndTime) {
+      setPauseCountdown(0);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((currentMatch.pauseEndTime - Date.now()) / 1000));
+      setPauseCountdown(remaining);
+
+      if (remaining === 0 && currentMatch.paused) {
+        // Auto-resume match when countdown ends
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+        update(matchRef, {
+          paused: false,
+          pausedBy: null,
+          pauseReason: null,
+          pauseEndTime: null
+        });
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentMatch?.paused, currentMatch?.pauseEndTime, currentMatch?.id]);
+
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {
       setFriends([]);
@@ -492,13 +521,20 @@ const Match = ({ onBack, activeMatchId }) => {
 
     console.log('Setting up match interval...');
     const interval = setInterval(async () => {
-      currentSecond++;
-      // Convert seconds to match minutes (120 seconds = 90 minutes)
-      const matchMinute = Math.floor(currentSecond / (120 / 90));
-
-      console.log(`Match second ${currentSecond}, minute ${matchMinute}`);
-
       try {
+        // Check if match is paused
+        const currentData = (await get(matchRef)).val();
+        if (currentData.paused) {
+          console.log('Match is paused, skipping simulation tick');
+          return;
+        }
+
+        currentSecond++;
+        // Convert seconds to match minutes (120 seconds = 90 minutes)
+        const matchMinute = Math.floor(currentSecond / (120 / 90));
+
+        console.log(`Match second ${currentSecond}, minute ${matchMinute}`);
+
         // Goal chance based on team strength (4% per minute scaled by strength)
         const goalRoll = Math.random();
 
@@ -688,6 +724,13 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
+
+      // Check if match is paused
+      if (currentData.paused) {
+        console.log('Match is paused, skipping simulation tick');
+        return;
+      }
+
       const currentSecond = (currentData.second || 60) + 1;
       const matchMinute = Math.floor(currentSecond / (120 / 90));
 
@@ -1376,10 +1419,12 @@ const Match = ({ onBack, activeMatchId }) => {
         await update(ref(database, `matches/${currentMatch.id}/${teamPath}`), { squad: newSquad });
 
         // Pause match for 20 seconds
+        const pauseEndTime = Date.now() + 20000;
         await update(matchRef, {
           paused: true,
           pausedBy: currentUser.uid,
-          pauseReason: 'substitution'
+          pauseReason: 'substitution',
+          pauseEndTime: pauseEndTime
         });
 
         // Add substitution event
@@ -1418,6 +1463,17 @@ const Match = ({ onBack, activeMatchId }) => {
               </View>
             </View>
           </View>
+
+          {/* Pause Countdown Banner */}
+          {pauseCountdown > 0 && (
+            <View style={styles.pauseBanner}>
+              <Text style={styles.pauseIcon}>⏸️</Text>
+              <View style={styles.pauseInfo}>
+                <Text style={styles.pauseTitle}>Match Paused - Substitution</Text>
+                <Text style={styles.pauseCountdown}>Resuming in {pauseCountdown} seconds</Text>
+              </View>
+            </View>
+          )}
 
           {/* In-Match Tactics Switcher */}
           <View style={styles.inMatchTactics}>
@@ -2389,6 +2445,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     textAlign: 'center',
+  },
+  pauseBanner: {
+    backgroundColor: '#f5576c',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ff6b81',
+  },
+  pauseIcon: {
+    fontSize: 30,
+    marginRight: 15,
+  },
+  pauseInfo: {
+    flex: 1,
+  },
+  pauseTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  pauseCountdown: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '600',
   },
 });
 
