@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { showAlert } from '../utils/alert';
 
 const Formation = ({ onBack }) => {
   const { managerProfile, updateManagerProfile, loading } = useAuth();
+  const { t } = useLanguage();
   const [selectedFormation, setSelectedFormation] = useState(managerProfile?.formation || '4-3-3');
   const [selectedTactic, setSelectedTactic] = useState(managerProfile?.tactic || 'Balanced');
   const [lineup, setLineup] = useState(managerProfile?.lineup || {
@@ -26,12 +29,12 @@ const Formation = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Formation</Text>
+          <Text style={styles.title}>{t('formationTitle')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -73,7 +76,7 @@ const Formation = ({ onBack }) => {
   const handleSelectPlayer = (position) => {
     const availablePlayers = getPlayersForPosition(position);
     if (availablePlayers.length === 0) {
-      showAlert('No Players', `You don't have any players available for this position. Sign players from the Transfer Market.`);
+      showAlert(t('noPlayers'), t('noPlayersAvailable'));
       return;
     }
     setSelectingPosition(position);
@@ -114,7 +117,7 @@ const Formation = ({ onBack }) => {
       tactic: selectedTactic,
       lineup: lineup
     });
-    showAlert('Success', 'Your formation and tactics have been saved!');
+    showAlert(t('success'), t('formationSaved'));
   };
 
   const tactics = ['Defensive', 'Balanced', 'Attacking'];
@@ -122,11 +125,11 @@ const Formation = ({ onBack }) => {
   const getTacticDescription = (tactic) => {
     switch(tactic) {
       case 'Defensive':
-        return '+15% Defense, -10% Attack';
+        return t('defensiveDesc');
       case 'Balanced':
-        return 'Standard performance';
+        return t('balancedDesc');
       case 'Attacking':
-        return '+15% Attack, -10% Defense';
+        return t('attackingDesc');
       default:
         return '';
     }
@@ -272,14 +275,14 @@ const Formation = ({ onBack }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>{t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Formation</Text>
+        <Text style={styles.title}>{t('formationTitle')}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.formationSelector}>
-          <Text style={styles.selectorLabel}>Formation</Text>
+          <Text style={styles.selectorLabel}>{t('formationTitle')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {Object.keys(formations).map(formation => (
               <TouchableOpacity
@@ -302,7 +305,7 @@ const Formation = ({ onBack }) => {
         </View>
 
         <View style={styles.tacticsSelector}>
-          <Text style={styles.selectorLabel}>Tactics</Text>
+          <Text style={styles.selectorLabel}>{t('tacticsTitle')}</Text>
           <View style={styles.tacticsGrid}>
             {tactics.map(tactic => (
               <TouchableOpacity
@@ -317,7 +320,7 @@ const Formation = ({ onBack }) => {
                   styles.tacticTitle,
                   selectedTactic === tactic && styles.tacticTitleActive
                 ]}>
-                  {tactic}
+                  {t(tactic.toLowerCase())}
                 </Text>
                 <Text style={styles.tacticDesc}>{getTacticDescription(tactic)}</Text>
               </TouchableOpacity>
@@ -330,9 +333,9 @@ const Formation = ({ onBack }) => {
         </View>
 
         <View style={styles.actions}>
-          <Text style={styles.tipText}>Tap to select player • Long press to remove</Text>
+          <Text style={styles.tipText}>{t('tapToSelect')}</Text>
           <TouchableOpacity style={styles.saveButton} onPress={saveFormation}>
-            <Text style={styles.saveButtonText}>Save Formation</Text>
+            <Text style={styles.saveButtonText}>{t('saveFormation')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -340,7 +343,7 @@ const Formation = ({ onBack }) => {
       {selectingPosition && (
         <View style={styles.modal}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Player for {selectingPosition}</Text>
+            <Text style={styles.modalTitle}>{t('selectPlayerFor')} {selectingPosition}</Text>
 
             <ScrollView style={styles.playerList}>
               {getPlayersForPosition(selectingPosition).map(player => {
@@ -356,8 +359,8 @@ const Formation = ({ onBack }) => {
                     <View>
                       <Text style={styles.playerOptionName}>{player.name}</Text>
                       <Text style={styles.playerOptionDetails}>
-                        {player.position} • OVR {player.overall}
-                        {isAssigned && ` • Currently at ${assignedPosition}`}
+                        {player.position} • {t('ovr')} {player.overall}
+                        {isAssigned && ` • ${t('currentlyAt')} ${assignedPosition}`}
                       </Text>
                     </View>
                     <Text style={styles.playerOptionRating}>{player.overall}</Text>
@@ -370,7 +373,7 @@ const Formation = ({ onBack }) => {
               style={styles.cancelButton}
               onPress={() => setSelectingPosition(null)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>

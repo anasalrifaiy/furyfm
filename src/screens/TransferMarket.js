@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { database } from '../firebase';
 import { ref, get, update, onValue } from 'firebase/database';
 import { initialPlayers } from '../data/players';
@@ -10,6 +11,7 @@ import Portal from '../components/Portal';
 
 const TransferMarket = ({ onBack }) => {
   const { currentUser, managerProfile, updateManagerProfile, loading } = useAuth();
+  const { t } = useLanguage();
   const [players, setPlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPosition, setFilterPosition] = useState('All');
@@ -65,12 +67,12 @@ const TransferMarket = ({ onBack }) => {
     const offerValue = parseFloat(offerAmount) * 1000000;
 
     if (offerValue > managerProfile.budget) {
-      showAlert('Insufficient Funds', 'You don\'t have enough budget for this offer.');
+      showAlert(t('insufficientFunds'), t('dontHaveBudget'));
       return;
     }
 
     if (offerValue < selectedPlayer.price * 0.7) {
-      showAlert('Offer Too Low', 'Your offer is too low. Try offering at least 70% of the asking price.');
+      showAlert(t('offerTooLow'), t('offerTooLowDesc'));
       return;
     }
 
@@ -87,10 +89,10 @@ const TransferMarket = ({ onBack }) => {
       await update(ref(database, `market/${selectedPlayer.id}`), { onMarket: false, ownerId: currentUser.uid });
       await updateManagerProfile({ squad: newSquad, budget: newBudget });
 
-      showAlert('Success!', `${selectedPlayer.name} has joined your squad for ${formatCurrency(offerValue)}!`);
+      showAlert(t('success'), `${selectedPlayer.name} ${t('playerJoined')} ${formatCurrency(offerValue)}!`);
       closeModal();
     } else {
-      showAlert('Offer Rejected', 'The club has rejected your offer. Try increasing your bid.');
+      showAlert(t('offerRejected'), t('offerRejectedDesc'));
     }
   };
 
@@ -112,12 +114,12 @@ const TransferMarket = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Transfer Market</Text>
+          <Text style={styles.title}>{t('transferMarket')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -128,13 +130,13 @@ const TransferMarket = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Transfer Market</Text>
-          <Text style={styles.budget}>Budget: {formatCurrency(managerProfile?.budget || 0)}</Text>
+          <Text style={styles.title}>{t('transferMarket')}</Text>
+          <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile?.budget || 0)}</Text>
           <View style={styles.statsRow}>
-            <Text style={styles.statsText}>Available Players: {filteredPlayers.length}</Text>
-            <Text style={styles.statsText}>Total Database: {allPlayers.length}</Text>
+            <Text style={styles.statsText}>{t('availablePlayers')}: {filteredPlayers.length}</Text>
+            <Text style={styles.statsText}>{t('totalDatabase')}: {allPlayers.length}</Text>
           </View>
         </View>
 
@@ -142,7 +144,7 @@ const TransferMarket = ({ onBack }) => {
           <View style={styles.searchSection}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Search players or nationality..."
+              placeholder={t('searchPlayers')}
               placeholderTextColor="#888"
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -167,7 +169,7 @@ const TransferMarket = ({ onBack }) => {
                 <View style={styles.playerInfo}>
                   <Text style={styles.playerName}>{player.name}</Text>
                   <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
-                  <Text style={styles.playerRating}>Overall: {player.overall}</Text>
+                  <Text style={styles.playerRating}>{t('overall')}: {player.overall}</Text>
                 </View>
                 <View style={styles.playerActions}>
                   <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
@@ -175,7 +177,7 @@ const TransferMarket = ({ onBack }) => {
                     style={styles.offerButton}
                     onPress={() => handleMakeOffer(player)}
                   >
-                    <Text style={styles.offerButtonText}>Make Offer</Text>
+                    <Text style={styles.offerButtonText}>{t('makeOffer')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -193,14 +195,14 @@ const TransferMarket = ({ onBack }) => {
               onPress={closeModal}
             />
             <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Make Offer for {selectedPlayer.name}</Text>
-            <Text style={styles.modalSubtitle}>Asking Price: {formatCurrency(selectedPlayer.price)}</Text>
+            <Text style={styles.modalTitle}>{t('makeOfferFor')} {selectedPlayer.name}</Text>
+            <Text style={styles.modalSubtitle}>{t('askingPrice')}: {formatCurrency(selectedPlayer.price)}</Text>
 
             <View style={styles.offerInputContainer}>
               <Text style={styles.dollarSign}>$</Text>
               <TextInput
                 style={styles.offerInput}
-                placeholder="Amount in millions"
+                placeholder={t('amountInMillions')}
                 placeholderTextColor="#888"
                 value={offerAmount}
                 onChangeText={setOfferAmount}
@@ -214,13 +216,13 @@ const TransferMarket = ({ onBack }) => {
                 style={styles.cancelButton}
                 onPress={closeModal}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.submitButton}
                 onPress={submitOffer}
               >
-                <Text style={styles.submitButtonText}>Submit Offer</Text>
+                <Text style={styles.submitButtonText}>{t('submitOffer')}</Text>
               </TouchableOpacity>
             </View>
             </View>

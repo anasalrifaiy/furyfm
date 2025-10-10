@@ -1,54 +1,56 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { showAlert, showConfirm } from '../utils/alert';
 
 const CoachingStaff = ({ onBack }) => {
   const { managerProfile, updateManagerProfile } = useAuth();
+  const { t } = useLanguage();
 
   const coaches = [
     {
       id: 'gk_coach',
-      name: 'Goalkeeper Coach',
+      nameKey: 'goalkeeperCoach',
       position: 'GK',
       icon: '🥅',
       levels: [
-        { level: 1, cost: 5000000, bonus: 5, description: 'Amateur GK Coach' },
-        { level: 2, cost: 15000000, bonus: 10, description: 'Professional GK Coach' },
-        { level: 3, cost: 30000000, bonus: 15, description: 'Elite GK Coach' },
+        { level: 1, cost: 5000000, bonus: 5, descriptionKey: 'amateurGKCoach' },
+        { level: 2, cost: 15000000, bonus: 10, descriptionKey: 'professionalGKCoach' },
+        { level: 3, cost: 30000000, bonus: 15, descriptionKey: 'eliteGKCoach' },
       ]
     },
     {
       id: 'defense_coach',
-      name: 'Defense Coach',
+      nameKey: 'defenseCoach',
       position: 'DEF',
       icon: '🛡️',
       levels: [
-        { level: 1, cost: 8000000, bonus: 5, description: 'Amateur Defense Coach' },
-        { level: 2, cost: 20000000, bonus: 10, description: 'Professional Defense Coach' },
-        { level: 3, cost: 40000000, bonus: 15, description: 'Elite Defense Coach' },
+        { level: 1, cost: 8000000, bonus: 5, descriptionKey: 'amateurDefenseCoach' },
+        { level: 2, cost: 20000000, bonus: 10, descriptionKey: 'professionalDefenseCoach' },
+        { level: 3, cost: 40000000, bonus: 15, descriptionKey: 'eliteDefenseCoach' },
       ]
     },
     {
       id: 'midfield_coach',
-      name: 'Midfield Coach',
+      nameKey: 'midfieldCoach',
       position: 'MID',
       icon: '⚙️',
       levels: [
-        { level: 1, cost: 10000000, bonus: 5, description: 'Amateur Midfield Coach' },
-        { level: 2, cost: 25000000, bonus: 10, description: 'Professional Midfield Coach' },
-        { level: 3, cost: 50000000, bonus: 15, description: 'Elite Midfield Coach' },
+        { level: 1, cost: 10000000, bonus: 5, descriptionKey: 'amateurMidfieldCoach' },
+        { level: 2, cost: 25000000, bonus: 10, descriptionKey: 'professionalMidfieldCoach' },
+        { level: 3, cost: 50000000, bonus: 15, descriptionKey: 'eliteMidfieldCoach' },
       ]
     },
     {
       id: 'attack_coach',
-      name: 'Attack Coach',
+      nameKey: 'attackCoach',
       position: 'ATT',
       icon: '⚡',
       levels: [
-        { level: 1, cost: 12000000, bonus: 5, description: 'Amateur Attack Coach' },
-        { level: 2, cost: 30000000, bonus: 10, description: 'Professional Attack Coach' },
-        { level: 3, cost: 60000000, bonus: 15, description: 'Elite Attack Coach' },
+        { level: 1, cost: 12000000, bonus: 5, descriptionKey: 'amateurAttackCoach' },
+        { level: 2, cost: 30000000, bonus: 10, descriptionKey: 'professionalAttackCoach' },
+        { level: 3, cost: 60000000, bonus: 15, descriptionKey: 'eliteAttackCoach' },
       ]
     },
   ];
@@ -65,20 +67,20 @@ const CoachingStaff = ({ onBack }) => {
     const currentLevel = getCurrentLevel(coach.id);
 
     if (currentLevel >= level) {
-      showAlert('Already Hired', `You already have this coach at level ${currentLevel}.`);
+      showAlert(t('alreadyHired'), `${t('alreadyHaveCoach')} ${currentLevel}.`);
       return;
     }
 
     const levelData = coach.levels[level - 1];
 
     if (managerProfile.budget < levelData.cost) {
-      showAlert('Insufficient Budget', `You need ${formatCurrency(levelData.cost)} to hire this coach.`);
+      showAlert(t('insufficientFunds'), `${t('needBudgetHire')} ${formatCurrency(levelData.cost)} ${t('toHireCoach')}`);
       return;
     }
 
     showConfirm(
-      'Hire Coach',
-      `Hire ${levelData.description} for ${formatCurrency(levelData.cost)}?\n\nBonus: +${levelData.bonus} to ${coach.position} players in matches`,
+      t('hireCoach'),
+      `${t('hireCoachFor')} ${t(levelData.descriptionKey)} ${t('for')} ${formatCurrency(levelData.cost)}?\n\n${t('bonus')}: +${levelData.bonus} ${t('inMatches')} ${coach.position} ${t('playersInMatches')}`,
       async () => {
         const newCoaches = {
           ...(managerProfile.coaches || {}),
@@ -90,7 +92,7 @@ const CoachingStaff = ({ onBack }) => {
           budget: managerProfile.budget - levelData.cost
         });
 
-        showAlert('Success!', `${levelData.description} has been hired!`);
+        showAlert(t('success'), `${t(levelData.descriptionKey)} ${t('coachHired')}`);
       }
     );
   };
@@ -100,12 +102,12 @@ const CoachingStaff = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Coaching Staff</Text>
+          <Text style={styles.title}>{t('coachingStaffTitle')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -115,33 +117,36 @@ const CoachingStaff = ({ onBack }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>{t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Coaching Staff</Text>
-        <Text style={styles.budget}>Budget: {formatCurrency(managerProfile.budget)}</Text>
+        <Text style={styles.title}>{t('coachingStaffTitle')}</Text>
+        <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
-            Hire specialized coaches to boost your players' performance in matches!
+            {t('hireCoachesDesc')}
           </Text>
         </View>
 
         {coaches.map(coach => {
           const currentLevel = getCurrentLevel(coach.id);
+          const specialistKey = coach.position === 'GK' ? 'gkSpecialist' :
+                               coach.position === 'DEF' ? 'defSpecialist' :
+                               coach.position === 'MID' ? 'midSpecialist' : 'attSpecialist';
 
           return (
             <View key={coach.id} style={styles.coachCard}>
               <View style={styles.coachHeader}>
                 <Text style={styles.coachIcon}>{coach.icon}</Text>
                 <View style={styles.coachInfo}>
-                  <Text style={styles.coachName}>{coach.name}</Text>
-                  <Text style={styles.coachPosition}>{coach.position} Specialist</Text>
+                  <Text style={styles.coachName}>{t(coach.nameKey)}</Text>
+                  <Text style={styles.coachPosition}>{t(specialistKey)}</Text>
                 </View>
                 {currentLevel > 0 && (
                   <View style={styles.levelBadge}>
-                    <Text style={styles.levelBadgeText}>Level {currentLevel}</Text>
+                    <Text style={styles.levelBadgeText}>{t('level')} {currentLevel}</Text>
                   </View>
                 )}
               </View>
@@ -164,12 +169,12 @@ const CoachingStaff = ({ onBack }) => {
                     >
                       <View style={styles.levelHeader}>
                         <Text style={[styles.levelTitle, isOwned && styles.levelTitleOwned]}>
-                          Level {levelData.level}
+                          {t('level')} {levelData.level}
                         </Text>
-                        {isOwned && <Text style={styles.ownedBadge}>✓ Owned</Text>}
+                        {isOwned && <Text style={styles.ownedBadge}>{t('owned')}</Text>}
                       </View>
-                      <Text style={styles.levelDesc}>{levelData.description}</Text>
-                      <Text style={styles.levelBonus}>+{levelData.bonus} Bonus to {coach.position}</Text>
+                      <Text style={styles.levelDesc}>{t(levelData.descriptionKey)}</Text>
+                      <Text style={styles.levelBonus}>+{levelData.bonus} {t('bonusTo')} {coach.position}</Text>
                       {!isOwned && (
                         <View style={styles.levelCost}>
                           <Text style={styles.levelCostText}>{formatCurrency(levelData.cost)}</Text>

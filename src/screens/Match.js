@@ -1083,8 +1083,17 @@ const Match = ({ onBack, activeMatchId }) => {
                 <TouchableOpacity
                   key={match.id}
                   style={styles.liveMatchCard}
-                  onPress={() => {
-                    setCurrentMatch(match);
+                  onPress={async () => {
+                    // Register as spectator
+                    const matchRef = ref(database, `matches/${match.id}`);
+                    const spectators = match.spectators || {};
+                    spectators[currentUser.uid] = {
+                      name: managerProfile.managerName,
+                      joinedAt: Date.now()
+                    };
+                    await update(matchRef, { spectators });
+
+                    setCurrentMatch({ ...match, id: match.id });
                     setIsHome(false); // Spectator mode
                     setMatchState('spectator');
                   }}
@@ -1657,7 +1666,14 @@ const Match = ({ onBack, activeMatchId }) => {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
+          <TouchableOpacity onPress={async () => {
+            // Remove spectator when leaving
+            if (currentMatch?.id) {
+              const matchRef = ref(database, `matches/${currentMatch.id}/spectators/${currentUser.uid}`);
+              await update(ref(database, `matches/${currentMatch.id}`), {
+                [`spectators/${currentUser.uid}`]: null
+              });
+            }
             setMatchState('select');
             setCurrentMatch(null);
           }} style={styles.backButton}>
@@ -1724,6 +1740,20 @@ const Match = ({ onBack, activeMatchId }) => {
               ))
             )}
           </View>
+
+          {/* Spectators List */}
+          {currentMatch.spectators && Object.keys(currentMatch.spectators).length > 0 && (
+            <View style={styles.spectatorsSection}>
+              <Text style={styles.spectatorsTitle}>👁️ Watching Now ({Object.keys(currentMatch.spectators).length})</Text>
+              <View style={styles.spectatorsList}>
+                {Object.values(currentMatch.spectators).map((spectator, index) => (
+                  <View key={index} style={styles.spectatorChip}>
+                    <Text style={styles.spectatorChipText}>{spectator.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Squads */}
           <View style={styles.squadsSection}>
@@ -2820,6 +2850,38 @@ const styles = StyleSheet.create({
     color: '#43e97b',
     width: 30,
     textAlign: 'right',
+  },
+  spectatorsSection: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  spectatorsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#667eea',
+    marginBottom: 10,
+  },
+  spectatorsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  spectatorChip: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  spectatorChipText: {
+    fontSize: 13,
+    color: '#ffffff',
+    fontWeight: '500',
   },
 });
 

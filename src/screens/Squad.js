@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { database } from '../firebase';
 import { ref, update } from 'firebase/database';
 import { showAlert, showConfirm } from '../utils/alert';
@@ -8,6 +9,7 @@ import Portal from '../components/Portal';
 
 const Squad = ({ onBack }) => {
   const { managerProfile, updateManagerProfile, loading } = useAuth();
+  const { t } = useLanguage();
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   if (!managerProfile) {
@@ -15,12 +17,12 @@ const Squad = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>My Squad</Text>
+          <Text style={styles.title}>{t('mySquad')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -32,8 +34,8 @@ const Squad = ({ onBack }) => {
 
   const handleSellPlayer = async (player) => {
     showConfirm(
-      'Sell Player',
-      `Are you sure you want to sell ${player.name} for ${formatCurrency(player.price)}?`,
+      t('sellPlayer'),
+      `${t('sellConfirm')} ${player.name} ${t('for')} ${formatCurrency(player.price)}?`,
       async () => {
         // Confirmed - sell the player
         const newSquad = managerProfile.squad.filter(p => p.id !== player.id);
@@ -58,7 +60,7 @@ const Squad = ({ onBack }) => {
           lineup: updatedLineup
         });
 
-        showAlert('Success', `${player.name} has been sold for ${formatCurrency(player.price)}!`);
+        showAlert(t('success'), `${player.name} ${t('soldSuccess')} ${formatCurrency(player.price)}!`);
       },
       () => {
         // Cancelled - do nothing
@@ -79,7 +81,7 @@ const Squad = ({ onBack }) => {
     <View style={styles.positionSection}>
       <Text style={[styles.sectionTitle, { color }]}>{title} ({players.length})</Text>
       {players.length === 0 ? (
-        <Text style={styles.emptyText}>No players in this position</Text>
+        <Text style={styles.emptyText}>{t('noPlayersPosition')}</Text>
       ) : (
         players.map(player => (
           <TouchableOpacity
@@ -89,9 +91,9 @@ const Squad = ({ onBack }) => {
           >
             <View style={styles.playerInfo}>
               <Text style={styles.playerName}>{player.name}</Text>
-              <Text style={styles.playerDetails}>{player.age} • {player.position} • {player.nationality}</Text>
+              <Text style={styles.playerDetails}>{player.age} {t('years')} • {player.position} • {player.nationality}</Text>
               <Text style={styles.playerClub}>{player.club}</Text>
-              <Text style={styles.playerRating}>OVR: {player.overall}</Text>
+              <Text style={styles.playerRating}>{t('ovr')}: {player.overall}</Text>
             </View>
             <View style={styles.playerValue}>
               <Text style={styles.playerPrice}>{formatCurrency(player.price)}</Text>
@@ -107,27 +109,27 @@ const Squad = ({ onBack }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>{t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>My Squad</Text>
+        <Text style={styles.title}>{t('mySquad')}</Text>
         <View style={styles.squadStats}>
-          <Text style={styles.statText}>Squad Size: {squad.length}</Text>
-          <Text style={styles.statText}>Total Value: {formatCurrency(squadValue)}</Text>
+          <Text style={styles.statText}>{t('squadSize')}: {squad.length}</Text>
+          <Text style={styles.statText}>{t('totalValue')}: {formatCurrency(squadValue)}</Text>
         </View>
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
-          <PositionSection title="Goalkeepers" players={goalkeepers} color="#4facfe" />
-          <PositionSection title="Defenders" players={defenders} color="#43e97b" />
-          <PositionSection title="Midfielders" players={midfielders} color="#f093fb" />
-          <PositionSection title="Forwards" players={forwards} color="#f5576c" />
+          <PositionSection title={t('goalkeepers')} players={goalkeepers} color="#4facfe" />
+          <PositionSection title={t('defenders')} players={defenders} color="#43e97b" />
+          <PositionSection title={t('midfielders')} players={midfielders} color="#f093fb" />
+          <PositionSection title={t('forwards')} players={forwards} color="#f5576c" />
 
           {squad.length === 0 && (
             <View style={styles.emptySquad}>
               <Text style={styles.emptyIcon}>👥</Text>
-              <Text style={styles.emptyTitle}>Your squad is empty</Text>
-              <Text style={styles.emptyDesc}>Head to the Transfer Market to sign your first players!</Text>
+              <Text style={styles.emptyTitle}>{t('emptySquad')}</Text>
+              <Text style={styles.emptyDesc}>{t('emptySquadDesc')}</Text>
             </View>
           )}
         </View>
@@ -148,23 +150,23 @@ const Squad = ({ onBack }) => {
 
             <View style={styles.playerStats}>
               <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Age:</Text>
+                <Text style={styles.statLabel}>{t('age')}:</Text>
                 <Text style={styles.statValue}>{selectedPlayer.age}</Text>
               </View>
               <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Nationality:</Text>
+                <Text style={styles.statLabel}>{t('nationality')}:</Text>
                 <Text style={styles.statValue}>{selectedPlayer.nationality}</Text>
               </View>
               <View style={styles.statRow}>
-                <Text style={styles.statLabel}>League:</Text>
+                <Text style={styles.statLabel}>{t('league')}:</Text>
                 <Text style={styles.statValue}>{selectedPlayer.league}</Text>
               </View>
               <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Overall:</Text>
+                <Text style={styles.statLabel}>{t('overall')}:</Text>
                 <Text style={styles.statValue}>{selectedPlayer.overall}</Text>
               </View>
               <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Value:</Text>
+                <Text style={styles.statLabel}>{t('value')}:</Text>
                 <Text style={styles.statValue}>{formatCurrency(selectedPlayer.price)}</Text>
               </View>
             </View>
@@ -174,7 +176,7 @@ const Squad = ({ onBack }) => {
                 style={styles.cancelButton}
                 onPress={() => setSelectedPlayer(null)}
               >
-                <Text style={styles.cancelButtonText}>Close</Text>
+                <Text style={styles.cancelButtonText}>{t('close')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.sellButton}
@@ -184,7 +186,7 @@ const Squad = ({ onBack }) => {
                   handleSellPlayer(playerToSell);
                 }}
               >
-                <Text style={styles.sellButtonText}>Sell Player</Text>
+                <Text style={styles.sellButtonText}>{t('sellPlayer')}</Text>
               </TouchableOpacity>
             </View>
           </View>

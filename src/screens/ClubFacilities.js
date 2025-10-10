@@ -1,17 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { showAlert, showConfirm } from '../utils/alert';
 
 const ClubFacilities = ({ onBack }) => {
   const { managerProfile, updateManagerProfile } = useAuth();
+  const { t } = useLanguage();
 
   const facilities = [
     {
       id: 'stadium',
-      name: 'Stadium',
+      nameKey: 'stadium',
       icon: '🏟️',
-      description: 'Upgrade your stadium to earn more revenue from matches',
+      descriptionKey: 'stadiumDesc',
       levels: [
         { level: 1, cost: 20000000, revenue: 2000000, capacity: 20000, description: 'Small Stadium' },
         { level: 2, cost: 50000000, revenue: 5000000, capacity: 40000, description: 'Medium Stadium' },
@@ -21,9 +23,9 @@ const ClubFacilities = ({ onBack }) => {
     },
     {
       id: 'training_ground',
-      name: 'Training Ground',
+      nameKey: 'trainingGround',
       icon: '🎓',
-      description: 'Better training facilities reduce training costs and improve effectiveness',
+      descriptionKey: 'trainingGroundDesc',
       levels: [
         { level: 1, cost: 15000000, discount: 10, bonus: 5, description: 'Basic Training Ground' },
         { level: 2, cost: 35000000, discount: 20, bonus: 10, description: 'Modern Training Ground' },
@@ -33,9 +35,9 @@ const ClubFacilities = ({ onBack }) => {
     },
     {
       id: 'youth_academy',
-      name: 'Youth Academy',
+      nameKey: 'youthAcademy',
       icon: '👦',
-      description: 'Develop young talents and reduce costs for training youth players',
+      descriptionKey: 'youthAcademyDesc',
       levels: [
         { level: 1, cost: 10000000, discount: 15, description: 'Basic Youth Academy' },
         { level: 2, cost: 25000000, discount: 30, description: 'Professional Youth Academy' },
@@ -45,9 +47,9 @@ const ClubFacilities = ({ onBack }) => {
     },
     {
       id: 'medical_center',
-      name: 'Medical Center',
+      nameKey: 'medicalCenter',
       icon: '🏥',
-      description: 'Reduce injury risks and improve player recovery',
+      descriptionKey: 'medicalCenterDesc',
       levels: [
         { level: 1, cost: 12000000, reduction: 10, description: 'Basic Medical Center' },
         { level: 2, cost: 30000000, reduction: 20, description: 'Advanced Medical Center' },
@@ -66,35 +68,36 @@ const ClubFacilities = ({ onBack }) => {
 
   const handleUpgrade = (facility, level) => {
     const currentLevel = getCurrentLevel(facility.id);
+    const facilityName = t(facility.nameKey);
 
     if (currentLevel >= level) {
-      showAlert('Already Owned', `You already have ${facility.name} at level ${currentLevel}.`);
+      showAlert(t('alreadyOwned'), `${t('alreadyHaveFacility')} ${facilityName} ${t('at')} ${t('level')} ${currentLevel}.`);
       return;
     }
 
     if (currentLevel !== level - 1) {
-      showAlert('Locked', `You must upgrade ${facility.name} to level ${level - 1} first.`);
+      showAlert(t('locked'), `${t('mustUpgradeFirst')} ${facilityName} ${t('to')} ${t('level')} ${level - 1} ${t('first')}`);
       return;
     }
 
     const levelData = facility.levels[level - 1];
 
     if (managerProfile.budget < levelData.cost) {
-      showAlert('Insufficient Budget', `You need ${formatCurrency(levelData.cost)} to upgrade.`);
+      showAlert(t('insufficientFunds'), `${t('needBudgetUpgrade')} ${formatCurrency(levelData.cost)} ${t('toUpgrade')}`);
       return;
     }
 
     const benefitText = facility.id === 'stadium'
-      ? `\n\n+${formatCurrency(levelData.revenue)} per match win\nCapacity: ${levelData.capacity.toLocaleString()}`
+      ? `\n\n+${formatCurrency(levelData.revenue)} ${t('perWin')}\n${t('capacity')}: ${levelData.capacity.toLocaleString()}`
       : facility.id === 'training_ground'
-      ? `\n\n-${levelData.discount}% training costs\n+${levelData.bonus}% training effectiveness`
+      ? `\n\n-${levelData.discount}% ${t('discountCost')}\n+${levelData.bonus}% ${t('effectiveness')}`
       : facility.id === 'youth_academy'
-      ? `\n\n-${levelData.discount}% youth training costs`
-      : `\n\n-${levelData.reduction}% injury risk`;
+      ? `\n\n-${levelData.discount}% ${t('youthTrainingCost')}`
+      : `\n\n-${levelData.reduction}% ${t('injuryRisk')}`;
 
     showConfirm(
-      'Upgrade Facility',
-      `Upgrade ${facility.name} to Level ${level}?\n\nCost: ${formatCurrency(levelData.cost)}${benefitText}`,
+      t('upgradeFacility'),
+      `${t('upgradeTo')} ${facilityName} ${t('to')} ${t('level')} ${level}?\n\n${t('cost')}: ${formatCurrency(levelData.cost)}${benefitText}`,
       async () => {
         const newFacilities = {
           ...(managerProfile.facilities || {}),
@@ -106,7 +109,7 @@ const ClubFacilities = ({ onBack }) => {
           budget: managerProfile.budget - levelData.cost
         });
 
-        showAlert('Success!', `${facility.name} upgraded to Level ${level}!`);
+        showAlert(t('success'), `${facilityName} ${t('facilityUpgraded')} ${t('level')} ${level}!`);
       }
     );
   };
@@ -116,12 +119,12 @@ const ClubFacilities = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Club Facilities</Text>
+          <Text style={styles.title}>{t('clubFacilitiesTitle')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -131,16 +134,16 @@ const ClubFacilities = ({ onBack }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>{t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Club Facilities</Text>
-        <Text style={styles.budget}>Budget: {formatCurrency(managerProfile.budget)}</Text>
+        <Text style={styles.title}>{t('clubFacilitiesTitle')}</Text>
+        <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
-            Invest in your club's infrastructure to gain long-term benefits!
+            {t('investInClub')}
           </Text>
         </View>
 
@@ -152,8 +155,8 @@ const ClubFacilities = ({ onBack }) => {
               <View style={styles.facilityHeader}>
                 <Text style={styles.facilityIcon}>{facility.icon}</Text>
                 <View style={styles.facilityInfo}>
-                  <Text style={styles.facilityName}>{facility.name}</Text>
-                  <Text style={styles.facilityDesc}>{facility.description}</Text>
+                  <Text style={styles.facilityName}>{t(facility.nameKey)}</Text>
+                  <Text style={styles.facilityDesc}>{t(facility.descriptionKey)}</Text>
                 </View>
                 {currentLevel > 0 && (
                   <View style={styles.levelBadge}>
@@ -170,13 +173,13 @@ const ClubFacilities = ({ onBack }) => {
 
                   let benefitText = '';
                   if (facility.id === 'stadium') {
-                    benefitText = `+${formatCurrency(levelData.revenue)}/win • ${(levelData.capacity / 1000).toFixed(0)}k capacity`;
+                    benefitText = `+${formatCurrency(levelData.revenue)}${t('perWin')} • ${(levelData.capacity / 1000).toFixed(0)}k ${t('capacity')}`;
                   } else if (facility.id === 'training_ground') {
-                    benefitText = `-${levelData.discount}% cost, +${levelData.bonus}% effectiveness`;
+                    benefitText = `-${levelData.discount}% ${t('discountCost')}, +${levelData.bonus}% ${t('effectiveness')}`;
                   } else if (facility.id === 'youth_academy') {
-                    benefitText = `-${levelData.discount}% youth training cost`;
+                    benefitText = `-${levelData.discount}% ${t('youthTrainingCost')}`;
                   } else {
-                    benefitText = `-${levelData.reduction}% injury risk`;
+                    benefitText = `-${levelData.reduction}% ${t('injuryRisk')}`;
                   }
 
                   return (
@@ -193,7 +196,7 @@ const ClubFacilities = ({ onBack }) => {
                     >
                       <View style={styles.levelHeader}>
                         <Text style={[styles.levelTitle, isOwned && styles.levelTitleOwned]}>
-                          Level {levelData.level}
+                          {t('level')} {levelData.level}
                         </Text>
                         {isOwned && <Text style={styles.ownedBadge}>✓</Text>}
                         {isLocked && <Text style={styles.lockedBadge}>🔒</Text>}

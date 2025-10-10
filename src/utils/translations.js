@@ -101,6 +101,9 @@ export const translations = {
     formationSaved: 'Your formation and tactics have been saved!',
     selectPlayerFor: 'Select Player for',
     currentlyAt: 'Currently at',
+    noPlayers: 'No Players',
+    noPlayersAvailable: 'You don\'t have any players available for this position. Sign players from the Transfer Market.',
+    ovr: 'OVR',
 
     // Training
     trainingCenter: 'Training Center',
@@ -152,6 +155,18 @@ export const translations = {
     needBudgetHire: 'You need',
     toHireCoach: 'to hire this coach.',
     coachHired: 'has been hired!',
+    amateurGKCoach: 'Amateur GK Coach',
+    professionalGKCoach: 'Professional GK Coach',
+    eliteGKCoach: 'Elite GK Coach',
+    amateurDefenseCoach: 'Amateur Defense Coach',
+    professionalDefenseCoach: 'Professional Defense Coach',
+    eliteDefenseCoach: 'Elite Defense Coach',
+    amateurMidfieldCoach: 'Amateur Midfield Coach',
+    professionalMidfieldCoach: 'Professional Midfield Coach',
+    eliteMidfieldCoach: 'Elite Midfield Coach',
+    amateurAttackCoach: 'Amateur Attack Coach',
+    professionalAttackCoach: 'Professional Attack Coach',
+    eliteAttackCoach: 'Elite Attack Coach',
 
     // Club Facilities
     clubFacilitiesTitle: 'Club Facilities',
@@ -372,6 +387,9 @@ export const translations = {
     formationSaved: 'تم حفظ تشكيلتك وتكتيكاتك!',
     selectPlayerFor: 'اختر لاعباً لـ',
     currentlyAt: 'حالياً في',
+    noPlayers: 'لا يوجد لاعبون',
+    noPlayersAvailable: 'ليس لديك أي لاعبين متاحين لهذا المركز. تعاقد مع لاعبين من سوق الانتقالات.',
+    ovr: 'التقييم',
 
     // Training - keep title
     trainingCenter: 'Training Center',
@@ -423,6 +441,18 @@ export const translations = {
     needBudgetHire: 'تحتاج إلى',
     toHireCoach: 'لتوظيف هذا المدرب.',
     coachHired: 'تم توظيفه!',
+    amateurGKCoach: 'مدرب حراسة مرمى مبتدئ',
+    professionalGKCoach: 'مدرب حراسة مرمى محترف',
+    eliteGKCoach: 'مدرب حراسة مرمى نخبة',
+    amateurDefenseCoach: 'مدرب دفاع مبتدئ',
+    professionalDefenseCoach: 'مدرب دفاع محترف',
+    eliteDefenseCoach: 'مدرب دفاع نخبة',
+    amateurMidfieldCoach: 'مدرب وسط مبتدئ',
+    professionalMidfieldCoach: 'مدرب وسط محترف',
+    eliteMidfieldCoach: 'مدرب وسط نخبة',
+    amateurAttackCoach: 'مدرب هجوم مبتدئ',
+    professionalAttackCoach: 'مدرب هجوم محترف',
+    eliteAttackCoach: 'مدرب هجوم نخبة',
 
     // Club Facilities - keep names
     clubFacilitiesTitle: 'Club Facilities',
