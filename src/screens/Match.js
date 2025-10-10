@@ -68,6 +68,10 @@ const Match = ({ onBack, activeMatchId }) => {
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
         setCurrentMatch(matchData);
+        setHomePausesUsed(matchData.homePausesUsed || 0);
+        setAwayPausesUsed(matchData.awayPausesUsed || 0);
+        setHomeResumeReady(matchData.homeResumeReady || false);
+        setAwayResumeReady(matchData.awayResumeReady || false);
 
         // Detect state change to 'playing' - start simulation if home manager
         if (matchData.state === 'playing' && previousState === 'ready' && isHome) {
@@ -103,13 +107,16 @@ const Match = ({ onBack, activeMatchId }) => {
       setPauseCountdown(remaining);
 
       if (remaining === 0 && currentMatch.paused) {
-        // Auto-resume match when countdown ends
+        // Auto-resume match when countdown ends (after 25 seconds)
         const matchRef = ref(database, `matches/${currentMatch.id}`);
         update(matchRef, {
           paused: false,
           pausedBy: null,
           pauseReason: null,
-          pauseEndTime: null
+          pauseEndTime: null,
+          pauseStartTime: null,
+          homeResumeReady: false,
+          awayResumeReady: false
         });
       }
     };
@@ -119,6 +126,23 @@ const Match = ({ onBack, activeMatchId }) => {
 
     return () => clearInterval(interval);
   }, [currentMatch?.paused, currentMatch?.pauseEndTime, currentMatch?.id]);
+
+  // Check if both managers clicked resume
+  useEffect(() => {
+    if (currentMatch?.paused && homeResumeReady && awayResumeReady) {
+      // Both managers ready - resume immediately
+      const matchRef = ref(database, `matches/${currentMatch.id}`);
+      update(matchRef, {
+        paused: false,
+        pausedBy: null,
+        pauseReason: null,
+        pauseEndTime: null,
+        pauseStartTime: null,
+        homeResumeReady: false,
+        awayResumeReady: false
+      });
+    }
+  }, [currentMatch?.paused, homeResumeReady, awayResumeReady, currentMatch?.id]);
 
   // Load all live matches for spectator mode
   useEffect(() => {
@@ -1878,50 +1902,104 @@ const Match = ({ onBack, activeMatchId }) => {
             currentMatch.awayManager.formation || '4-3-3'
           )}
 
-          {/* Pause Countdown Banner */}
-          {pauseCountdown > 0 && (
-            <View style={styles.pauseBanner}>
-              <Text style={styles.pauseIcon}>⏸️</Text>
-              <View style={styles.pauseInfo}>
-                <Text style={styles.pauseTitle}>Match Paused - Substitution</Text>
-                <Text style={styles.pauseCountdown}>Resuming in {pauseCountdown} seconds</Text>
+          {/* Pause Countdown Banner with Resume Button */}
+          {currentMatch.paused && pauseCountdown > 0 && (
+            <View style={styles.pauseOverlay}>
+              <View style={styles.pauseBanner}>
+                <Text style={styles.pauseIcon}>⏸️</Text>
+                <View style={styles.pauseInfo}>
+                  <Text style={styles.pauseTitle}>Match Paused - Substitution Time</Text>
+                  <Text style={styles.pauseCountdown}>⏱️ Auto-resuming in {pauseCountdown} seconds</Text>
+                  <Text style={styles.pauseSubtitle}>Both managers can substitute now</Text>
+                </View>
+              </View>
+
+              {/* Resume Status */}
+              <View style={styles.resumeStatusCard}>
+                <Text style={styles.resumeStatusTitle}>Resume Status:</Text>
+                <View style={styles.resumeStatusRow}>
+                  <View style={styles.resumeTeamStatus}>
+                    <Text style={styles.resumeTeamName}>{currentMatch.homeManager.name}</Text>
+                    <Text style={[
+                      styles.resumeStatus,
+                      homeResumeReady && styles.resumeStatusReady
+                    ]}>
+                      {homeResumeReady ? '✓ Ready' : '⏳ Waiting...'}
+                    </Text>
+                  </View>
+                  <View style={styles.resumeTeamStatus}>
+                    <Text style={styles.resumeTeamName}>{currentMatch.awayManager.name}</Text>
+                    <Text style={[
+                      styles.resumeStatus,
+                      awayResumeReady && styles.resumeStatusReady
+                    ]}>
+                      {awayResumeReady ? '✓ Ready' : '⏳ Waiting...'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Resume Button */}
+              {!currentMatch.spectators?.[currentUser?.uid] && (
+                <TouchableOpacity
+                  style={[
+                    styles.resumeButton,
+                    (isHome ? homeResumeReady : awayResumeReady) && styles.resumeButtonDisabled
+                  ]}
+                  onPress={async () => {
+                    const matchRef = ref(database, `matches/${currentMatch.id}`);
+                    const resumeField = isHome ? 'homeResumeReady' : 'awayResumeReady';
+                    await update(matchRef, { [resumeField]: true });
+                  }}
+                  disabled={isHome ? homeResumeReady : awayResumeReady}
+                >
+                  <Text style={styles.resumeButtonText}>
+                    {(isHome ? homeResumeReady : awayResumeReady)
+                      ? '✓ Waiting for opponent...'
+                      : '▶️ Ready to Resume'
+                    }
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* In-Match Tactics Switcher - Disabled for Spectators */}
+          {!currentMatch.spectators?.[currentUser?.uid] && (
+            <View style={styles.inMatchTactics}>
+              <Text style={styles.tacticsTitle}>Tactics: {myTactic}</Text>
+              <View style={styles.tacticsRow}>
+                {['Defensive', 'Balanced', 'Attacking'].map(tactic => (
+                  <TouchableOpacity
+                    key={tactic}
+                    style={[
+                      styles.miniTacticBtn,
+                      myTactic === tactic && styles.miniTacticBtnActive
+                    ]}
+                    onPress={() => changeTactic(tactic)}
+                  >
+                    <Text style={styles.miniTacticText}>
+                      {tactic === 'Defensive' ? '🛡️' : tactic === 'Attacking' ? '⚔️' : '⚖️'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           )}
 
-          {/* In-Match Tactics Switcher */}
-          <View style={styles.inMatchTactics}>
-            <Text style={styles.tacticsTitle}>Tactics: {myTactic}</Text>
-            <View style={styles.tacticsRow}>
-              {['Defensive', 'Balanced', 'Attacking'].map(tactic => (
-                <TouchableOpacity
-                  key={tactic}
-                  style={[
-                    styles.miniTacticBtn,
-                    myTactic === tactic && styles.miniTacticBtnActive
-                  ]}
-                  onPress={() => changeTactic(tactic)}
-                >
-                  <Text style={styles.miniTacticText}>
-                    {tactic === 'Defensive' ? '🛡️' : tactic === 'Attacking' ? '⚔️' : '⚖️'}
+          {/* Substitutions Section with Pause Button - Hidden for Spectators */}
+          {!currentMatch.spectators?.[currentUser?.uid] && (
+            <View style={styles.subsSection}>
+              <View style={styles.subsHeader}>
+                <View>
+                  <Text style={styles.subsTitle}>
+                    Substitutions: {substitutionsUsed}/2 used
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Substitutions Section with Pause Button */}
-          <View style={styles.subsSection}>
-            <View style={styles.subsHeader}>
-              <View>
-                <Text style={styles.subsTitle}>
-                  Substitutions: {substitutionsUsed}/2 used
-                </Text>
-                {substitutionsUsed < 2 && (
-                  <Text style={styles.subsHint}>Make tactical changes</Text>
-                )}
-              </View>
-              {substitutionsUsed < 2 && !currentMatch.paused && (
+                  {substitutionsUsed < 2 && (
+                    <Text style={styles.subsHint}>Make tactical changes</Text>
+                  )}
+                </View>
+                {substitutionsUsed < 2 && !currentMatch.paused && (
                 <View style={styles.pauseContainer}>
                   <TouchableOpacity
                     style={[
@@ -1961,7 +2039,7 @@ const Match = ({ onBack, activeMatchId }) => {
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
+
 
             {/* Squad List for Substitution */}
             {substitutionMode?.selecting && (
@@ -1988,6 +2066,7 @@ const Match = ({ onBack, activeMatchId }) => {
               </View>
             )}
           </View>
+          )}
 
           {/* Events */}
           <View style={styles.eventsContainer}>
@@ -3333,6 +3412,74 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     fontWeight: '600',
+  },
+  pauseSubtitle: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontStyle: 'italic',
+    marginTop: 3,
+  },
+  pauseOverlay: {
+    backgroundColor: 'rgba(26, 31, 58, 0.95)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#f5576c',
+  },
+  resumeStatusCard: {
+    backgroundColor: '#252b54',
+    borderRadius: 15,
+    padding: 15,
+    marginVertical: 15,
+  },
+  resumeStatusTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  resumeStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  resumeTeamStatus: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  resumeTeamName: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 5,
+  },
+  resumeStatus: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#f5576c',
+  },
+  resumeStatusReady: {
+    color: '#43e97b',
+  },
+  resumeButton: {
+    backgroundColor: '#43e97b',
+    paddingVertical: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  resumeButtonDisabled: {
+    backgroundColor: '#888',
+  },
+  resumeButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  pauseContainer: {
+    flexDirection: 'row',
+  },
+  pauseSubButtonDisabled: {
+    backgroundColor: '#888',
+    opacity: 0.5,
   },
   liveMatchCard: {
     backgroundColor: '#1a1f3a',
