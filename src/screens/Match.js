@@ -1072,6 +1072,61 @@ const Match = ({ onBack, activeMatchId }) => {
         console.log(`Awarded ${xpEarned} XP to player ${scorerData.playerId}`);
       }
     }
+
+    // Determine winner and award match rewards
+    let winnerUid = null;
+    let winnerName = '';
+    if (finalHomeScore > finalAwayScore) {
+      winnerUid = matchData.homeManager.uid;
+      winnerName = matchData.homeManager.name;
+    } else if (finalAwayScore > finalHomeScore) {
+      winnerUid = matchData.awayManager.uid;
+      winnerName = matchData.awayManager.name;
+    }
+
+    // Award money and bonus XP to winner
+    if (winnerUid) {
+      const winnerRef = ref(database, `managers/${winnerUid}`);
+      const winnerSnapshot = await get(winnerRef);
+
+      if (winnerSnapshot.exists()) {
+        const winnerData = winnerSnapshot.val();
+        const stadiumLevel = winnerData.stadiumLevel || 1;
+
+        // Calculate reward: 1M base + 500K per stadium level
+        const baseReward = 1000000;
+        const stadiumBonus = (stadiumLevel - 1) * 500000;
+        const totalReward = baseReward + stadiumBonus;
+
+        // Award money
+        const newBudget = (winnerData.budget || 0) + totalReward;
+
+        // Award bonus XP to all players in winning squad (100 XP each)
+        const winningSquad = winnerUid === matchData.homeManager.uid
+          ? matchData.homeManager.squad
+          : matchData.awayManager.squad;
+
+        const updatedWinningSquad = winningSquad.map(player => ({
+          ...player,
+          xp: (player.xp || 0) + 100
+        }));
+
+        await update(winnerRef, {
+          budget: newBudget,
+          squad: updatedWinningSquad
+        });
+
+        // Send reward notification
+        await push(ref(database, `managers/${winnerUid}/notifications`), {
+          type: 'match_reward',
+          message: `Victory! You earned $${(totalReward / 1000000).toFixed(1)}M ($${(baseReward / 1000000)}M base + $${(stadiumBonus / 1000000).toFixed(1)}M stadium bonus). All players gained +100 XP!`,
+          timestamp: Date.now(),
+          read: false
+        });
+
+        console.log(`Awarded $${totalReward} to ${winnerName} (Stadium Level ${stadiumLevel})`);
+      }
+    }
   };
 
   const handleMatchFinished = (matchData) => {
@@ -2000,7 +2055,7 @@ const Match = ({ onBack, activeMatchId }) => {
                   )}
                 </View>
                 {substitutionsUsed < 2 && !currentMatch.paused && (
-                <View style={styles.pauseContainer}>
+                  <View style={styles.pauseContainer}>
                   <TouchableOpacity
                     style={[
                       styles.pauseSubButton,
@@ -2037,9 +2092,9 @@ const Match = ({ onBack, activeMatchId }) => {
                       ⏸️ Pause & Sub ({2 - (isHome ? homePausesUsed : awayPausesUsed)}/2 left)
                     </Text>
                   </TouchableOpacity>
-                </View>
-              )}
-
+                  </View>
+                )}
+              </View>
 
             {/* Squad List for Substitution */}
             {substitutionMode?.selecting && (
