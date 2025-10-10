@@ -39,7 +39,7 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   }, [activeMatchId]);
 
-  // Cleanup stuck matches older than 1 hour in waiting state
+  // Cleanup stuck matches in waiting state older than 30 minutes
   const cleanupStuckMatches = async () => {
     if (!currentUser) return;
 
@@ -48,16 +48,17 @@ const Match = ({ onBack, activeMatchId }) => {
 
     if (!snapshot.exists()) return;
 
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
 
     snapshot.forEach(async (childSnapshot) => {
       const match = childSnapshot.val();
       const matchAge = match.createdAt || 0;
 
-      // Auto-forfeit matches that are stuck in waiting state for over 1 hour
+      // Auto-cancel waiting matches older than 30 minutes
       if (
         match.state === 'waiting' &&
-        matchAge < oneHourAgo &&
+        matchAge > 0 &&
+        matchAge < thirtyMinutesAgo &&
         (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
       ) {
         const matchRef = ref(database, `matches/${childSnapshot.key}`);
@@ -234,15 +235,15 @@ const Match = ({ onBack, activeMatchId }) => {
 
     if (matchesSnapshot.exists()) {
       let myActiveMatch = null;
-      const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+      const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
 
       matchesSnapshot.forEach(childSnapshot => {
         const match = childSnapshot.val();
         const matchAge = match.createdAt || 0;
 
-        // Only consider matches created in the last 24 hours and not finished/forfeited
+        // Only consider matches created in the last 2 hours and not finished/forfeited
         if (
-          matchAge > twentyFourHoursAgo &&
+          matchAge > twoHoursAgo &&
           (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime' || match.state === 'paused') &&
           (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
         ) {
@@ -266,15 +267,15 @@ const Match = ({ onBack, activeMatchId }) => {
     // Check if opponent is already in an active match
     if (matchesSnapshot.exists()) {
       let opponentActiveMatch = null;
-      const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+      const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
 
       matchesSnapshot.forEach(childSnapshot => {
         const match = childSnapshot.val();
         const matchAge = match.createdAt || 0;
 
-        // Only consider recent matches (last 24 hours) and not finished/forfeited
+        // Only consider recent matches (last 2 hours) and not finished/forfeited
         if (
-          matchAge > twentyFourHoursAgo &&
+          matchAge > twoHoursAgo &&
           (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime' || match.state === 'paused') &&
           (match.homeManager?.uid === opponent.uid || match.awayManager?.uid === opponent.uid)
         ) {
