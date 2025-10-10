@@ -20,6 +20,10 @@ const Match = ({ onBack, activeMatchId }) => {
   const [substitutionsUsed, setSubstitutionsUsed] = useState(0);
   const [pauseCountdown, setPauseCountdown] = useState(0);
   const [liveMatches, setLiveMatches] = useState([]);
+  const [homePausesUsed, setHomePausesUsed] = useState(0);
+  const [awayPausesUsed, setAwayPausesUsed] = useState(0);
+  const [homeResumeReady, setHomeResumeReady] = useState(false);
+  const [awayResumeReady, setAwayResumeReady] = useState(false);
 
   useEffect(() => {
     if (managerProfile) {
@@ -1269,15 +1273,23 @@ const Match = ({ onBack, activeMatchId }) => {
     const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
     const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
 
+    const [prematchStarting11, setPrematchStarting11] = React.useState(mySquad.slice(0, 11));
+    const [prematchFormation, setPrematchFormation] = React.useState(myFormation);
+    const [selectingPlayerSlot, setSelectingPlayerSlot] = React.useState(null);
+
     const confirmPrematch = async () => {
       if (!currentMatch.isPractice) {
         const matchRef = ref(database, `matches/${currentMatch.id}`);
         const readyField = isHome ? 'homePrematchReady' : 'awayPrematchReady';
         const tacticField = isHome ? 'homeTactic' : 'awayTactic';
+        const squadField = isHome ? 'homeManager/squad' : 'awayManager/squad';
+        const formationField = isHome ? 'homeManager/formation' : 'awayManager/formation';
 
         await update(matchRef, {
           [readyField]: true,
-          [tacticField]: selectedTactic
+          [tacticField]: selectedTactic,
+          [squadField]: prematchStarting11,
+          [formationField]: prematchFormation
         });
 
         // Check if both ready
@@ -1294,9 +1306,19 @@ const Match = ({ onBack, activeMatchId }) => {
           state: 'ready',
           homePrematchReady: true,
           awayPrematchReady: true,
-          homeTactic: selectedTactic
+          homeTactic: selectedTactic,
+          homeManager: { ...currentMatch.homeManager, squad: prematchStarting11, formation: prematchFormation }
         });
         setMatchState('ready');
+      }
+    };
+
+    const selectPlayerForSlot = (player) => {
+      if (selectingPlayerSlot !== null) {
+        const newStarting11 = [...prematchStarting11];
+        newStarting11[selectingPlayerSlot] = player;
+        setPrematchStarting11(newStarting11);
+        setSelectingPlayerSlot(null);
       }
     };
 
@@ -1345,30 +1367,94 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
 
-          {/* Formation Display */}
+          {/* Formation Selection */}
           <View style={styles.prematchSection}>
-            <Text style={styles.sectionTitle}>Your Formation: {myFormation}</Text>
-            <View style={styles.formationPitch}>
-              <Text style={styles.formationNote}>
-                ⚽ Playing in {myFormation} formation
-              </Text>
-              <Text style={styles.formationSubnote}>
-                You can change your formation in the Formation screen before matches
-              </Text>
+            <Text style={styles.sectionTitle}>Select Formation</Text>
+            <View style={styles.formationButtonsRow}>
+              {['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '3-4-3'].map(formation => (
+                <TouchableOpacity
+                  key={formation}
+                  style={[
+                    styles.formationBtn,
+                    prematchFormation === formation && styles.formationBtnActive
+                  ]}
+                  onPress={() => setPrematchFormation(formation)}
+                  disabled={myPrematchReady}
+                >
+                  <Text style={[
+                    styles.formationBtnText,
+                    prematchFormation === formation && styles.formationBtnTextActive
+                  ]}>
+                    {formation}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
-          {/* Starting XI */}
+          {/* Formation Display with Clickable Players */}
           <View style={styles.prematchSection}>
-            <Text style={styles.sectionTitle}>Starting XI</Text>
-            {mySquad.map((player, index) => (
-              <View key={player.id} style={styles.prematchPlayerRow}>
-                <Text style={styles.playerPosition}>{player.position}</Text>
-                <Text style={styles.playerRowName}>{player.name}</Text>
-                <Text style={styles.playerRowRating}>⭐ {player.overall}</Text>
-              </View>
-            ))}
+            <Text style={styles.sectionTitle}>Starting XI - Tap to Change</Text>
+            <View style={styles.prematchFormationPitch}>
+              {getFormationPositions(prematchFormation, prematchStarting11).map((player, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[
+                    styles.prematchPlayer,
+                    { left: `${player.baseX}%`, top: `${player.baseY}%` }
+                  ]}
+                  onPress={() => !myPrematchReady && setSelectingPlayerSlot(idx)}
+                  disabled={myPrematchReady}
+                >
+                  <View style={styles.prematchPlayerCircle}>
+                    <Text style={styles.prematchPlayerPos}>{player.position}</Text>
+                    <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
+                  </View>
+                  <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
+                  <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
+
+          {/* Player Selection Modal */}
+          {selectingPlayerSlot !== null && (
+            <View style={styles.modal}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  Select Player for Position {selectingPlayerSlot + 1}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  Current: {prematchStarting11[selectingPlayerSlot].name}
+                </Text>
+                <ScrollView style={styles.benchList}>
+                  {(managerProfile.squad || [])
+                    .filter(p => !prematchStarting11.some(sp => sp.id === p.id) || p.id === prematchStarting11[selectingPlayerSlot].id)
+                    .map(player => (
+                      <TouchableOpacity
+                        key={player.id}
+                        style={styles.benchPlayerOption}
+                        onPress={() => selectPlayerForSlot(player)}
+                      >
+                        <View style={styles.benchPlayerInfo}>
+                          <Text style={styles.benchPlayerName}>{player.name}</Text>
+                          <Text style={styles.benchPlayerDetails}>
+                            {player.position} • OVR {player.overall}
+                          </Text>
+                        </View>
+                        <Text style={styles.benchPlayerRating}>{player.overall}</Text>
+                      </TouchableOpacity>
+                    ))}
+                </ScrollView>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setSelectingPlayerSlot(null)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* Ready Status */}
           <View style={styles.readyStatusCard}>
@@ -1836,23 +1922,44 @@ const Match = ({ onBack, activeMatchId }) => {
                 )}
               </View>
               {substitutionsUsed < 2 && !currentMatch.paused && (
-                <TouchableOpacity
-                  style={styles.pauseSubButton}
-                  onPress={async () => {
-                    // Pause the match for both managers
-                    if (!currentMatch.isPractice) {
-                      const matchRef = ref(database, `matches/${currentMatch.id}`);
-                      await update(matchRef, {
-                        paused: true,
-                        pausedBy: currentUser.uid,
-                        pauseReason: 'substitution'
-                      });
-                    }
-                    setSubstitutionMode({ selecting: true });
-                  }}
-                >
-                  <Text style={styles.pauseSubButtonText}>⏸️ Pause & Sub</Text>
-                </TouchableOpacity>
+                <View style={styles.pauseContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.pauseSubButton,
+                      (isHome ? homePausesUsed : awayPausesUsed) >= 2 && styles.pauseSubButtonDisabled
+                    ]}
+                    onPress={async () => {
+                      const myPausesUsed = isHome ? homePausesUsed : awayPausesUsed;
+                      if (myPausesUsed >= 2) {
+                        showAlert('Pause Limit Reached', 'You have already used both pauses this match.');
+                        return;
+                      }
+
+                      // Pause the match for both managers with 25-second timer
+                      if (!currentMatch.isPractice) {
+                        const matchRef = ref(database, `matches/${currentMatch.id}`);
+                        const pauseField = isHome ? 'homePausesUsed' : 'awayPausesUsed';
+                        await update(matchRef, {
+                          paused: true,
+                          pausedBy: currentUser.uid,
+                          pauseReason: 'substitution',
+                          pauseStartTime: Date.now(),
+                          pauseEndTime: Date.now() + 25000, // 25 seconds
+                          [pauseField]: myPausesUsed + 1,
+                          homeResumeReady: false,
+                          awayResumeReady: false
+                        });
+                      }
+                      setSubstitutionMode({ selecting: true });
+                      setPauseCountdown(25);
+                    }}
+                    disabled={(isHome ? homePausesUsed : awayPausesUsed) >= 2}
+                  >
+                    <Text style={styles.pauseSubButtonText}>
+                      ⏸️ Pause & Sub ({2 - (isHome ? homePausesUsed : awayPausesUsed)}/2 left)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
 
@@ -3043,6 +3150,80 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 8,
+  },
+  formationButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
+  },
+  formationBtn: {
+    backgroundColor: '#252b54',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  formationBtnActive: {
+    backgroundColor: '#2d3561',
+    borderColor: '#43e97b',
+  },
+  formationBtnText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  formationBtnTextActive: {
+    color: '#43e97b',
+  },
+  prematchFormationPitch: {
+    position: 'relative',
+    width: '100%',
+    height: 350,
+    backgroundColor: '#1a4d2e',
+    borderRadius: 15,
+    marginTop: 10,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  prematchPlayer: {
+    position: 'absolute',
+    alignItems: 'center',
+    transform: [{ translateX: -30 }, { translateY: -30 }],
+  },
+  prematchPlayerCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#667eea',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  prematchPlayerPos: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  prematchPlayerNum: {
+    color: '#ffffff',
+    fontSize: 8,
+  },
+  prematchPlayerName: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    maxWidth: 60,
+  },
+  prematchPlayerRating: {
+    color: '#43e97b',
+    fontSize: 11,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   readyStatusCard: {
     backgroundColor: '#1a1f3a',
