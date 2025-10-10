@@ -888,6 +888,7 @@ const styles = StyleSheet.create({
   countryFlag: {
     fontSize: 20,
     marginRight: 8,
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
   },
   countrySelector: {
     backgroundColor: '#252b54',
@@ -905,6 +906,7 @@ const styles = StyleSheet.create({
   selectedCountryFlag: {
     fontSize: 20,
     marginRight: 10,
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
   },
   selectedCountryText: {
     color: '#ffffff',
@@ -921,6 +923,9 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 500,
     maxHeight: '80%',
+    zIndex: 2,
+    display: 'flex',
+    flexDirection: 'column',
   },
   searchInput: {
     backgroundColor: '#252b54',
@@ -935,6 +940,8 @@ const styles = StyleSheet.create({
   countryList: {
     maxHeight: 400,
     marginBottom: 15,
+    overflow: 'auto',
+    flex: 1,
   },
   countryOption: {
     flexDirection: 'row',
@@ -945,10 +952,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#2d3561',
+    cursor: 'pointer',
   },
   countryOptionFlag: {
     fontSize: 24,
     marginRight: 12,
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
   },
   countryOptionName: {
     color: '#ffffff',

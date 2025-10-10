@@ -1192,6 +1192,7 @@ const Match = ({ onBack, activeMatchId }) => {
   if (matchState === 'prematch') {
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
+    const myFormation = myTeam.formation || '4-3-3';
     const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
     const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
 
@@ -1268,6 +1269,19 @@ const Match = ({ onBack, activeMatchId }) => {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          {/* Formation Display */}
+          <View style={styles.prematchSection}>
+            <Text style={styles.sectionTitle}>Your Formation: {myFormation}</Text>
+            <View style={styles.formationPitch}>
+              <Text style={styles.formationNote}>
+                ⚽ Playing in {myFormation} formation
+              </Text>
+              <Text style={styles.formationSubnote}>
+                You can change your formation in the Formation screen before matches
+              </Text>
             </View>
           </View>
 
@@ -2533,6 +2547,26 @@ const styles = StyleSheet.create({
   },
   tacticLabelSelected: {
     color: '#43e97b',
+  },
+  formationPitch: {
+    backgroundColor: '#252b54',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  formationNote: {
+    fontSize: 16,
+    color: '#43e97b',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  formationSubnote: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   prematchPlayerRow: {
     flexDirection: 'row',
