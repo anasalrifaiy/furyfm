@@ -28,6 +28,7 @@ const Match = ({ onBack, activeMatchId }) => {
   useEffect(() => {
     if (managerProfile) {
       loadFriends();
+      cleanupStuckMatches();
     }
   }, [managerProfile]);
 
@@ -37,6 +38,40 @@ const Match = ({ onBack, activeMatchId }) => {
       loadActiveMatch(activeMatchId);
     }
   }, [activeMatchId]);
+
+  // Cleanup stuck matches older than 1 hour in waiting state
+  const cleanupStuckMatches = async () => {
+    if (!currentUser) return;
+
+    const matchesRef = ref(database, 'matches');
+    const snapshot = await get(matchesRef);
+
+    if (!snapshot.exists()) return;
+
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+
+    snapshot.forEach(async (childSnapshot) => {
+      const match = childSnapshot.val();
+      const matchAge = match.createdAt || 0;
+
+      // Auto-forfeit matches that are stuck in waiting state for over 1 hour
+      if (
+        match.state === 'waiting' &&
+        matchAge < oneHourAgo &&
+        (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
+      ) {
+        const matchRef = ref(database, `matches/${childSnapshot.key}`);
+        await update(matchRef, {
+          state: 'finished',
+          homeScore: 0,
+          awayScore: 0,
+          minute: 0,
+          events: [`Match automatically cancelled due to inactivity`],
+          cancelledAt: Date.now()
+        });
+      }
+    });
+  };
 
   const loadActiveMatch = async (matchId) => {
     const matchRef = ref(database, `matches/${matchId}`);
@@ -216,8 +251,14 @@ const Match = ({ onBack, activeMatchId }) => {
       });
 
       if (myActiveMatch) {
-        const opponent = myActiveMatch.homeManager?.uid === currentUser.uid ? myActiveMatch.awayManager?.name : myActiveMatch.homeManager?.name;
-        showAlert('Match in Progress', `You have an active match (${myActiveMatch.state}) vs ${opponent}. Please finish or forfeit your current match first.`);
+        // If there's an active match, load it automatically so user can see and forfeit it
+        const amHome = myActiveMatch.homeManager?.uid === currentUser.uid;
+        setIsHome(amHome);
+        setCurrentMatch(myActiveMatch);
+        setMatchState(myActiveMatch.state);
+
+        const opponent = amHome ? myActiveMatch.awayManager?.name : myActiveMatch.homeManager?.name;
+        showAlert('Match in Progress', `You have an active match (${myActiveMatch.state}) vs ${opponent}. You can forfeit it using the button below.`);
         return;
       }
     }
@@ -1378,6 +1419,12 @@ const Match = ({ onBack, activeMatchId }) => {
             <Text style={styles.backButtonText}>← Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Waiting...</Text>
+          <TouchableOpacity
+            style={styles.forfeitButton}
+            onPress={forfeitMatch}
+          >
+            <Text style={styles.forfeitButtonText}>⚠️ Forfeit</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
