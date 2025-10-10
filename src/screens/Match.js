@@ -1612,8 +1612,23 @@ const Match = ({ onBack, activeMatchId }) => {
       const homePlayers = getFormationPositions(homeFormation, homeSquad);
       const awayPlayers = getFormationPositions(awayFormation, awaySquad);
 
-      // Add random movement based on minute
-      const variance = Math.sin(minute / 10) * 3; // Small movement
+      // Dynamic movement - faster and more realistic
+      const variance = Math.sin(minute / 3) * 8; // Increased movement
+      const verticalVariance = Math.cos(minute / 4) * 5;
+
+      // Simulate ball possession - alternates between teams
+      const possessionTeam = Math.floor(minute / 5) % 2; // Changes every 5 minutes
+      const ballCarrier = possessionTeam === 0
+        ? homePlayers[Math.floor(Math.random() * Math.min(6, homePlayers.length))] // Front 6 players
+        : awayPlayers[Math.floor(Math.random() * Math.min(6, awayPlayers.length))];
+
+      // Ball position near the ball carrier
+      const ballX = possessionTeam === 0
+        ? ballCarrier.baseX + variance
+        : 100 - ballCarrier.baseX - variance;
+      const ballY = possessionTeam === 0
+        ? ballCarrier.baseY + verticalVariance
+        : 100 - ballCarrier.baseY + verticalVariance;
 
       return (
         <View style={styles.pitchContainer}>
@@ -1639,19 +1654,25 @@ const Match = ({ onBack, activeMatchId }) => {
             <View style={styles.penaltyAreaTop} />
             <View style={styles.penaltyAreaBottom} />
 
-            {/* Ball (center when no action) */}
-            <View style={[styles.ball, { left: '50%', top: '50%' }]} />
+            {/* Ball with dynamic position */}
+            <View style={[styles.ball, { left: `${ballX}%`, top: `${ballY}%` }]} />
 
-            {/* Home Team (bottom) */}
+            {/* Home Team (bottom) - attacking players move more */}
             {homePlayers.map((player, idx) => {
-              const x = player.baseX + variance;
-              const y = player.baseY;
+              const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
+              const moveAmount = isAttacker ? variance * 1.5 : variance;
+              const vertMove = isAttacker ? verticalVariance * 1.2 : verticalVariance * 0.8;
+              const x = player.baseX + moveAmount;
+              const y = player.baseY + vertMove;
+              const hasBall = ballCarrier.id === player.id && possessionTeam === 0;
+
               return (
                 <View
                   key={`home-${idx}`}
                   style={[
                     styles.playerDot,
                     styles.playerDotHome,
+                    hasBall && styles.playerWithBall,
                     { left: `${x}%`, top: `${y}%` }
                   ]}
                 >
@@ -1661,16 +1682,22 @@ const Match = ({ onBack, activeMatchId }) => {
               );
             })}
 
-            {/* Away Team (top) - mirrored */}
+            {/* Away Team (top) - mirrored with movement */}
             {awayPlayers.map((player, idx) => {
-              const x = 100 - player.baseX - variance;
-              const y = 100 - player.baseY;
+              const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
+              const moveAmount = isAttacker ? variance * 1.5 : variance;
+              const vertMove = isAttacker ? verticalVariance * 1.2 : verticalVariance * 0.8;
+              const x = 100 - player.baseX - moveAmount;
+              const y = 100 - player.baseY - vertMove;
+              const hasBall = ballCarrier.id === player.id && possessionTeam === 1;
+
               return (
                 <View
                   key={`away-${idx}`}
                   style={[
                     styles.playerDot,
                     styles.playerDotAway,
+                    hasBall && styles.playerWithBall,
                     { left: `${x}%`, top: `${y}%` }
                   ]}
                 >
@@ -1681,9 +1708,11 @@ const Match = ({ onBack, activeMatchId }) => {
             })}
           </View>
 
-          {/* Match Info Overlay */}
+          {/* Match Info Overlay with possession */}
           <View style={styles.pitchInfoOverlay}>
-            <Text style={styles.pitchInfoText}>⚽ Live Match Action</Text>
+            <Text style={styles.pitchInfoText}>
+              ⚽ {possessionTeam === 0 ? currentMatch.homeManager.name : currentMatch.awayManager.name} in possession
+            </Text>
           </View>
         </View>
       );
@@ -1786,13 +1815,50 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
 
-          {/* Substitutions */}
+          {/* Substitutions Section with Pause Button */}
           <View style={styles.subsSection}>
-            <Text style={styles.subsTitle}>
-              Substitutions: {substitutionsUsed}/2 used
-            </Text>
-            {substitutionsUsed < 2 && (
-              <Text style={styles.subsHint}>Tap a player to substitute</Text>
+            <View style={styles.subsHeader}>
+              <View>
+                <Text style={styles.subsTitle}>
+                  Substitutions: {substitutionsUsed}/2 used
+                </Text>
+                {substitutionsUsed < 2 && (
+                  <Text style={styles.subsHint}>Make tactical changes</Text>
+                )}
+              </View>
+              {substitutionsUsed < 2 && !currentMatch.paused && (
+                <TouchableOpacity
+                  style={styles.pauseSubButton}
+                  onPress={() => setSubstitutionMode({ selecting: true })}
+                >
+                  <Text style={styles.pauseSubButtonText}>⏸️ Pause & Sub</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Squad List for Substitution */}
+            {substitutionMode?.selecting && (
+              <View style={styles.quickSubList}>
+                <Text style={styles.quickSubTitle}>Select player to substitute:</Text>
+                {mySquad.map((player, index) => (
+                  <TouchableOpacity
+                    key={player.id}
+                    style={styles.quickSubPlayer}
+                    onPress={() => startSubstitution(player, index)}
+                  >
+                    <Text style={styles.quickSubPlayerPos}>{player.position}</Text>
+                    <Text style={styles.quickSubPlayerName}>{player.name}</Text>
+                    <Text style={styles.quickSubPlayerRating}>{player.overall}</Text>
+                    <Text style={styles.quickSubIcon}>🔄</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={styles.quickSubCancel}
+                  onPress={() => setSubstitutionMode(null)}
+                >
+                  <Text style={styles.quickSubCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -3196,6 +3262,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5576c',
     borderColor: '#ffffff',
   },
+  playerWithBall: {
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    transform: [{ translateX: -16 }, { translateY: -16 }, { scale: 1.2 }],
+  },
   playerDotText: {
     fontSize: 9,
     fontWeight: 'bold',
@@ -3299,6 +3370,85 @@ const styles = StyleSheet.create({
   pitchInfoText: {
     fontSize: 12,
     color: '#43e97b',
+    fontWeight: 'bold',
+  },
+  subsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  pauseSubButton: {
+    backgroundColor: '#f5576c',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  pauseSubButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  quickSubList: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 15,
+    marginTop: 10,
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  quickSubTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 10,
+  },
+  quickSubPlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#252b54',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  quickSubPlayerPos: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#667eea',
+    width: 50,
+  },
+  quickSubPlayerName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#ffffff',
+    marginLeft: 10,
+  },
+  quickSubPlayerRating: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    marginRight: 10,
+  },
+  quickSubIcon: {
+    fontSize: 18,
+  },
+  quickSubCancel: {
+    backgroundColor: '#2d3561',
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  quickSubCancelText: {
+    color: '#ffffff',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });
