@@ -199,18 +199,25 @@ const Match = ({ onBack, activeMatchId }) => {
 
     if (matchesSnapshot.exists()) {
       let myActiveMatch = null;
+      const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+
       matchesSnapshot.forEach(childSnapshot => {
         const match = childSnapshot.val();
+        const matchAge = match.createdAt || 0;
+
+        // Only consider matches created in the last 24 hours and not finished/forfeited
         if (
-          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+          matchAge > twentyFourHoursAgo &&
+          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime' || match.state === 'paused') &&
           (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
         ) {
-          myActiveMatch = match;
+          myActiveMatch = { id: childSnapshot.key, ...match };
         }
       });
 
       if (myActiveMatch) {
-        showAlert('Match in Progress', 'You are already in an active match. Please finish or forfeit your current match first.');
+        const opponent = myActiveMatch.homeManager?.uid === currentUser.uid ? myActiveMatch.awayManager?.name : myActiveMatch.homeManager?.name;
+        showAlert('Match in Progress', `You have an active match (${myActiveMatch.state}) vs ${opponent}. Please finish or forfeit your current match first.`);
         return;
       }
     }
@@ -218,10 +225,16 @@ const Match = ({ onBack, activeMatchId }) => {
     // Check if opponent is already in an active match
     if (matchesSnapshot.exists()) {
       let opponentActiveMatch = null;
+      const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+
       matchesSnapshot.forEach(childSnapshot => {
         const match = childSnapshot.val();
+        const matchAge = match.createdAt || 0;
+
+        // Only consider recent matches (last 24 hours) and not finished/forfeited
         if (
-          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+          matchAge > twentyFourHoursAgo &&
+          (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime' || match.state === 'paused') &&
           (match.homeManager?.uid === opponent.uid || match.awayManager?.uid === opponent.uid)
         ) {
           opponentActiveMatch = match;
