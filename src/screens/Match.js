@@ -249,7 +249,6 @@ const Match = ({ onBack, activeMatchId }) => {
     }
 
     // Create match in database
-    const matchesRef = ref(database, 'matches');
     const newMatchRef = push(matchesRef);
     const matchId = newMatchRef.key;
 
