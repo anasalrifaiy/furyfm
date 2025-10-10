@@ -24,6 +24,9 @@ const Match = ({ onBack, activeMatchId }) => {
   const [awayPausesUsed, setAwayPausesUsed] = useState(0);
   const [homeResumeReady, setHomeResumeReady] = useState(false);
   const [awayResumeReady, setAwayResumeReady] = useState(false);
+  const [prematchStarting11, setPrematchStarting11] = useState([]);
+  const [prematchFormation, setPrematchFormation] = useState('4-3-3');
+  const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
 
   useEffect(() => {
     if (managerProfile) {
@@ -1445,6 +1448,17 @@ const Match = ({ onBack, activeMatchId }) => {
     );
   }
 
+  // Initialize prematch state when entering prematch
+  useEffect(() => {
+    if (matchState === 'prematch' && currentMatch) {
+      const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+      const mySquad = myTeam.squad;
+      const myFormation = myTeam.formation || '4-3-3';
+      setPrematchStarting11(mySquad.slice(0, 11));
+      setPrematchFormation(myFormation);
+    }
+  }, [matchState, currentMatch, isHome]);
+
   // Pre-match setup - adjust formation and tactics
   if (matchState === 'prematch') {
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
@@ -1452,10 +1466,6 @@ const Match = ({ onBack, activeMatchId }) => {
     const myFormation = myTeam.formation || '4-3-3';
     const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
     const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
-
-    const [prematchStarting11, setPrematchStarting11] = React.useState(mySquad.slice(0, 11));
-    const [prematchFormation, setPrematchFormation] = React.useState(myFormation);
-    const [selectingPlayerSlot, setSelectingPlayerSlot] = React.useState(null);
 
     const confirmPrematch = async () => {
       if (!currentMatch.isPractice) {
