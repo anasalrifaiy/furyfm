@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { database } from '../firebase';
 import { ref, update } from 'firebase/database';
 import { showAlert, showConfirm } from '../utils/alert';
@@ -8,6 +9,7 @@ import Portal from '../components/Portal';
 
 const Training = ({ onBack }) => {
   const { managerProfile, updateManagerProfile } = useAuth();
+  const { t } = useLanguage();
   const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   const formatCurrency = (amount) => {
@@ -87,16 +89,16 @@ const Training = ({ onBack }) => {
     const successRate = getTrainingSuccessRate(player);
 
     if (managerProfile.budget < cost) {
-      showAlert('Insufficient Funds', `You need ${formatCurrency(cost)} to train ${player.name}.`);
+      showAlert(t('insufficientFunds'), `${t('needBudgetHire')} ${formatCurrency(cost)} ${t('trainFor')} ${player.name}.`);
       return;
     }
 
-    const ageBonus = player.age <= 21 ? '\n\n🌟 Young Talent Bonus: 70% cheaper!' :
-                     player.age <= 24 ? '\n\n⭐ Youth Bonus: 50% cheaper!' : '';
+    const ageBonus = player.age <= 21 ? `\n\n${t('youngTalentBonus')}` :
+                     player.age <= 24 ? `\n\n${t('youthBonus')}` : '';
 
     showConfirm(
-      'Train Player',
-      `Train ${player.name} (Age ${player.age}) for ${formatCurrency(cost)}?\n\nSuccess Rate: ${successRate}%${ageBonus}`,
+      t('trainPlayer'),
+      `${t('trainFor')} ${player.name} (${t('age')} ${player.age}) ${t('for')} ${formatCurrency(cost)}?\n\n${t('successRate')}: ${successRate}%${ageBonus}`,
       async () => {
         const newBudget = managerProfile.budget - cost;
 
@@ -123,10 +125,10 @@ const Training = ({ onBack }) => {
             budget: newBudget
           });
 
-          showAlert('Success!', `${player.name} has been trained successfully! New rating: ${Math.min(99, player.overall + 1)}`);
+          showAlert(t('success'), `${player.name} ${t('trainedSuccessfully')} ${Math.min(99, player.overall + 1)}`);
         } else {
           await updateManagerProfile({ budget: newBudget });
-          showAlert('Training Failed', `${player.name}'s training was unsuccessful. The cost was still spent, but no improvement gained.`);
+          showAlert(t('trainingFailed'), `${player.name}${t('trainingFailedDesc')}`);
         }
 
         setSelectedPlayer(null);
@@ -140,13 +142,13 @@ const Training = ({ onBack }) => {
     const currentXP = player.xp || 0;
 
     if (currentXP < xpNeeded) {
-      showAlert('Insufficient XP', `${player.name} needs ${xpNeeded - currentXP} more XP to level up. Players gain XP by scoring goals!`);
+      showAlert(t('insufficientFunds'), `${player.name} needs ${xpNeeded - currentXP} more XP ${t('trainFor')} ${player.name}.`);
       return;
     }
 
     showConfirm(
-      'Use XP to Train',
-      `Use ${xpNeeded} XP to improve ${player.name}'s rating by 1?`,
+      t('useXPToTrain'),
+      `${t('useXP')} ${xpNeeded} ${t('xpToImprove')} ${player.name}${t('ratingBy1')}`,
       async () => {
         // Find player in squad and update
         const updatedSquad = managerProfile.squad.map(p => {
@@ -166,7 +168,7 @@ const Training = ({ onBack }) => {
 
         await updateManagerProfile({ squad: updatedSquad });
 
-        showAlert('Success!', `${player.name} has leveled up! New rating: ${Math.min(99, player.overall + 1)}`);
+        showAlert(t('success'), `${player.name} ${t('trainedSuccessfully')} ${Math.min(99, player.overall + 1)}`);
         setSelectedPlayer(null);
       },
       () => {}
@@ -178,12 +180,12 @@ const Training = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Training Center</Text>
+          <Text style={styles.title}>{t('trainingCenter')}</Text>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -196,28 +198,28 @@ const Training = ({ onBack }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>{t('back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Training Center</Text>
-          <Text style={styles.budget}>Budget: {formatCurrency(managerProfile.budget)}</Text>
+          <Text style={styles.title}>{t('trainingCenter')}</Text>
+          <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>🎓 Training System</Text>
-            <Text style={styles.infoText}>• Train players to improve their rating</Text>
-            <Text style={styles.infoText}>• Pay with money or use XP from scoring goals</Text>
-            <Text style={styles.infoText}>• Younger players (≤21) train 70% cheaper!</Text>
-            <Text style={styles.infoText}>• Young players (22-24) train 50% cheaper!</Text>
-            <Text style={styles.infoText}>• Veterans (32+) train 50% more expensive</Text>
-            <Text style={styles.infoText}>• Success rates vary by age (younger = better)</Text>
+            <Text style={styles.infoTitle}>🎓 {t('trainingSystem')}</Text>
+            <Text style={styles.infoText}>{t('trainToImprove')}</Text>
+            <Text style={styles.infoText}>{t('payWithMoney')}</Text>
+            <Text style={styles.infoText}>{t('youngerCheaper')}</Text>
+            <Text style={styles.infoText}>{t('youngCheaper')}</Text>
+            <Text style={styles.infoText}>{t('veteransExpensive')}</Text>
+            <Text style={styles.infoText}>{t('successRatesVary')}</Text>
           </View>
 
           {squad.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>👥</Text>
-              <Text style={styles.emptyTitle}>No players to train</Text>
-              <Text style={styles.emptyDesc}>Sign players from the Transfer Market to start training!</Text>
+              <Text style={styles.emptyTitle}>{t('noPlayersToTrain')}</Text>
+              <Text style={styles.emptyDesc}>{t('noPlayersTrainDesc')}</Text>
             </View>
           ) : (
             squad.map(player => {
@@ -240,10 +242,10 @@ const Training = ({ onBack }) => {
                   <View style={styles.playerInfo}>
                     <Text style={styles.playerName}>{ageLabel} {player.name}</Text>
                     <Text style={styles.playerDetails}>
-                      {player.position} • {player.age} years • {player.nationality}
+                      {player.position} • {player.age} {t('years')} • {player.nationality}
                     </Text>
                     <Text style={styles.trainingInfo}>
-                      Cost: {formatCurrency(trainingCost)} • Success: {successRate}%
+                      {t('cost')}: {formatCurrency(trainingCost)} • {t('successRate')}: {successRate}%
                     </Text>
                   </View>
 
@@ -276,9 +278,9 @@ const Training = ({ onBack }) => {
               onPress={() => setSelectedPlayer(null)}
             />
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Train {selectedPlayer.name}</Text>
+              <Text style={styles.modalTitle}>{t('trainFor')} {selectedPlayer.name}</Text>
               <Text style={styles.modalSubtitle}>
-                Current Rating: {selectedPlayer.overall} → {Math.min(99, selectedPlayer.overall + 1)}
+                {t('overall')}: {selectedPlayer.overall} → {Math.min(99, selectedPlayer.overall + 1)}
               </Text>
 
               <View style={styles.trainingOptions}>
@@ -291,17 +293,17 @@ const Training = ({ onBack }) => {
                     style={styles.trainButton}
                     onPress={() => trainWithMoney(selectedPlayer)}
                   >
-                    <Text style={styles.trainButtonText}>Train Now</Text>
+                    <Text style={styles.trainButtonText}>{t('trainPlayer')}</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.optionCard}>
                   <Text style={styles.optionIcon}>⭐</Text>
-                  <Text style={styles.optionTitle}>XP Training</Text>
+                  <Text style={styles.optionTitle}>{t('useXPToTrain')}</Text>
                   <Text style={styles.optionCost}>
                     {selectedPlayer.xp || 0}/{getXPForNextLevel(selectedPlayer)} XP
                   </Text>
-                  <Text style={styles.optionDesc}>Earned from goals</Text>
+                  <Text style={styles.optionDesc}>{t('goals')}</Text>
                   <TouchableOpacity
                     style={[
                       styles.trainButton,
@@ -311,7 +313,7 @@ const Training = ({ onBack }) => {
                     disabled={(selectedPlayer.xp || 0) < getXPForNextLevel(selectedPlayer)}
                   >
                     <Text style={styles.trainButtonText}>
-                      {(selectedPlayer.xp || 0) >= getXPForNextLevel(selectedPlayer) ? 'Level Up' : 'Need More XP'}
+                      {(selectedPlayer.xp || 0) >= getXPForNextLevel(selectedPlayer) ? t('train') : 'Need More XP'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -321,7 +323,7 @@ const Training = ({ onBack }) => {
                 style={styles.closeButton}
                 onPress={() => setSelectedPlayer(null)}
               >
-                <Text style={styles.closeButtonText}>Close</Text>
+                <Text style={styles.closeButtonText}>{t('close')}</Text>
               </TouchableOpacity>
             </View>
           </View>
