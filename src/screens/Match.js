@@ -118,6 +118,8 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Load all live matches for spectator mode
   useEffect(() => {
+    if (!currentUser) return;
+
     const matchesRef = ref(database, 'matches');
 
     const unsubscribe = onValue(matchesRef, (snapshot) => {
@@ -125,8 +127,14 @@ const Match = ({ onBack, activeMatchId }) => {
         const allMatches = [];
         snapshot.forEach(childSnapshot => {
           const match = childSnapshot.val();
-          // Only show matches that are currently playing or at halftime
-          if (match.state === 'playing' || match.state === 'halftime') {
+          // Only show matches that are:
+          // 1. Currently playing or at halftime (truly live)
+          // 2. Not involving the current user (exclude own matches)
+          if (
+            (match.state === 'playing' || match.state === 'halftime') &&
+            match.homeManager?.uid !== currentUser.uid &&
+            match.awayManager?.uid !== currentUser.uid
+          ) {
             allMatches.push({ id: childSnapshot.key, ...match });
           }
         });
@@ -137,7 +145,7 @@ const Match = ({ onBack, activeMatchId }) => {
     });
 
     return () => off(matchesRef);
-  }, []);
+  }, [currentUser]);
 
   const loadFriends = async () => {
     if (!managerProfile?.friends || managerProfile.friends.length === 0) {

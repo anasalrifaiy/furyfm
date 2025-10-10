@@ -82,12 +82,16 @@ const MainApp = () => {
     const unsubscribe = onValue(matchesRef, (snapshot) => {
       if (snapshot.exists()) {
         let foundActiveMatch = null;
+        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour ago
+
         snapshot.forEach(childSnapshot => {
           const match = childSnapshot.val();
           // Check if this match involves the current user and is in progress
+          // Also check if match is recent (created within last hour) to avoid stale matches
           if (
             (match.homeManager.uid === currentUser.uid || match.awayManager.uid === currentUser.uid) &&
-            (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime')
+            (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+            (match.createdAt && match.createdAt > oneHourAgo)
           ) {
             foundActiveMatch = match;
           }
@@ -340,7 +344,7 @@ const MainApp = () => {
       {renderCurrentScreen()}
 
       {/* Active Match Indicator Banner */}
-      {activeMatch && currentScreen !== 'match' && (
+      {activeMatch && currentScreen !== 'match' && currentScreen !== 'notifications' && (
         <TouchableOpacity
           style={styles.activeMatchBanner}
           onPress={() => {
@@ -579,6 +583,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#667eea',
     elevation: 10,
+    zIndex: 1000,
     shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
