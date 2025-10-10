@@ -118,8 +118,8 @@ const Match = ({ onBack, activeMatchId }) => {
           simulateMatch(matchData);
         }
 
-        // Detect second half start
-        if (matchData.state === 'playing' && previousState === 'halftime' && isHome) {
+        // Detect second half start - check for secondHalfStarted flag
+        if (matchData.state === 'playing' && matchData.secondHalfStarted && isHome && matchData.minute === 45) {
           console.log('Second half starting - resuming simulation');
           console.log('Match data:', matchData);
           simulateSecondHalf();
