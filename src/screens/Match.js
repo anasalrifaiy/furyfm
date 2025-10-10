@@ -184,6 +184,17 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   }, [currentMatch?.paused, homeResumeReady, awayResumeReady, currentMatch?.id]);
 
+  // Initialize prematch state when entering prematch
+  useEffect(() => {
+    if (matchState === 'prematch' && currentMatch) {
+      const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+      const mySquad = myTeam.squad;
+      const myFormation = myTeam.formation || '4-3-3';
+      setPrematchStarting11(mySquad.slice(0, 11));
+      setPrematchFormation(myFormation);
+    }
+  }, [matchState, currentMatch, isHome]);
+
   // Load all live matches for spectator mode
   useEffect(() => {
     if (!currentUser) return;
@@ -1451,17 +1462,6 @@ const Match = ({ onBack, activeMatchId }) => {
       </View>
     );
   }
-
-  // Initialize prematch state when entering prematch
-  useEffect(() => {
-    if (matchState === 'prematch' && currentMatch) {
-      const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
-      const mySquad = myTeam.squad;
-      const myFormation = myTeam.formation || '4-3-3';
-      setPrematchStarting11(mySquad.slice(0, 11));
-      setPrematchFormation(myFormation);
-    }
-  }, [matchState, currentMatch, isHome]);
 
   // Pre-match setup - adjust formation and tactics
   if (matchState === 'prematch') {
