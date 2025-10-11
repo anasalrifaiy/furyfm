@@ -485,6 +485,51 @@ const Match = ({ onBack, activeMatchId }) => {
     showAlert('Challenge Accepted!', 'Now set up your formation for the match.');
   };
 
+  const forfeitMatch = async () => {
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm('Are you sure you want to forfeit this match? The opponent will win by default.');
+      if (!confirmed) return;
+    }
+
+    if (!currentMatch.isPractice) {
+      const matchRef = ref(database, `matches/${currentMatch.id}`);
+
+      // Set final score based on who forfeited
+      const finalHomeScore = isHome ? 0 : 3;
+      const finalAwayScore = isHome ? 3 : 0;
+
+      await update(matchRef, {
+        state: 'finished',
+        homeScore: finalHomeScore,
+        awayScore: finalAwayScore,
+        minute: 90,
+        events: [`${minute}' ⚠️ Match forfeited by ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}`, ...(currentMatch.events || [])],
+        forfeitedBy: currentUser.uid,
+        forfeitedAt: Date.now()
+      });
+
+      // Notify opponent
+      const opponentUid = isHome ? currentMatch.awayManager.uid : currentMatch.homeManager.uid;
+      const notificationRef = ref(database, `managers/${opponentUid}/notifications`);
+      await push(notificationRef, {
+        type: 'match_forfeit',
+        message: `${managerProfile.managerName} forfeited the match. You win 3-0!`,
+        timestamp: Date.now(),
+        read: false
+      });
+    }
+
+    // Reset to selection screen
+    setCurrentMatch(null);
+    setMatchState('select');
+    setHomeScore(0);
+    setAwayScore(0);
+    setMinute(0);
+    setEvents([]);
+    setSubstitutionMode(null);
+    setSubstitutionsUsed(0);
+  };
+
   const markReadyToKickoff = async () => {
     if (!currentMatch) return;
 
@@ -2208,51 +2253,6 @@ const Match = ({ onBack, activeMatchId }) => {
       setSubstitutionMode(null);
       showAlert('Substitution Complete', `${playerIn.name} is now on the pitch. Match resumed.`);
       setPauseCountdown(20);
-    };
-
-    const forfeitMatch = async () => {
-      if (typeof window !== 'undefined' && window.confirm) {
-        const confirmed = window.confirm('Are you sure you want to forfeit this match? The opponent will win by default.');
-        if (!confirmed) return;
-      }
-
-      if (!currentMatch.isPractice) {
-        const matchRef = ref(database, `matches/${currentMatch.id}`);
-
-        // Set final score based on who forfeited
-        const finalHomeScore = isHome ? 0 : 3;
-        const finalAwayScore = isHome ? 3 : 0;
-
-        await update(matchRef, {
-          state: 'finished',
-          homeScore: finalHomeScore,
-          awayScore: finalAwayScore,
-          minute: 90,
-          events: [`${minute}' ⚠️ Match forfeited by ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}`, ...(currentMatch.events || [])],
-          forfeitedBy: currentUser.uid,
-          forfeitedAt: Date.now()
-        });
-
-        // Notify opponent
-        const opponentUid = isHome ? currentMatch.awayManager.uid : currentMatch.homeManager.uid;
-        const notificationRef = ref(database, `managers/${opponentUid}/notifications`);
-        await push(notificationRef, {
-          type: 'match_forfeit',
-          message: `${managerProfile.managerName} forfeited the match. You win 3-0!`,
-          timestamp: Date.now(),
-          read: false
-        });
-      }
-
-      // Reset to selection screen
-      setCurrentMatch(null);
-      setMatchState('select');
-      setHomeScore(0);
-      setAwayScore(0);
-      setMinute(0);
-      setEvents([]);
-      setSubstitutionMode(null);
-      setSubstitutionsUsed(0);
     };
 
     return (
