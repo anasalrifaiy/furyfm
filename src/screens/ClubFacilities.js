@@ -62,11 +62,20 @@ const ClubFacilities = ({ onBack }) => {
     return `$${(amount / 1000000).toFixed(1)}M`;
   };
 
+  const formatXP = (amount) => {
+    return `${(amount / 1000).toFixed(0)}k XP`;
+  };
+
   const getCurrentLevel = (facilityId) => {
     return managerProfile?.facilities?.[facilityId] || 0;
   };
 
-  const handleUpgrade = (facility, level) => {
+  const getTotalSquadXP = () => {
+    if (!managerProfile?.squad) return 0;
+    return managerProfile.squad.reduce((total, player) => total + (player.xp || 0), 0);
+  };
+
+  const handleUpgrade = (facility, level, paymentMethod) => {
     const currentLevel = getCurrentLevel(facility.id);
     const facilityName = t(facility.nameKey);
 
@@ -81,10 +90,20 @@ const ClubFacilities = ({ onBack }) => {
     }
 
     const levelData = facility.levels[level - 1];
+    const xpCost = levelData.cost / 100; // XP cost is 1/100th of money cost (e.g., $20M = 200k XP)
 
-    if (managerProfile.budget < levelData.cost) {
-      showAlert(t('insufficientFunds'), `${t('needBudgetUpgrade')} ${formatCurrency(levelData.cost)} ${t('toUpgrade')}`);
-      return;
+    // Check payment method availability
+    if (paymentMethod === 'money') {
+      if (managerProfile.budget < levelData.cost) {
+        showAlert(t('insufficientFunds'), `${t('needBudgetUpgrade')} ${formatCurrency(levelData.cost)} ${t('toUpgrade')}`);
+        return;
+      }
+    } else if (paymentMethod === 'xp') {
+      const totalXP = getTotalSquadXP();
+      if (totalXP < xpCost) {
+        showAlert(t('insufficientFunds'), `Need ${formatXP(xpCost)} to upgrade. Train your players to earn more XP!`);
+        return;
+      }
     }
 
     const benefitText = facility.id === 'stadium'
@@ -95,19 +114,41 @@ const ClubFacilities = ({ onBack }) => {
       ? `\n\n-${levelData.discount}% ${t('youthTrainingCost')}`
       : `\n\n-${levelData.reduction}% ${t('injuryRisk')}`;
 
+    const costText = paymentMethod === 'money'
+      ? formatCurrency(levelData.cost)
+      : formatXP(xpCost);
+
     showConfirm(
       t('upgradeFacility'),
-      `${t('upgradeTo')} ${facilityName} ${t('to')} ${t('level')} ${level}?\n\n${t('cost')}: ${formatCurrency(levelData.cost)}${benefitText}`,
+      `${t('upgradeTo')} ${facilityName} ${t('to')} ${t('level')} ${level}?\n\n${t('cost')}: ${costText}${benefitText}`,
       async () => {
         const newFacilities = {
           ...(managerProfile.facilities || {}),
           [facility.id]: level
         };
 
-        await updateManagerProfile({
-          facilities: newFacilities,
-          budget: managerProfile.budget - levelData.cost
-        });
+        if (paymentMethod === 'money') {
+          await updateManagerProfile({
+            facilities: newFacilities,
+            budget: managerProfile.budget - levelData.cost
+          });
+        } else {
+          // Deduct XP from squad proportionally
+          const totalXP = getTotalSquadXP();
+          const updatedSquad = managerProfile.squad.map(player => {
+            const playerXP = player.xp || 0;
+            const xpToDeduct = Math.floor((playerXP / totalXP) * xpCost);
+            return {
+              ...player,
+              xp: Math.max(0, playerXP - xpToDeduct)
+            };
+          });
+
+          await updateManagerProfile({
+            facilities: newFacilities,
+            squad: updatedSquad
+          });
+        }
 
         showAlert(t('success'), `${facilityName} ${t('facilityUpgraded')} ${t('level')} ${level}!`);
       }
@@ -130,6 +171,8 @@ const ClubFacilities = ({ onBack }) => {
     );
   }
 
+  const totalSquadXP = getTotalSquadXP();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -137,7 +180,10 @@ const ClubFacilities = ({ onBack }) => {
           <Text style={styles.backButtonText}>{t('back')}</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{t('clubFacilitiesTitle')}</Text>
-        <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.budget}>💰 {formatCurrency(managerProfile.budget)}</Text>
+          <Text style={styles.xpBudget}>⭐ {formatXP(totalSquadXP)}</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -182,8 +228,10 @@ const ClubFacilities = ({ onBack }) => {
                     benefitText = `-${levelData.reduction}% ${t('injuryRisk')}`;
                   }
 
+                  const xpCost = levelData.cost / 100;
+
                   return (
-                    <TouchableOpacity
+                    <View
                       key={levelData.level}
                       style={[
                         styles.levelCard,
@@ -191,8 +239,6 @@ const ClubFacilities = ({ onBack }) => {
                         isNext && styles.levelCardNext,
                         isLocked && styles.levelCardLocked
                       ]}
-                      onPress={() => !isOwned && !isLocked && handleUpgrade(facility, levelData.level)}
-                      disabled={isOwned || isLocked}
                     >
                       <View style={styles.levelHeader}>
                         <Text style={[styles.levelTitle, isOwned && styles.levelTitleOwned]}>
@@ -203,12 +249,28 @@ const ClubFacilities = ({ onBack }) => {
                       </View>
                       <Text style={styles.levelDesc}>{levelData.description}</Text>
                       <Text style={styles.levelBonus}>{benefitText}</Text>
-                      {!isOwned && (
-                        <View style={styles.levelCost}>
-                          <Text style={styles.levelCostText}>{formatCurrency(levelData.cost)}</Text>
+                      {!isOwned && !isLocked && (
+                        <View style={styles.paymentOptions}>
+                          <TouchableOpacity
+                            style={styles.paymentButton}
+                            onPress={() => handleUpgrade(facility, levelData.level, 'money')}
+                          >
+                            <Text style={styles.paymentButtonText}>💰 {formatCurrency(levelData.cost)}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.paymentButtonXP}
+                            onPress={() => handleUpgrade(facility, levelData.level, 'xp')}
+                          >
+                            <Text style={styles.paymentButtonText}>⭐ {formatXP(xpCost)}</Text>
+                          </TouchableOpacity>
                         </View>
                       )}
-                    </TouchableOpacity>
+                      {!isOwned && isLocked && (
+                        <View style={styles.levelCost}>
+                          <Text style={styles.levelCostText}>🔒 Locked</Text>
+                        </View>
+                      )}
+                    </View>
                   );
                 })}
               </View>
@@ -251,6 +313,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  xpBudget: {
+    fontSize: 16,
+    color: '#f093fb',
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
@@ -387,6 +458,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  paymentOptions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  paymentButton: {
+    flex: 1,
+    backgroundColor: '#667eea',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  paymentButtonXP: {
+    flex: 1,
+    backgroundColor: '#f093fb',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  paymentButtonText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 });
 

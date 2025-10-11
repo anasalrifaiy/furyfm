@@ -1266,16 +1266,20 @@ const Match = ({ onBack, activeMatchId }) => {
         const winnerData = winnerSnapshot.val();
         const stadiumLevel = winnerData.facilities?.stadium || 0;
 
-        // Calculate reward based on stadium level from ClubFacilities
-        const stadiumRewards = [
-          { revenue: 0 },  // No stadium (level 0)
-          { revenue: 2000000 },  // Level 1: $2M
-          { revenue: 5000000 },  // Level 2: $5M
-          { revenue: 10000000 }, // Level 3: $10M
-          { revenue: 20000000 }  // Level 4: $20M
+        // Base match winnings: $2M guaranteed
+        const baseWinnings = 2000000;
+
+        // Stadium bonus revenue
+        const stadiumBonuses = [
+          0,          // No stadium (level 0) - only base
+          2000000,    // Level 1: +$2M bonus = $4M total
+          5000000,    // Level 2: +$5M bonus = $7M total
+          10000000,   // Level 3: +$10M bonus = $12M total
+          20000000    // Level 4: +$20M bonus = $22M total
         ];
 
-        const totalReward = stadiumRewards[stadiumLevel]?.revenue || 0;
+        const stadiumBonus = stadiumBonuses[stadiumLevel] || 0;
+        const totalReward = baseWinnings + stadiumBonus;
 
         // Award money
         const newBudget = (winnerData.budget || 0) + totalReward;
@@ -1295,10 +1299,18 @@ const Match = ({ onBack, activeMatchId }) => {
           squad: updatedWinningSquad
         });
 
-        // Send reward notification
-        const rewardMessage = stadiumLevel > 0
-          ? `Victory! You earned $${(totalReward / 1000000).toFixed(1)}M from your Level ${stadiumLevel} Stadium! All players gained +100 XP!`
-          : `Victory! All players gained +100 XP! (Build a stadium to earn match revenue)`;
+        // Send detailed reward notification
+        let rewardMessage = `🏆 Victory!\n\n`;
+        rewardMessage += `💰 Base Match Winnings: $${(baseWinnings / 1000000).toFixed(1)}M\n`;
+        if (stadiumLevel > 0) {
+          rewardMessage += `🏟️ Stadium Bonus (Lv.${stadiumLevel}): +$${(stadiumBonus / 1000000).toFixed(1)}M\n`;
+        }
+        rewardMessage += `\n💵 Total Earned: $${(totalReward / 1000000).toFixed(1)}M\n`;
+        rewardMessage += `⭐ All players gained +100 XP!`;
+
+        if (stadiumLevel === 0) {
+          rewardMessage += `\n\n💡 Tip: Build a stadium to earn more!`;
+        }
 
         await push(ref(database, `managers/${winnerUid}/notifications`), {
           type: 'match_reward',
@@ -1307,7 +1319,7 @@ const Match = ({ onBack, activeMatchId }) => {
           read: false
         });
 
-        console.log(`Awarded $${totalReward} to ${winnerName} (Stadium Level ${stadiumLevel})`);
+        console.log(`Awarded $${totalReward} to ${winnerName} (Base: $${baseWinnings}, Stadium Lv.${stadiumLevel} Bonus: $${stadiumBonus})`);
       }
     }
   };
@@ -1586,24 +1598,30 @@ const Match = ({ onBack, activeMatchId }) => {
           {/* Formation Preview */}
           <View style={styles.prematchSection}>
             <Text style={styles.sectionTitle}>Your Formation Preview</Text>
-            <View style={styles.prematchFormationPitch}>
-              {getFormationPositions(prematchFormation, prematchStarting11).map((player, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.prematchPlayer,
-                    { left: `${player.baseX}%`, top: `${player.baseY}%` }
-                  ]}
-                >
-                  <View style={styles.prematchPlayerCircle}>
-                    <Text style={styles.prematchPlayerPos}>{player.position}</Text>
-                    <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
+            {prematchStarting11 && prematchStarting11.length === 11 ? (
+              <View style={styles.prematchFormationPitch}>
+                {getFormationPositions(prematchFormation, prematchStarting11).map((player, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.prematchPlayer,
+                      { left: `${player.baseX}%`, top: `${player.baseY}%` }
+                    ]}
+                  >
+                    <View style={styles.prematchPlayerCircle}>
+                      <Text style={styles.prematchPlayerPos}>{player.position}</Text>
+                      <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
+                    </View>
+                    <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
+                    <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
                   </View>
-                  <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
-                  <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading squad...</Text>
+              </View>
+            )}
           </View>
 
           {/* Confirm Ready Button */}
