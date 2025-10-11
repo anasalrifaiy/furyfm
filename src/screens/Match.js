@@ -31,37 +31,39 @@ const Match = ({ onBack, activeMatchId }) => {
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
     // Returns array of {position, x, y} based on formation
+    // Coordinates match Formation.js exactly for consistency
     const formations = {
       '4-3-3': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-        { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
-        { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+        { pos: 'GK', x: 50, y: 85 },
+        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
+        { pos: 'CDM', x: 50, y: 45 },
+        { pos: 'CM', x: 28, y: 40 }, { pos: 'CM', x: 72, y: 40 },
+        { pos: 'LW', x: 18, y: 15 }, { pos: 'ST', x: 50, y: 10 }, { pos: 'RW', x: 82, y: 15 }
       ],
       '4-4-2': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-        { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
-        { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+        { pos: 'GK', x: 50, y: 85 },
+        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
+        { pos: 'LM', x: 18, y: 40 }, { pos: 'CM', x: 37, y: 45 }, { pos: 'CM', x: 63, y: 45 }, { pos: 'RM', x: 82, y: 40 },
+        { pos: 'ST', x: 37, y: 12 }, { pos: 'ST', x: 63, y: 12 }
       ],
       '3-5-2': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
-        { pos: 'LWB', x: 10, y: 60 }, { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 }, { pos: 'RWB', x: 90, y: 60 },
-        { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+        { pos: 'GK', x: 50, y: 85 },
+        { pos: 'CB', x: 28, y: 65 }, { pos: 'CB', x: 50, y: 65 }, { pos: 'CB', x: 72, y: 65 },
+        { pos: 'LWB', x: 12, y: 45 }, { pos: 'CDM', x: 50, y: 48 }, { pos: 'CM', x: 32, y: 42 }, { pos: 'CM', x: 68, y: 42 }, { pos: 'RWB', x: 88, y: 45 },
+        { pos: 'ST', x: 37, y: 12 }, { pos: 'ST', x: 63, y: 12 }
       ],
       '4-2-3-1': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-        { pos: 'CDM', x: 40, y: 62 }, { pos: 'CDM', x: 60, y: 62 },
-        { pos: 'CAM', x: 20, y: 40 }, { pos: 'CAM', x: 50, y: 35 }, { pos: 'CAM', x: 80, y: 40 },
-        { pos: 'ST', x: 50, y: 18 }
+        { pos: 'GK', x: 50, y: 85 },
+        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
+        { pos: 'CDM', x: 37, y: 48 }, { pos: 'CDM', x: 63, y: 48 },
+        { pos: 'LW', x: 18, y: 28 }, { pos: 'CAM', x: 50, y: 30 }, { pos: 'RW', x: 82, y: 28 },
+        { pos: 'ST', x: 50, y: 10 }
       ],
       '3-4-3': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
-        { pos: 'LM', x: 15, y: 55 }, { pos: 'CM', x: 40, y: 58 }, { pos: 'CM', x: 60, y: 58 }, { pos: 'RM', x: 85, y: 55 },
-        { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+        { pos: 'GK', x: 50, y: 85 },
+        { pos: 'CB', x: 28, y: 65 }, { pos: 'CB', x: 50, y: 65 }, { pos: 'CB', x: 72, y: 65 },
+        { pos: 'LM', x: 18, y: 45 }, { pos: 'CM', x: 37, y: 45 }, { pos: 'CM', x: 63, y: 45 }, { pos: 'RM', x: 82, y: 45 },
+        { pos: 'LW', x: 18, y: 15 }, { pos: 'ST', x: 50, y: 10 }, { pos: 'RW', x: 82, y: 15 }
       ]
     };
 
@@ -1871,11 +1873,9 @@ const Match = ({ onBack, activeMatchId }) => {
                   disabled={myPrematchReady}
                 >
                   <View style={styles.prematchPlayerCircle}>
-                    <Text style={styles.prematchPlayerPos}>{player.position}</Text>
-                    <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
+                    <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
+                    <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
                   </View>
-                  <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
-                  <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -3660,51 +3660,55 @@ const styles = StyleSheet.create({
   },
   prematchFormationPitch: {
     position: 'relative',
-    width: '100%',
-    height: 350,
-    backgroundColor: '#1a4d2e',
+    width: 350,
+    height: 550,
+    maxWidth: '100%',
+    alignSelf: 'center',
+    backgroundColor: '#2d5016',
+    backgroundImage: 'repeating-linear-gradient(0deg, #2d5016 0px, #3a6b1f 40px, #2d5016 80px)',
     borderRadius: 15,
     marginTop: 10,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#ffffff',
   },
   prematchPlayer: {
     position: 'absolute',
+    width: 50,
+    height: 50,
     alignItems: 'center',
-    transform: [{ translateX: -30 }, { translateY: -30 }],
+    transform: [{ translateX: -25 }, { translateY: -25 }],
   },
   prematchPlayerCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#667eea',
-    borderWidth: 2,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    background: 'linear-gradient(145deg, #667eea 0%, #764ba2 50%, #5a67d8 100%)',
+    borderWidth: 3,
     borderColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
-  },
-  prematchPlayerPos: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  prematchPlayerNum: {
-    color: '#ffffff',
-    fontSize: 8,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4), inset 0 -2px 4px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3)',
+    transform: 'perspective(100px) rotateX(5deg)',
+    marginBottom: 2,
   },
   prematchPlayerName: {
     color: '#ffffff',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     textAlign: 'center',
-    maxWidth: 60,
+    lineHeight: 10,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
   },
   prematchPlayerRating: {
-    color: '#43e97b',
-    fontSize: 11,
+    color: '#ffffff',
+    fontSize: 13,
     fontWeight: 'bold',
-    textAlign: 'center',
+    marginTop: 1,
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px rgba(255, 255, 255, 0.3)',
   },
   readyStatusCard: {
     backgroundColor: '#1a1f3a',
