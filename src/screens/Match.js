@@ -365,14 +365,7 @@ const Match = ({ onBack, activeMatchId }) => {
     setIsHome(true);
     setMatchState('waiting');
 
-    // Initialize prematch formation data immediately
-    setPrematchStarting11(myStarting);
-    setPrematchFormation(managerProfile.formation || '4-3-3');
-
-    // DON'T mark as ready automatically - let user confirm in waiting lobby
-    // await update(ref(database, `matches/${matchId}/homeManager`), { ready: true });
-
-    showAlert('Challenge Sent!', 'Set up your formation while waiting for opponent...');
+    showAlert('Challenge Sent!', 'Waiting for opponent to accept...');
   };
 
   const startAIPracticeMatch = async () => {
@@ -444,21 +437,19 @@ const Match = ({ onBack, activeMatchId }) => {
     // Determine if I'm home or away
     const amHome = matchData.homeManager.uid === currentUser.uid;
     setIsHome(amHome);
-    setCurrentMatch(matchData);
-    setMatchState('waiting');
 
-    // Mark myself as ready
+    // Mark myself as ready (accepting the challenge)
     const myPath = amHome ? 'homeManager' : 'awayManager';
     await update(ref(database, `matches/${matchId}/${myPath}`), { ready: true });
 
-    // Check if both are ready
-    const updatedSnapshot = await get(matchRef);
-    const updatedMatch = updatedSnapshot.val();
+    // Transition BOTH managers to prematch setup immediately
+    await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
 
-    if (updatedMatch.homeManager.ready && updatedMatch.awayManager.ready) {
-      // Go to pre-match setup instead of starting immediately
-      await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
-    }
+    // Set local state to prematch
+    setCurrentMatch({ ...matchData, state: 'prematch' });
+    setMatchState('prematch');
+
+    showAlert('Challenge Accepted!', 'Now set up your formation for the match.');
   };
 
   const markReadyToKickoff = async () => {
@@ -1505,7 +1496,7 @@ const Match = ({ onBack, activeMatchId }) => {
     );
   }
 
-  // Waiting for opponent
+  // Waiting for opponent to accept challenge
   if (matchState === 'waiting') {
     if (!currentMatch) {
       return (
@@ -1519,25 +1510,6 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
     const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;
-    const imReady = isHome ? currentMatch.homeManager?.ready : currentMatch.awayManager?.ready;
-
-    const confirmReady = async () => {
-      if (!currentMatch.isPractice) {
-        const matchRef = ref(database, `matches/${currentMatch.id}`);
-        const myPath = isHome ? 'homeManager' : 'awayManager';
-        const formationField = isHome ? 'homeManager/formation' : 'awayManager/formation';
-        const squadField = isHome ? 'homeManager/squad' : 'awayManager/squad';
-
-        // Update formation, squad, and mark as ready
-        await update(matchRef, {
-          [`${myPath}/ready`]: true,
-          [formationField]: prematchFormation,
-          [squadField]: prematchStarting11
-        });
-
-        showAlert('Ready!', 'Waiting for opponent to accept and get ready...');
-      }
-    };
 
     return (
       <View style={styles.container}>
@@ -1548,108 +1520,34 @@ const Match = ({ onBack, activeMatchId }) => {
           }} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Match Lobby</Text>
+          <Text style={styles.title}>Waiting for Opponent</Text>
           <TouchableOpacity
             style={styles.forfeitButton}
             onPress={forfeitMatch}
           >
-            <Text style={styles.forfeitButtonText}>⚠️ Forfeit</Text>
+            <Text style={styles.forfeitButtonText}>⚠️ Cancel</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content}>
           <View style={styles.waitingCard}>
             <Text style={styles.waitingIcon}>⏳</Text>
-            <Text style={styles.waitingTitle}>Match Lobby</Text>
+            <Text style={styles.waitingTitle}>Challenge Sent</Text>
             <Text style={styles.waitingDesc}>
-              {opponent.name} {opponentReady ? 'is ready!' : 'hasn\'t accepted yet...'}
+              Waiting for {opponent.name} to accept your challenge...
             </Text>
             <Text style={styles.waitingStatus}>
-              You: {imReady ? '✓ Ready' : '⏳ Setting up...'} {'\n'}
-              {opponent.name}: {opponentReady ? '✓ Ready' : '⏳ Waiting...'}
+              {opponentReady ? '✓ Opponent accepted! Moving to formation setup...' : '⏳ Waiting for response...'}
             </Text>
           </View>
 
-          {/* Formation Selection */}
-          <View style={styles.prematchSection}>
-            <Text style={styles.sectionTitle}>Select Formation</Text>
-            <View style={styles.formationsRow}>
-              {['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2'].map(formation => (
-                <TouchableOpacity
-                  key={formation}
-                  style={[
-                    styles.formationBtn,
-                    prematchFormation === formation && styles.formationBtnActive
-                  ]}
-                  onPress={() => !imReady && setPrematchFormation(formation)}
-                  disabled={imReady}
-                >
-                  <Text style={[
-                    styles.formationBtnText,
-                    prematchFormation === formation && styles.formationBtnTextActive
-                  ]}>
-                    {formation}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoIcon}>ℹ️</Text>
+            <Text style={styles.infoTitle}>What's Next?</Text>
+            <Text style={styles.infoDesc}>
+              Once {opponent.name} accepts, you'll both be taken to the formation setup screen where you can arrange your starting XI and tactics.
+            </Text>
           </View>
-
-          {/* Formation Preview */}
-          <View style={styles.prematchSection}>
-            <Text style={styles.sectionTitle}>Your Formation Preview</Text>
-            {prematchStarting11 && prematchStarting11.length === 11 ? (
-              <View style={styles.prematchFormationPitch}>
-                {getFormationPositions(prematchFormation, prematchStarting11).map((player, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.prematchPlayer,
-                      { left: `${player.baseX}%`, top: `${player.baseY}%` }
-                    ]}
-                  >
-                    <View style={styles.prematchPlayerCircle}>
-                      <Text style={styles.prematchPlayerPos}>{player.position}</Text>
-                      <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
-                    </View>
-                    <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
-                    <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Loading squad...</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Confirm Ready Button */}
-          {!imReady && (
-            <View style={styles.prematchSection}>
-              <TouchableOpacity
-                style={styles.confirmReadyButton}
-                onPress={confirmReady}
-              >
-                <Text style={styles.confirmReadyButtonText}>✓ Confirm Ready</Text>
-              </TouchableOpacity>
-              <Text style={styles.confirmReadyHint}>
-                Review your formation and confirm when ready
-              </Text>
-            </View>
-          )}
-
-          {imReady && (
-            <View style={styles.prematchSection}>
-              <View style={styles.readyConfirmedCard}>
-                <Text style={styles.readyConfirmedIcon}>✓</Text>
-                <Text style={styles.readyConfirmedText}>You're Ready!</Text>
-                <Text style={styles.readyConfirmedSubtext}>
-                  Waiting for {opponent.name} to accept and get ready...
-                </Text>
-              </View>
-            </View>
-          )}
         </ScrollView>
       </View>
     );
