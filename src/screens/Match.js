@@ -28,6 +28,58 @@ const Match = ({ onBack, activeMatchId }) => {
   const [prematchFormation, setPrematchFormation] = useState('4-3-3');
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
 
+  // Helper function for formation positions
+  const getFormationPositions = (formation, squad) => {
+    // Returns array of {position, x, y} based on formation
+    const formations = {
+      '4-3-3': [
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+        { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
+        { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+      ],
+      '4-4-2': [
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+        { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
+        { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+      ],
+      '3-5-2': [
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
+        { pos: 'LWB', x: 10, y: 60 }, { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 }, { pos: 'RWB', x: 90, y: 60 },
+        { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
+      ],
+      '4-2-3-1': [
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+        { pos: 'CDM', x: 40, y: 62 }, { pos: 'CDM', x: 60, y: 62 },
+        { pos: 'CAM', x: 20, y: 40 }, { pos: 'CAM', x: 50, y: 35 }, { pos: 'CAM', x: 80, y: 40 },
+        { pos: 'ST', x: 50, y: 18 }
+      ],
+      '3-4-3': [
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
+        { pos: 'LM', x: 15, y: 55 }, { pos: 'CM', x: 40, y: 58 }, { pos: 'CM', x: 60, y: 58 }, { pos: 'RM', x: 85, y: 55 },
+        { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
+      ]
+    };
+
+    const formationLayout = formations[formation] || formations['4-3-3'];
+
+    // Match squad players to formation positions
+    return squad.map((player, idx) => {
+      const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
+      return {
+        ...player,
+        baseX: layoutPos.x,
+        baseY: layoutPos.y,
+        currentX: layoutPos.x,
+        currentY: layoutPos.y
+      };
+    });
+  };
+
   useEffect(() => {
     if (managerProfile) {
       loadFriends();
@@ -2084,57 +2136,6 @@ const Match = ({ onBack, activeMatchId }) => {
         return;
       }
       setSubstitutionMode({ playerOut, playerOutIndex });
-    };
-
-    const getFormationPositions = (formation, squad) => {
-      // Returns array of {position, x, y} based on formation
-      const formations = {
-        '4-3-3': [
-          { pos: 'GK', x: 50, y: 92 },
-          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-          { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
-          { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
-        ],
-        '4-4-2': [
-          { pos: 'GK', x: 50, y: 92 },
-          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-          { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
-          { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
-        ],
-        '3-5-2': [
-          { pos: 'GK', x: 50, y: 92 },
-          { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
-          { pos: 'LWB', x: 10, y: 60 }, { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 }, { pos: 'RWB', x: 90, y: 60 },
-          { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
-        ],
-        '4-2-3-1': [
-          { pos: 'GK', x: 50, y: 92 },
-          { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-          { pos: 'CDM', x: 40, y: 62 }, { pos: 'CDM', x: 60, y: 62 },
-          { pos: 'CAM', x: 20, y: 40 }, { pos: 'CAM', x: 50, y: 35 }, { pos: 'CAM', x: 80, y: 40 },
-          { pos: 'ST', x: 50, y: 18 }
-        ],
-        '3-4-3': [
-          { pos: 'GK', x: 50, y: 92 },
-          { pos: 'CB', x: 25, y: 78 }, { pos: 'CB', x: 50, y: 80 }, { pos: 'CB', x: 75, y: 78 },
-          { pos: 'LM', x: 15, y: 55 }, { pos: 'CM', x: 40, y: 58 }, { pos: 'CM', x: 60, y: 58 }, { pos: 'RM', x: 85, y: 55 },
-          { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
-        ]
-      };
-
-      const formationLayout = formations[formation] || formations['4-3-3'];
-
-      // Match squad players to formation positions
-      return squad.map((player, idx) => {
-        const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
-        return {
-          ...player,
-          baseX: layoutPos.x,
-          baseY: layoutPos.y,
-          currentX: layoutPos.x,
-          currentY: layoutPos.y
-        };
-      });
     };
 
     const renderPitch = (homeSquad, awaySquad, homeFormation = '4-3-3', awayFormation = '4-3-3') => {
