@@ -19,7 +19,7 @@ import CoachingStaff from './screens/CoachingStaff';
 import ClubFacilities from './screens/ClubFacilities';
 import Bank from './screens/Bank';
 import { database } from './firebase';
-import { ref, onValue, update } from 'firebase/database';
+import { ref, onValue, update, get } from 'firebase/database';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
@@ -187,6 +187,50 @@ const MainApp = () => {
     }
   };
 
+  const handleClearAllPendingMatches = async () => {
+    if (!currentUser) return;
+
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm('Cancel all your pending matches? This will remove all waiting/prematch challenges.');
+      if (!confirmed) return;
+    }
+
+    try {
+      const matchesRef = ref(database, 'matches');
+      const snapshot = await get(matchesRef);
+
+      if (snapshot.exists()) {
+        const updates = {};
+        snapshot.forEach(childSnapshot => {
+          const match = childSnapshot.val();
+          // Cancel all pending matches involving this user
+          if (
+            (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid) &&
+            (match.state === 'waiting' || match.state === 'prematch')
+          ) {
+            updates[`matches/${childSnapshot.key}/state`] = 'cancelled';
+            updates[`matches/${childSnapshot.key}/cancelledBy`] = currentUser.uid;
+            updates[`matches/${childSnapshot.key}/cancelledAt`] = Date.now();
+          }
+        });
+
+        if (Object.keys(updates).length > 0) {
+          await update(ref(database), updates);
+          alert(`Cancelled ${Object.keys(updates).length / 3} pending match(es)`);
+        } else {
+          alert('No pending matches to cancel');
+        }
+      }
+
+      // Clear local state
+      setActiveMatch(null);
+      setActiveMatchId(null);
+    } catch (error) {
+      console.error('Error clearing pending matches:', error);
+      alert('Failed to clear pending matches. Please try again.');
+    }
+  };
+
   if (!currentUser) {
     return authScreen === 'login' ? (
       <Login onSwitch={() => setAuthScreen('signup')} />
@@ -236,6 +280,12 @@ const MainApp = () => {
       <View style={styles.welcomeCard}>
         <Text style={styles.welcomeTitle}>{t('welcomeBack')}, {managerProfile?.managerName}!</Text>
         <Text style={styles.welcomeSubtitle}>{t('budget')}: {formatCurrency(managerProfile?.budget || 0)}</Text>
+
+        {activeMatch && (
+          <TouchableOpacity style={styles.clearMatchesButton} onPress={handleClearAllPendingMatches}>
+            <Text style={styles.clearMatchesButtonText}>⚠️ Clear All Pending Matches</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.quickStats}>
           <View style={styles.statCard}>
@@ -561,6 +611,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#667eea',
     marginBottom: 20,
+  },
+  clearMatchesButton: {
+    backgroundColor: '#f5576c',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  clearMatchesButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   quickStats: {
     flexDirection: 'row',

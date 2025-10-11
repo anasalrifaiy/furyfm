@@ -684,6 +684,12 @@ const Match = ({ onBack, activeMatchId }) => {
     console.log('Starting match simulation for match:', match.id);
     const matchRef = ref(database, `matches/${match.id}`);
 
+    // Set match start time for server-side time tracking
+    const now = Date.now();
+    if (!match.matchStartTime) {
+      await update(matchRef, { matchStartTime: now, lastUpdateTime: now });
+    }
+
     // Calculate team strengths
     const homeStrength = calculateTeamStrength(match.homeManager.squad);
     const awayStrength = calculateTeamStrength(match.awayManager.squad);
@@ -711,6 +717,18 @@ const Match = ({ onBack, activeMatchId }) => {
         if (currentData.paused) {
           console.log('Match is paused, skipping simulation tick');
           return;
+        }
+
+        // Server-side time synchronization - calculate actual elapsed time
+        if (currentData.matchStartTime) {
+          const elapsedMs = Date.now() - currentData.matchStartTime;
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+
+          // Fast-forward to current time if client fell behind
+          if (elapsedSeconds > currentSecond) {
+            console.log(`Fast-forwarding from second ${currentSecond} to ${elapsedSeconds}`);
+            currentSecond = Math.min(elapsedSeconds, 120); // Cap at 120 seconds (full time)
+          }
         }
 
         currentSecond++;
