@@ -1206,12 +1206,18 @@ const Match = ({ onBack, activeMatchId }) => {
 
       if (winnerSnapshot.exists()) {
         const winnerData = winnerSnapshot.val();
-        const stadiumLevel = winnerData.stadiumLevel || 1;
+        const stadiumLevel = winnerData.facilities?.stadium || 0;
 
-        // Calculate reward: 1M base + 500K per stadium level
-        const baseReward = 1000000;
-        const stadiumBonus = (stadiumLevel - 1) * 500000;
-        const totalReward = baseReward + stadiumBonus;
+        // Calculate reward based on stadium level from ClubFacilities
+        const stadiumRewards = [
+          { revenue: 0 },  // No stadium (level 0)
+          { revenue: 2000000 },  // Level 1: $2M
+          { revenue: 5000000 },  // Level 2: $5M
+          { revenue: 10000000 }, // Level 3: $10M
+          { revenue: 20000000 }  // Level 4: $20M
+        ];
+
+        const totalReward = stadiumRewards[stadiumLevel]?.revenue || 0;
 
         // Award money
         const newBudget = (winnerData.budget || 0) + totalReward;
@@ -1232,9 +1238,13 @@ const Match = ({ onBack, activeMatchId }) => {
         });
 
         // Send reward notification
+        const rewardMessage = stadiumLevel > 0
+          ? `Victory! You earned $${(totalReward / 1000000).toFixed(1)}M from your Level ${stadiumLevel} Stadium! All players gained +100 XP!`
+          : `Victory! All players gained +100 XP! (Build a stadium to earn match revenue)`;
+
         await push(ref(database, `managers/${winnerUid}/notifications`), {
           type: 'match_reward',
-          message: `Victory! You earned $${(totalReward / 1000000).toFixed(1)}M ($${(baseReward / 1000000)}M base + $${(stadiumBonus / 1000000).toFixed(1)}M stadium bonus). All players gained +100 XP!`,
+          message: rewardMessage,
           timestamp: Date.now(),
           read: false
         });
@@ -2187,6 +2197,17 @@ const Match = ({ onBack, activeMatchId }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
+            {currentMatch.isPractice && (
+              <TouchableOpacity
+                onPress={() => {
+                  setMatchState('select');
+                  setCurrentMatch(null);
+                }}
+                style={styles.backButton}
+              >
+                <Text style={styles.backButtonText}>← Back</Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.title}>Match in Progress</Text>
             {!currentMatch.spectators?.[currentUser?.uid] && (
               <TouchableOpacity

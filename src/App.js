@@ -109,6 +109,47 @@ const MainApp = () => {
     return () => unsubscribe();
   }, [currentUser]);
 
+  // Handle browser back button navigation
+  useEffect(() => {
+    // Check if we're running in a browser environment
+    if (typeof window === 'undefined' || !window.history) return;
+
+    // Add a history entry when the app first loads
+    if (currentUser) {
+      window.history.pushState({ screen: currentScreen }, '', window.location.href);
+    }
+
+    const handlePopState = (event) => {
+      // Prevent default back navigation that would leave the app
+      event.preventDefault();
+
+      // Navigate back to home screen instead of exiting the app
+      if (currentScreen !== 'home') {
+        setCurrentScreen('home');
+        setActiveMatchId(null);
+        setSelectedManagerId(null);
+        // Push a new state so we stay in the app
+        window.history.pushState({ screen: 'home' }, '', window.location.href);
+      } else {
+        // If already on home, push state again to prevent leaving
+        window.history.pushState({ screen: 'home' }, '', window.location.href);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [currentScreen, currentUser]);
+
+  // Update browser history when screen changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.history && currentUser && currentScreen !== 'home') {
+      window.history.pushState({ screen: currentScreen }, '', window.location.href);
+    }
+  }, [currentScreen, currentUser]);
+
   const formatCurrency = (amount) => {
     return `$${(amount / 1000000).toFixed(1)}M`;
   };
