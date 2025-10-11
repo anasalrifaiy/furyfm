@@ -375,6 +375,8 @@ const Match = ({ onBack, activeMatchId }) => {
 
     await set(newMatchRef, matchData);
 
+    console.log('Match created:', matchData);
+
     // Send notification to opponent
     const notificationRef = ref(database, `managers/${opponent.uid}/notifications`);
     await push(notificationRef, {
@@ -388,9 +390,13 @@ const Match = ({ onBack, activeMatchId }) => {
     });
 
     // Set local state to show waiting lobby
+    console.log('Setting local state - matchData:', matchData);
+    console.log('Has homeManager?', !!matchData.homeManager);
+    console.log('Has awayManager?', !!matchData.awayManager);
     setCurrentMatch(matchData);
     setIsHome(true);
     setMatchState('waiting');
+    console.log('State set to waiting');
 
     showAlert('Challenge Sent!', 'Waiting for opponent to accept...');
   };
@@ -1525,7 +1531,13 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Waiting for opponent to accept challenge
   if (matchState === 'waiting') {
+    console.log('Rendering waiting screen');
+    console.log('currentMatch:', currentMatch);
+    console.log('Has homeManager?', !!currentMatch?.homeManager);
+    console.log('Has awayManager?', !!currentMatch?.awayManager);
+
     if (!currentMatch || !currentMatch.homeManager || !currentMatch.awayManager) {
+      console.log('Missing data, showing loading screen');
       return (
         <View style={styles.container}>
           <View style={styles.loadingContainer}>
@@ -1535,6 +1547,7 @@ const Match = ({ onBack, activeMatchId }) => {
       );
     }
 
+    console.log('All data present, rendering waiting UI');
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
     const opponentName = opponent?.name || 'Opponent';
     const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;

@@ -154,9 +154,28 @@ const ManagerProfile = ({ managerId, onBack }) => {
         {isOwnProfile && (
           <>
             <Text style={styles.youBadge}>(Your Profile)</Text>
-            <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-              <Text style={styles.editButtonText}>✏️ Edit Profile</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
+                <Text style={styles.editButtonText}>✏️ Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cacheButton} onPress={() => {
+                // Clear all caches
+                if (typeof window !== 'undefined' && window.caches) {
+                  caches.keys().then(function(names) {
+                    for (let name of names) caches.delete(name);
+                  });
+                }
+                // Clear local storage
+                if (typeof window !== 'undefined' && window.localStorage) {
+                  const authData = localStorage.getItem('authToken'); // Preserve auth
+                  localStorage.clear();
+                  if (authData) localStorage.setItem('authToken', authData);
+                }
+                showAlert('Success', 'Cache cleared! Please refresh the page.');
+              }}>
+                <Text style={styles.cacheButtonText}>🗑️ Clear Cache</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -850,14 +869,33 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 3,
   },
-  editButton: {
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 15,
+  },
+  editButton: {
+    flex: 1,
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    alignItems: 'center',
   },
   editButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  cacheButton: {
+    flex: 1,
+    backgroundColor: '#f5576c',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  cacheButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: 'bold',
