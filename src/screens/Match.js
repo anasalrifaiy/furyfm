@@ -121,11 +121,15 @@ const Match = ({ onBack, activeMatchId }) => {
   useEffect(() => {
     if (!currentMatch?.id) return;
 
+    console.log('Setting up Firebase listener for match:', currentMatch.id);
+
     const matchRef = ref(database, `matches/${currentMatch.id}`);
     const unsubscribe = onValue(matchRef, (snapshot) => {
       if (snapshot.exists()) {
         const matchData = snapshot.val();
         const previousState = matchState;
+
+        console.log('Firebase listener triggered - state change:', previousState, '->', matchData.state);
 
         // Update match state based on Firebase data
         setMatchState(matchData.state);
@@ -467,6 +471,9 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const matchData = snapshot.val();
 
+    console.log('Accepting challenge - matchId:', matchId);
+    console.log('Match data before update:', matchData);
+
     // Determine if I'm home or away
     const amHome = matchData.homeManager.uid === currentUser.uid;
     setIsHome(amHome);
@@ -478,9 +485,19 @@ const Match = ({ onBack, activeMatchId }) => {
     // Transition BOTH managers to prematch setup immediately
     await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
 
-    // Set local state to prematch
-    setCurrentMatch({ ...matchData, state: 'prematch' });
+    console.log('Updated Firebase to prematch state');
+
+    // Reload the match data to get the complete updated state
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatchData = updatedSnapshot.val();
+
+    console.log('Updated match data:', updatedMatchData);
+
+    // Set local state to prematch with complete data
+    setCurrentMatch(updatedMatchData);
     setMatchState('prematch');
+
+    console.log('Local state updated to prematch');
 
     showAlert('Challenge Accepted!', 'Now set up your formation for the match.');
   };
