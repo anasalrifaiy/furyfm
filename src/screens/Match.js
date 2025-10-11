@@ -360,14 +360,19 @@ const Match = ({ onBack, activeMatchId }) => {
       read: false
     });
 
+    // Set local state to show waiting lobby
     setCurrentMatch(matchData);
     setIsHome(true);
     setMatchState('waiting');
 
-    // Mark myself as ready
-    await update(ref(database, `matches/${matchId}/homeManager`), { ready: true });
+    // Initialize prematch formation data immediately
+    setPrematchStarting11(myStarting);
+    setPrematchFormation(managerProfile.formation || '4-3-3');
 
-    showAlert('Challenge Sent!', 'Waiting for opponent to accept...');
+    // DON'T mark as ready automatically - let user confirm in waiting lobby
+    // await update(ref(database, `matches/${matchId}/homeManager`), { ready: true });
+
+    showAlert('Challenge Sent!', 'Set up your formation while waiting for opponent...');
   };
 
   const startAIPracticeMatch = async () => {
@@ -1467,6 +1472,25 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
     const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;
+    const imReady = isHome ? currentMatch.homeManager?.ready : currentMatch.awayManager?.ready;
+
+    const confirmReady = async () => {
+      if (!currentMatch.isPractice) {
+        const matchRef = ref(database, `matches/${currentMatch.id}`);
+        const myPath = isHome ? 'homeManager' : 'awayManager';
+        const formationField = isHome ? 'homeManager/formation' : 'awayManager/formation';
+        const squadField = isHome ? 'homeManager/squad' : 'awayManager/squad';
+
+        // Update formation, squad, and mark as ready
+        await update(matchRef, {
+          [`${myPath}/ready`]: true,
+          [formationField]: prematchFormation,
+          [squadField]: prematchStarting11
+        });
+
+        showAlert('Ready!', 'Waiting for opponent to accept and get ready...');
+      }
+    };
 
     return (
       <View style={styles.container}>
@@ -1477,7 +1501,7 @@ const Match = ({ onBack, activeMatchId }) => {
           }} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Waiting...</Text>
+          <Text style={styles.title}>Match Lobby</Text>
           <TouchableOpacity
             style={styles.forfeitButton}
             onPress={forfeitMatch}
@@ -1489,12 +1513,12 @@ const Match = ({ onBack, activeMatchId }) => {
         <ScrollView style={styles.content}>
           <View style={styles.waitingCard}>
             <Text style={styles.waitingIcon}>⏳</Text>
-            <Text style={styles.waitingTitle}>Waiting for Opponent</Text>
+            <Text style={styles.waitingTitle}>Match Lobby</Text>
             <Text style={styles.waitingDesc}>
               {opponent.name} {opponentReady ? 'is ready!' : 'hasn\'t accepted yet...'}
             </Text>
             <Text style={styles.waitingStatus}>
-              You: ✓ Ready {'\n'}
+              You: {imReady ? '✓ Ready' : '⏳ Setting up...'} {'\n'}
               {opponent.name}: {opponentReady ? '✓ Ready' : '⏳ Waiting...'}
             </Text>
           </View>
@@ -1510,7 +1534,8 @@ const Match = ({ onBack, activeMatchId }) => {
                     styles.formationBtn,
                     prematchFormation === formation && styles.formationBtnActive
                   ]}
-                  onPress={() => setPrematchFormation(formation)}
+                  onPress={() => !imReady && setPrematchFormation(formation)}
+                  disabled={imReady}
                 >
                   <Text style={[
                     styles.formationBtnText,
@@ -1545,6 +1570,33 @@ const Match = ({ onBack, activeMatchId }) => {
               ))}
             </View>
           </View>
+
+          {/* Confirm Ready Button */}
+          {!imReady && (
+            <View style={styles.prematchSection}>
+              <TouchableOpacity
+                style={styles.confirmReadyButton}
+                onPress={confirmReady}
+              >
+                <Text style={styles.confirmReadyButtonText}>✓ Confirm Ready</Text>
+              </TouchableOpacity>
+              <Text style={styles.confirmReadyHint}>
+                Review your formation and confirm when ready
+              </Text>
+            </View>
+          )}
+
+          {imReady && (
+            <View style={styles.prematchSection}>
+              <View style={styles.readyConfirmedCard}>
+                <Text style={styles.readyConfirmedIcon}>✓</Text>
+                <Text style={styles.readyConfirmedText}>You're Ready!</Text>
+                <Text style={styles.readyConfirmedSubtext}>
+                  Waiting for {opponent.name} to accept and get ready...
+                </Text>
+              </View>
+            </View>
+          )}
         </ScrollView>
       </View>
     );
@@ -4234,6 +4286,48 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  confirmReadyButton: {
+    backgroundColor: '#43e97b',
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  confirmReadyButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  confirmReadyHint: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+  },
+  readyConfirmedCard: {
+    backgroundColor: '#1a3a2d',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#43e97b',
+  },
+  readyConfirmedIcon: {
+    fontSize: 40,
+    color: '#43e97b',
+    marginBottom: 10,
+  },
+  readyConfirmedText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    marginBottom: 5,
+  },
+  readyConfirmedSubtext: {
+    fontSize: 14,
+    color: '#ffffff',
+    textAlign: 'center',
+    opacity: 0.8,
   },
 });
 
