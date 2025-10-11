@@ -1112,8 +1112,16 @@ const Match = ({ onBack, activeMatchId }) => {
   const simulateSecondHalf = async () => {
     if (!currentMatch) return;
 
-    console.log('Starting second half simulation');
+    console.log('========== SECOND HALF STARTING ==========');
     const matchRef = ref(database, `matches/${currentMatch.id}`);
+
+    const initialData = (await get(matchRef)).val();
+    console.log('Second half initial state:', {
+      second: initialData.second,
+      minute: initialData.minute,
+      state: initialData.state,
+      secondHalfStarted: initialData.secondHalfStarted
+    });
 
     // Calculate team strengths
     const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
@@ -1141,6 +1149,7 @@ const Match = ({ onBack, activeMatchId }) => {
       }
 
       const currentSecond = (currentData.second || 60) + 1;
+      console.log(`Second half tick: second=${currentSecond}, from currentData.second=${currentData.second}`);
 
       // Safety check: if we're somehow past 120 seconds, finish immediately
       if (currentSecond > 120) {
@@ -2212,12 +2221,12 @@ const Match = ({ onBack, activeMatchId }) => {
               );
             })}
 
-            {/* Away Team (top) - mirrored with movement */}
+            {/* Away Team (top) - inverted Y positions (attacking downward) */}
             {awayPlayers.map((player, idx) => {
               const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
               const moveAmount = isAttacker ? variance * 1.5 : variance;
               const vertMove = isAttacker ? verticalVariance * 1.2 : verticalVariance * 0.8;
-              const x = 100 - player.baseX - moveAmount;
+              const x = player.baseX + moveAmount; // Keep same X (left-right position)
               const y = 100 - player.baseY - vertMove;
               const hasBall = ballCarrier.id === player.id && possessionTeam === 1;
 
