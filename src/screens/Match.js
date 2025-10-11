@@ -246,7 +246,7 @@ const Match = ({ onBack, activeMatchId }) => {
         setAwayResumeReady(matchData.awayResumeReady || false);
 
         // Detect state change to 'playing' - start simulation if home manager
-        if (matchData.state === 'playing' && previousState === 'ready' && isHome) {
+        if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch') && isHome) {
           console.log('Match state changed to playing - starting simulation');
           simulateMatch(matchData);
         }
@@ -1763,19 +1763,36 @@ const Match = ({ onBack, activeMatchId }) => {
         const updatedMatch = updatedSnapshot.val();
 
         if (updatedMatch.homePrematchReady && updatedMatch.awayPrematchReady) {
-          await update(matchRef, { state: 'ready' });
+          // Both ready - start match immediately (skip 'ready' waiting screen)
+          await update(matchRef, {
+            state: 'playing',
+            startedAt: Date.now(),
+            minute: 0,
+            second: 0,
+            homeScore: 0,
+            awayScore: 0,
+            events: []
+          });
         }
       } else {
-        // Practice match - go directly to ready
+        // Practice match - go directly to playing
         setCurrentMatch({
           ...currentMatch,
-          state: 'ready',
+          state: 'playing',
           homePrematchReady: true,
           awayPrematchReady: true,
           homeTactic: selectedTactic,
-          homeManager: { ...currentMatch.homeManager, squad: prematchStarting11, formation: prematchFormation }
+          homeManager: { ...currentMatch.homeManager, squad: prematchStarting11, formation: prematchFormation },
+          startedAt: Date.now(),
+          minute: 0,
+          second: 0,
+          homeScore: 0,
+          awayScore: 0,
+          events: []
         });
-        setMatchState('ready');
+        setMatchState('playing');
+        // Start practice match simulation
+        simulatePracticeMatch();
       }
     };
 
