@@ -104,6 +104,48 @@ const Match = ({ onBack, activeMatchId }) => {
     });
   };
 
+  const acceptMatchChallenge = async (matchId) => {
+    const matchRef = ref(database, `matches/${matchId}`);
+    const snapshot = await get(matchRef);
+
+    if (!snapshot.exists()) {
+      showAlert('Error', 'Match not found.');
+      return;
+    }
+
+    const matchData = snapshot.val();
+
+    console.log('Accepting challenge - matchId:', matchId);
+    console.log('Match data before update:', matchData);
+
+    // Determine if I'm home or away
+    const amHome = matchData.homeManager.uid === currentUser.uid;
+    setIsHome(amHome);
+
+    // Mark myself as ready (accepting the challenge)
+    const myPath = amHome ? 'homeManager' : 'awayManager';
+    await update(ref(database, `matches/${matchId}/${myPath}`), { ready: true });
+
+    // Transition BOTH managers to prematch setup immediately
+    await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
+
+    console.log('Updated Firebase to prematch state');
+
+    // Reload the match data to get the complete updated state
+    const updatedSnapshot = await get(matchRef);
+    const updatedMatchData = updatedSnapshot.val();
+
+    console.log('Updated match data:', updatedMatchData);
+
+    // Set local state to prematch with complete data
+    setCurrentMatch(updatedMatchData);
+    setMatchState('prematch');
+
+    console.log('Local state updated to prematch');
+
+    showAlert('Challenge Accepted!', 'Now set up your formation for the match.');
+  };
+
   const loadActiveMatch = async (matchId) => {
     const matchRef = ref(database, `matches/${matchId}`);
     const snapshot = await get(matchRef);
@@ -464,48 +506,6 @@ const Match = ({ onBack, activeMatchId }) => {
       nationality: 'AI',
       price: 10000000
     }));
-  };
-
-  const acceptMatchChallenge = async (matchId) => {
-    const matchRef = ref(database, `matches/${matchId}`);
-    const snapshot = await get(matchRef);
-
-    if (!snapshot.exists()) {
-      showAlert('Error', 'Match not found.');
-      return;
-    }
-
-    const matchData = snapshot.val();
-
-    console.log('Accepting challenge - matchId:', matchId);
-    console.log('Match data before update:', matchData);
-
-    // Determine if I'm home or away
-    const amHome = matchData.homeManager.uid === currentUser.uid;
-    setIsHome(amHome);
-
-    // Mark myself as ready (accepting the challenge)
-    const myPath = amHome ? 'homeManager' : 'awayManager';
-    await update(ref(database, `matches/${matchId}/${myPath}`), { ready: true });
-
-    // Transition BOTH managers to prematch setup immediately
-    await update(ref(database, `matches/${matchId}`), { state: 'prematch' });
-
-    console.log('Updated Firebase to prematch state');
-
-    // Reload the match data to get the complete updated state
-    const updatedSnapshot = await get(matchRef);
-    const updatedMatchData = updatedSnapshot.val();
-
-    console.log('Updated match data:', updatedMatchData);
-
-    // Set local state to prematch with complete data
-    setCurrentMatch(updatedMatchData);
-    setMatchState('prematch');
-
-    console.log('Local state updated to prematch');
-
-    showAlert('Challenge Accepted!', 'Now set up your formation for the match.');
   };
 
   const forfeitMatch = async () => {
