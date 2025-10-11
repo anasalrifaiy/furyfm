@@ -200,9 +200,7 @@ const Bank = ({ onBack }) => {
         await update(ref(database, `loans/${newLoanRef.key}`), loan);
 
         // Send notification to lender
-        const notifRef = ref(database, `managers/${selectedManager.id}/notifications`);
-        const newNotifRef = await push(notifRef);
-        await update(newNotifRef, {
+        await push(ref(database, `managers/${selectedManager.id}/notifications`), {
           type: 'loan_request',
           from: managerProfile.managerName,
           fromId: currentUser.uid,

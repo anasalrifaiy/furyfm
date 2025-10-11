@@ -19,7 +19,7 @@ import CoachingStaff from './screens/CoachingStaff';
 import ClubFacilities from './screens/ClubFacilities';
 import Bank from './screens/Bank';
 import { database } from './firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, update } from 'firebase/database';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
@@ -90,11 +90,12 @@ const MainApp = () => {
           // Check if this match involves the current user and is in progress
           // Also check if match is recent (created within last hour) to avoid stale matches
           if (
-            (match.homeManager.uid === currentUser.uid || match.awayManager.uid === currentUser.uid) &&
+            (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid) &&
             (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+            match.state !== 'cancelled' &&
             (match.createdAt && match.createdAt > oneHourAgo)
           ) {
-            foundActiveMatch = match;
+            foundActiveMatch = { ...match, id: childSnapshot.key };
           }
         });
         setActiveMatch(foundActiveMatch);
@@ -162,6 +163,28 @@ const MainApp = () => {
   const handleAcceptMatchChallenge = (matchId) => {
     setActiveMatchId(matchId);
     setCurrentScreen('match');
+  };
+
+  const handleCancelPendingMatch = async (e) => {
+    e.stopPropagation(); // Prevent banner click from firing
+
+    if (!activeMatch) return;
+
+    try {
+      const matchRef = ref(database, `matches/${activeMatch.id}`);
+      await update(matchRef, {
+        state: 'cancelled',
+        cancelledBy: currentUser.uid,
+        cancelledAt: Date.now()
+      });
+
+      // Clear local state
+      setActiveMatch(null);
+      setActiveMatchId(null);
+    } catch (error) {
+      console.error('Error cancelling match:', error);
+      alert('Failed to cancel match. Please try again.');
+    }
   };
 
   if (!currentUser) {
@@ -413,7 +436,7 @@ const MainApp = () => {
                  'Match in Progress'}
               </Text>
               <Text style={styles.bannerSubtitle}>
-                {activeMatch.homeManager.managerName} vs {activeMatch.awayManager.managerName}
+                {activeMatch.homeManager?.managerName} vs {activeMatch.awayManager?.managerName}
               </Text>
               {(activeMatch.state === 'playing' || activeMatch.state === 'halftime') && (
                 <Text style={styles.bannerScore}>
@@ -421,7 +444,15 @@ const MainApp = () => {
                 </Text>
               )}
             </View>
-            <Text style={styles.bannerArrow}>→</Text>
+            <View style={styles.bannerButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCancelPendingMatch}
+              >
+                <Text style={styles.cancelButtonText}>✕</Text>
+              </TouchableOpacity>
+              <Text style={styles.bannerArrow}>→</Text>
+            </View>
           </View>
         </TouchableOpacity>
       )}
@@ -671,6 +702,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#667eea',
     marginLeft: 10,
+  },
+  bannerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cancelButton: {
+    backgroundColor: '#f5576c',
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
 });
 

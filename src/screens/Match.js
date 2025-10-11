@@ -2558,66 +2558,10 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
 
-          {/* Pitch Visualization */}
-          {currentMatch.homeManager.squad && currentMatch.awayManager.squad && (() => {
-            const getFormationPositions = (formation, squad) => {
-              const formations = {
-                '4-3-3': [
-                  { pos: 'GK', x: 50, y: 92 },
-                  { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-                  { pos: 'CM', x: 30, y: 55 }, { pos: 'CM', x: 50, y: 50 }, { pos: 'CM', x: 70, y: 55 },
-                  { pos: 'LW', x: 20, y: 25 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 80, y: 25 }
-                ],
-                '4-4-2': [
-                  { pos: 'GK', x: 50, y: 92 },
-                  { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 35, y: 78 }, { pos: 'CB', x: 65, y: 78 }, { pos: 'RB', x: 85, y: 75 },
-                  { pos: 'LM', x: 15, y: 50 }, { pos: 'CM', x: 40, y: 55 }, { pos: 'CM', x: 60, y: 55 }, { pos: 'RM', x: 85, y: 50 },
-                  { pos: 'ST', x: 40, y: 20 }, { pos: 'ST', x: 60, y: 20 }
-                ]
-              };
-              const formationLayout = formations[formation] || formations['4-3-3'];
-              return squad.map((player, idx) => {
-                const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
-                return { ...player, baseX: layoutPos.x, baseY: layoutPos.y };
-              });
-            };
-
-            const homePlayers = getFormationPositions(currentMatch.homeManager.formation || '4-3-3', currentMatch.homeManager.squad);
-            const awayPlayers = getFormationPositions(currentMatch.awayManager.formation || '4-3-3', currentMatch.awayManager.squad);
-            const variance = Math.sin(minute / 10) * 3;
-
-            return (
-              <View style={styles.pitchContainer}>
-                <View style={styles.pitch}>
-                  <View style={styles.goalTop}><View style={styles.goalPost} /><View style={styles.goalNet} /></View>
-                  <View style={styles.goalBottom}><View style={styles.goalPost} /><View style={styles.goalNet} /></View>
-                  <View style={styles.pitchHalfLine} />
-                  <View style={styles.pitchCenterCircle} />
-                  <View style={styles.pitchCenterDot} />
-                  <View style={styles.penaltyAreaTop} />
-                  <View style={styles.penaltyAreaBottom} />
-                  <View style={[styles.ball, { left: '50%', top: '50%' }]} />
-
-                  {homePlayers.map((player, idx) => (
-                    <View key={`home-${idx}`} style={[styles.playerDot, styles.playerDotHome, { left: `${player.baseX + variance}%`, top: `${player.baseY}%` }]}>
-                      <Text style={styles.playerDotText}>{player.position}</Text>
-                      <Text style={styles.playerNumber}>{idx + 1}</Text>
-                    </View>
-                  ))}
-
-                  {awayPlayers.map((player, idx) => (
-                    <View key={`away-${idx}`} style={[styles.playerDot, styles.playerDotAway, { left: `${100 - player.baseX - variance}%`, top: `${100 - player.baseY}%` }]}>
-                      <Text style={styles.playerDotText}>{player.position}</Text>
-                      <Text style={styles.playerNumber}>{idx + 1}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={styles.pitchInfoOverlay}>
-                  <Text style={styles.pitchInfoText}>⚽ Live Match Action</Text>
-                </View>
-              </View>
-            );
-          })()}
+          {/* Spectator Info - Pitch removed to prevent duplicate rendering */}
+          <View style={styles.spectatorInfoCard}>
+            <Text style={styles.spectatorInfoText}>Watch the match unfold in real-time! Check the events below for live updates.</Text>
+          </View>
 
           {/* Match State Info */}
           {matchState === 'halftime' && (
@@ -3928,6 +3872,20 @@ const styles = StyleSheet.create({
   spectatorDesc: {
     fontSize: 13,
     color: '#ffffff',
+  },
+  spectatorInfoCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  spectatorInfoText: {
+    fontSize: 14,
+    color: '#ffffff',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   squadsSection: {
     marginTop: 20,
