@@ -119,9 +119,11 @@ const Match = ({ onBack, activeMatchId }) => {
         }
 
         // Detect second half start - check for secondHalfStarted flag
-        if (matchData.state === 'playing' && matchData.secondHalfStarted && isHome && matchData.minute === 45) {
+        if (matchData.state === 'playing' && matchData.secondHalfStarted && isHome && !matchData.secondHalfSimulationStarted) {
           console.log('Second half starting - resuming simulation');
           console.log('Match data:', matchData);
+          // Mark that second half simulation has started to avoid duplicate calls
+          update(ref(database, `matches/${currentMatch.id}`), { secondHalfSimulationStarted: true });
           simulateSecondHalf();
         }
 
@@ -184,9 +186,9 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   }, [currentMatch?.paused, homeResumeReady, awayResumeReady, currentMatch?.id]);
 
-  // Initialize prematch state when entering prematch
+  // Initialize prematch state when entering waiting or prematch
   useEffect(() => {
-    if (matchState === 'prematch' && currentMatch) {
+    if ((matchState === 'waiting' || matchState === 'prematch') && currentMatch) {
       const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
       const mySquad = myTeam.squad;
       const myFormation = myTeam.formation || '4-3-3';
@@ -1456,7 +1458,7 @@ const Match = ({ onBack, activeMatchId }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView style={styles.content}>
           <View style={styles.waitingCard}>
             <Text style={styles.waitingIcon}>⏳</Text>
             <Text style={styles.waitingTitle}>Waiting for Opponent</Text>
@@ -1468,7 +1470,54 @@ const Match = ({ onBack, activeMatchId }) => {
               {opponent.name}: {opponentReady ? '✓ Ready' : '⏳ Waiting...'}
             </Text>
           </View>
-        </View>
+
+          {/* Formation Selection */}
+          <View style={styles.prematchSection}>
+            <Text style={styles.sectionTitle}>Select Formation</Text>
+            <View style={styles.formationsRow}>
+              {['4-3-3', '4-4-2', '3-5-2', '4-2-3-1', '5-3-2'].map(formation => (
+                <TouchableOpacity
+                  key={formation}
+                  style={[
+                    styles.formationBtn,
+                    prematchFormation === formation && styles.formationBtnActive
+                  ]}
+                  onPress={() => setPrematchFormation(formation)}
+                >
+                  <Text style={[
+                    styles.formationBtnText,
+                    prematchFormation === formation && styles.formationBtnTextActive
+                  ]}>
+                    {formation}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Formation Preview */}
+          <View style={styles.prematchSection}>
+            <Text style={styles.sectionTitle}>Your Formation Preview</Text>
+            <View style={styles.prematchFormationPitch}>
+              {getFormationPositions(prematchFormation, prematchStarting11).map((player, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.prematchPlayer,
+                    { left: `${player.baseX}%`, top: `${player.baseY}%` }
+                  ]}
+                >
+                  <View style={styles.prematchPlayerCircle}>
+                    <Text style={styles.prematchPlayerPos}>{player.position}</Text>
+                    <Text style={styles.prematchPlayerNum}>{idx + 1}</Text>
+                  </View>
+                  <Text style={styles.prematchPlayerName}>{player.name.split(' ').pop()}</Text>
+                  <Text style={styles.prematchPlayerRating}>{player.overall}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       </View>
     );
   }
