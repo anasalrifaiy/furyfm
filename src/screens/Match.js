@@ -2541,41 +2541,47 @@ const Match = ({ onBack, activeMatchId }) => {
         </ScrollView>
 
         {/* Substitution Modal with Formation View */}
-        {substitutionMode && !substitutionMode.selecting && (
-          <View style={styles.modal}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                ⏸️ Match Paused - Substitution
-              </Text>
-              <Text style={styles.modalSubtitle}>
-                Substitute {substitutionMode.playerOut.name} ({substitutionMode.playerOut.position})
-              </Text>
+        {substitutionMode && !substitutionMode.selecting && (() => {
+          // Define mySquad and myFormation for substitution modal
+          const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+          const mySquad = myTeam?.squad || [];
+          const myFormation = myTeam?.formation || '4-3-3';
 
-              {/* Mini Formation View */}
-              <View style={styles.miniFormationContainer}>
-                <Text style={styles.miniFormationTitle}>Current Formation: {myFormation}</Text>
-                <View style={styles.miniFormation}>
-                  {mySquad.map((player, idx) => {
-                    const isPlayerOut = player.id === substitutionMode.playerOut.id;
-                    const layout = getFormationPositions(myFormation, mySquad);
-                    const pos = layout[idx];
+          return (
+            <View style={styles.modal}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  ⏸️ Match Paused - Substitution
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  Substitute {substitutionMode.playerOut.name} ({substitutionMode.playerOut.position})
+                </Text>
 
-                    return (
-                      <View
-                        key={player.id}
-                        style={[
-                          styles.miniPlayer,
-                          isPlayerOut && styles.miniPlayerOut,
-                          { left: `${pos.baseX}%`, top: `${pos.baseY}%` }
-                        ]}
-                      >
-                        <Text style={styles.miniPlayerText}>{player.position}</Text>
-                        {isPlayerOut && <Text style={styles.miniPlayerOutIcon}>❌</Text>}
-                      </View>
-                    );
-                  })}
+                {/* Mini Formation View */}
+                <View style={styles.miniFormationContainer}>
+                  <Text style={styles.miniFormationTitle}>Current Formation: {myFormation}</Text>
+                  <View style={styles.miniFormation}>
+                    {mySquad.map((player, idx) => {
+                      const isPlayerOut = player.id === substitutionMode.playerOut.id;
+                      const layout = getFormationPositions(myFormation, mySquad);
+                      const pos = layout[idx];
+
+                      return (
+                        <View
+                          key={player.id}
+                          style={[
+                            styles.miniPlayer,
+                            isPlayerOut && styles.miniPlayerOut,
+                            { left: `${pos.baseX}%`, top: `${pos.baseY}%` }
+                          ]}
+                        >
+                          <Text style={styles.miniPlayerText}>{player.position}</Text>
+                          {isPlayerOut && <Text style={styles.miniPlayerOutIcon}>❌</Text>}
+                        </View>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
 
               <Text style={styles.benchTitle}>Choose Replacement from Bench:</Text>
               <ScrollView style={styles.benchList}>
@@ -2617,7 +2623,8 @@ const Match = ({ onBack, activeMatchId }) => {
               </TouchableOpacity>
             </View>
           </View>
-        )}
+          );
+        })()}
       </View>
     );
   }
