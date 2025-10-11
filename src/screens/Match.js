@@ -717,8 +717,16 @@ const Match = ({ onBack, activeMatchId }) => {
     console.log('Setting up match interval...');
     const interval = setInterval(async () => {
       try {
-        // Check if match is paused
+        // Check if match is paused or finished
         const currentData = (await get(matchRef)).val();
+
+        // Check if match is already finished (safety check)
+        if (currentData.state === 'finished') {
+          console.log('Match is already finished, stopping simulation');
+          clearInterval(interval);
+          return;
+        }
+
         if (currentData.paused) {
           console.log('Match is paused, skipping simulation tick');
           return;
@@ -737,6 +745,15 @@ const Match = ({ onBack, activeMatchId }) => {
         }
 
         currentSecond++;
+
+        // Safety check: if we're past 120 seconds, finish immediately
+        if (currentSecond > 120) {
+          console.log('Match exceeded 120 seconds, finishing now');
+          clearInterval(interval);
+          await finishMatch();
+          return;
+        }
+
         // Convert seconds to match minutes (120 seconds = 90 minutes)
         const matchMinute = Math.floor(currentSecond / (120 / 90));
 
@@ -800,20 +817,22 @@ const Match = ({ onBack, activeMatchId }) => {
         await update(matchRef, { minute: matchMinute, second: currentSecond });
 
         // Half time at 60 seconds (45 match minutes)
-        if (currentSecond === 60) {
+        if (currentSecond >= 60 && currentData.state !== 'halftime') {
           console.log('Half time reached');
           clearInterval(interval);
           await update(matchRef, {
             state: 'halftime',
             second: 60  // Save current second for second half
           });
+          return; // Stop processing this interval
         }
 
         // Full time at 120 seconds (90 match minutes)
-        if (currentSecond === 120) {
+        if (currentSecond >= 120) {
           console.log('Full time reached');
           clearInterval(interval);
           await finishMatch();
+          return; // Stop processing this interval
         }
       } catch (error) {
         console.error('Error during match simulation:', error);
@@ -964,6 +983,13 @@ const Match = ({ onBack, activeMatchId }) => {
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
 
+      // Check if match is already finished or in halftime (shouldn't happen but safety check)
+      if (currentData.state === 'finished' || currentData.state === 'halftime') {
+        console.log('Match is already finished or at halftime, stopping simulation');
+        clearInterval(interval);
+        return;
+      }
+
       // Check if match is paused
       if (currentData.paused) {
         console.log('Match is paused, skipping simulation tick');
@@ -971,6 +997,15 @@ const Match = ({ onBack, activeMatchId }) => {
       }
 
       const currentSecond = (currentData.second || 60) + 1;
+
+      // Safety check: if we're somehow past 120 seconds, finish immediately
+      if (currentSecond > 120) {
+        console.log('Match exceeded 120 seconds, finishing now');
+        clearInterval(interval);
+        await finishMatch();
+        return;
+      }
+
       const matchMinute = Math.floor(currentSecond / (120 / 90));
 
       console.log(`Second half - second ${currentSecond}, minute ${matchMinute}`);
