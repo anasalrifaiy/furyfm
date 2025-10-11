@@ -42,7 +42,7 @@ const Match = ({ onBack, activeMatchId }) => {
     }
   }, [activeMatchId]);
 
-  // Cleanup stuck matches in waiting state older than 30 minutes
+  // Cleanup stuck and old matches
   const cleanupStuckMatches = async () => {
     if (!currentUser) return;
 
@@ -52,27 +52,54 @@ const Match = ({ onBack, activeMatchId }) => {
     if (!snapshot.exists()) return;
 
     const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
 
     snapshot.forEach(async (childSnapshot) => {
       const match = childSnapshot.val();
       const matchAge = match.createdAt || 0;
+      const matchRef = ref(database, `matches/${childSnapshot.key}`);
 
-      // Auto-cancel waiting matches older than 30 minutes
+      // Auto-cancel waiting/prematch matches older than 30 minutes
       if (
-        match.state === 'waiting' &&
+        (match.state === 'waiting' || match.state === 'prematch') &&
         matchAge > 0 &&
         matchAge < thirtyMinutesAgo &&
         (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
       ) {
-        const matchRef = ref(database, `matches/${childSnapshot.key}`);
         await update(matchRef, {
-          state: 'finished',
+          state: 'cancelled',
           homeScore: 0,
           awayScore: 0,
           minute: 0,
           events: [`Match automatically cancelled due to inactivity`],
           cancelledAt: Date.now()
         });
+      }
+
+      // Auto-finish stuck 'ready' or 'playing' matches older than 2 hours
+      if (
+        (match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+        matchAge > 0 &&
+        matchAge < twoHoursAgo &&
+        (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid)
+      ) {
+        await update(matchRef, {
+          state: 'finished',
+          minute: 90,
+          events: [...(match.events || []), `Match automatically ended due to inactivity`],
+          finishedAt: Date.now()
+        });
+      }
+
+      // Delete old finished/cancelled matches older than 24 hours
+      if (
+        (match.state === 'finished' || match.state === 'cancelled') &&
+        matchAge > 0 &&
+        matchAge < twentyFourHoursAgo
+      ) {
+        // Don't delete, just mark for cleanup by leaving it (Firebase will handle it)
+        // Or you could delete it: await remove(matchRef);
       }
     });
   };
@@ -1498,7 +1525,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Waiting for opponent to accept challenge
   if (matchState === 'waiting') {
-    if (!currentMatch) {
+    if (!currentMatch || !currentMatch.homeManager || !currentMatch.awayManager) {
       return (
         <View style={styles.container}>
           <View style={styles.loadingContainer}>
@@ -1509,6 +1536,7 @@ const Match = ({ onBack, activeMatchId }) => {
     }
 
     const opponent = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+    const opponentName = opponent?.name || 'Opponent';
     const opponentReady = isHome ? currentMatch.awayManager?.ready : currentMatch.homeManager?.ready;
 
     return (
@@ -1534,7 +1562,7 @@ const Match = ({ onBack, activeMatchId }) => {
             <Text style={styles.waitingIcon}>⏳</Text>
             <Text style={styles.waitingTitle}>Challenge Sent</Text>
             <Text style={styles.waitingDesc}>
-              Waiting for {opponent.name} to accept your challenge...
+              Waiting for {opponentName} to accept your challenge...
             </Text>
             <Text style={styles.waitingStatus}>
               {opponentReady ? '✓ Opponent accepted! Moving to formation setup...' : '⏳ Waiting for response...'}
@@ -1545,7 +1573,7 @@ const Match = ({ onBack, activeMatchId }) => {
             <Text style={styles.infoIcon}>ℹ️</Text>
             <Text style={styles.infoTitle}>What's Next?</Text>
             <Text style={styles.infoDesc}>
-              Once {opponent.name} accepts, you'll both be taken to the formation setup screen where you can arrange your starting XI and tactics.
+              Once {opponentName} accepts, you'll both be taken to the formation setup screen where you can arrange your starting XI and tactics.
             </Text>
           </View>
         </ScrollView>
@@ -1555,19 +1583,19 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Pre-match setup - adjust formation and tactics
   if (matchState === 'prematch') {
-    if (!currentMatch) {
+    if (!currentMatch || !currentMatch.homeManager || !currentMatch.awayManager) {
       return (
         <View style={styles.container}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading match...</Text>
+            <Text style={styles.loadingText}>Loading match data...</Text>
           </View>
         </View>
       );
     }
 
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
-    const mySquad = myTeam.squad;
-    const myFormation = myTeam.formation || '4-3-3';
+    const mySquad = myTeam?.squad || [];
+    const myFormation = myTeam?.formation || '4-3-3';
     const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
     const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
 
