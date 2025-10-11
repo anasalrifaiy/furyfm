@@ -97,28 +97,13 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
       return;
     }
 
-    const matchData = snapshot.val();
-
-    // Mark myself as ready
-    await update(ref(database, `matches/${notification.matchId}/awayManager`), { ready: true });
-
-    // Check if both are ready
-    const updatedSnapshot = await get(matchRef);
-    const updatedMatch = updatedSnapshot.val();
-
-    if (updatedMatch.homeManager.ready && updatedMatch.awayManager.ready) {
-      await update(ref(database, `matches/${notification.matchId}`), { state: 'ready' });
-    }
-
-    // Delete notification and navigate to match
+    // Delete notification first
     await deleteNotification(notification.id);
 
-    // Trigger callback to open match screen
+    // Trigger callback to open match screen - the Match component will handle accepting
     if (onAcceptMatchChallenge) {
       onAcceptMatchChallenge(notification.matchId);
     }
-
-    showAlert('Challenge Accepted!', 'Get ready for the match!');
   };
 
   const rejectMatchChallenge = async (notification) => {

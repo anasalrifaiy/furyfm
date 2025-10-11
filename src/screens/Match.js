@@ -114,6 +114,12 @@ const Match = ({ onBack, activeMatchId }) => {
       setIsHome(amHome);
       setCurrentMatch(matchData);
       setMatchState(matchData.state);
+
+      // If I'm the away manager and match is still in 'waiting' state, auto-accept it
+      if (!amHome && matchData.state === 'waiting') {
+        console.log('Auto-accepting challenge as away manager');
+        acceptMatchChallenge(matchId);
+      }
     }
   };
 
