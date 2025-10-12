@@ -82,6 +82,8 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
         return '⚽';
       case 'match_finished':
         return '🏆';
+      case 'loan_request':
+        return '🏦';
       default:
         return '🔔';
     }
@@ -265,6 +267,76 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
     showAlert('Rejected', 'Trade offer rejected.');
   };
 
+  const acceptLoanRequest = async (notification) => {
+    // Load the loan from database
+    const loanRef = ref(database, `loans/${notification.loanId}`);
+    const loanSnapshot = await get(loanRef);
+
+    if (!loanSnapshot.exists()) {
+      showAlert('Error', 'Loan request not found.');
+      await deleteNotification(notification.id);
+      return;
+    }
+
+    const loan = loanSnapshot.val();
+
+    // Check if I still have enough budget
+    if (managerProfile.budget < loan.amount) {
+      showAlert('Insufficient Funds', 'You no longer have enough budget to lend this amount.');
+      await deleteNotification(notification.id);
+      return;
+    }
+
+    // Deduct from my budget
+    await updateManagerProfile({
+      budget: managerProfile.budget - loan.amount
+    });
+
+    // Add to borrower's budget
+    const borrowerRef = ref(database, `managers/${notification.fromId}`);
+    const borrowerSnapshot = await get(borrowerRef);
+    if (borrowerSnapshot.exists()) {
+      const borrower = borrowerSnapshot.val();
+      await update(borrowerRef, {
+        budget: borrower.budget + loan.amount
+      });
+    }
+
+    // Update loan status to active
+    await update(loanRef, { status: 'active' });
+
+    // Send notification to borrower
+    await push(ref(database, `managers/${notification.fromId}/notifications`), {
+      type: 'loan_approved',
+      from: currentUser.uid,
+      fromName: managerProfile.managerName,
+      message: `${managerProfile.managerName} approved your loan request for $${(loan.amount / 1000000).toFixed(1)}M!`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    await deleteNotification(notification.id);
+    showAlert('Success', `Loan approved! $${(loan.amount / 1000000).toFixed(1)}M sent to ${notification.from}`);
+  };
+
+  const rejectLoanRequest = async (notification) => {
+    // Delete the loan from database
+    await remove(ref(database, `loans/${notification.loanId}`));
+
+    // Send notification to borrower
+    await push(ref(database, `managers/${notification.fromId}/notifications`), {
+      type: 'loan_rejected',
+      from: currentUser.uid,
+      fromName: managerProfile.managerName,
+      message: `${managerProfile.managerName} declined your loan request.`,
+      timestamp: Date.now(),
+      read: false
+    });
+
+    await deleteNotification(notification.id);
+    showAlert('Rejected', 'Loan request rejected.');
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -373,6 +445,23 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
                       onPress={() => deleteNotification(notification.id)}
                     >
                       <Text style={styles.dismissButtonText}>Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {notification.type === 'loan_request' && (
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptLoanRequest(notification)}
+                    >
+                      <Text style={styles.acceptButtonText}>Approve Loan</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.rejectButton}
+                      onPress={() => rejectLoanRequest(notification)}
+                    >
+                      <Text style={styles.rejectButtonText}>Decline</Text>
                     </TouchableOpacity>
                   </View>
                 )}

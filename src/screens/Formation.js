@@ -175,97 +175,97 @@ const Formation = ({ onBack }) => {
       case '4-3-3':
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="LB" label="LB" {...pos(65, 15)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 37)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 63)} />
-            <PositionSlot position="RB" label="RB" {...pos(65, 85)} />
-            <PositionSlot position="CDM" label="CDM" {...pos(45, 50)} />
-            <PositionSlot position="CM1" label="CM" {...pos(40, 28)} />
-            <PositionSlot position="CM2" label="CM" {...pos(40, 72)} />
-            <PositionSlot position="LW" label="LW" {...pos(15, 18)} />
-            <PositionSlot position="ST" label="ST" {...pos(10, 50)} />
-            <PositionSlot position="RW" label="RW" {...pos(15, 82)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="LB" label="LB" {...pos(70, 15)} />
+            <PositionSlot position="CB1" label="CB" {...pos(73, 37)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 63)} />
+            <PositionSlot position="RB" label="RB" {...pos(70, 85)} />
+            <PositionSlot position="CDM" label="CDM" {...pos(55, 50)} />
+            <PositionSlot position="CM1" label="CM" {...pos(45, 28)} />
+            <PositionSlot position="CM2" label="CM" {...pos(45, 72)} />
+            <PositionSlot position="LW" label="LW" {...pos(22, 18)} />
+            <PositionSlot position="ST" label="ST" {...pos(18, 50)} />
+            <PositionSlot position="RW" label="RW" {...pos(22, 82)} />
           </>
         );
       case '4-4-2':
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="LB" label="LB" {...pos(65, 15)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 37)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 63)} />
-            <PositionSlot position="RB" label="RB" {...pos(65, 85)} />
-            <PositionSlot position="LM" label="LM" {...pos(40, 18)} />
-            <PositionSlot position="CM1" label="CM" {...pos(45, 37)} />
-            <PositionSlot position="CM2" label="CM" {...pos(45, 63)} />
-            <PositionSlot position="RM" label="RM" {...pos(40, 82)} />
-            <PositionSlot position="ST" label="ST" {...pos(12, 37)} />
-            <PositionSlot position="RW" label="ST" {...pos(12, 63)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="LB" label="LB" {...pos(70, 15)} />
+            <PositionSlot position="CB1" label="CB" {...pos(73, 37)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 63)} />
+            <PositionSlot position="RB" label="RB" {...pos(70, 85)} />
+            <PositionSlot position="LM" label="LM" {...pos(48, 18)} />
+            <PositionSlot position="CM1" label="CM" {...pos(52, 37)} />
+            <PositionSlot position="CM2" label="CM" {...pos(52, 63)} />
+            <PositionSlot position="RM" label="RM" {...pos(48, 82)} />
+            <PositionSlot position="ST" label="ST" {...pos(20, 37)} />
+            <PositionSlot position="RW" label="ST" {...pos(20, 63)} />
           </>
         );
       case '3-5-2':
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 28)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 50)} />
-            <PositionSlot position="RB" label="CB" {...pos(65, 72)} />
-            <PositionSlot position="LM" label="LWB" {...pos(45, 12)} />
-            <PositionSlot position="CDM" label="CDM" {...pos(48, 50)} />
-            <PositionSlot position="CM1" label="CM" {...pos(42, 32)} />
-            <PositionSlot position="CM2" label="CM" {...pos(42, 68)} />
-            <PositionSlot position="RM" label="RWB" {...pos(45, 88)} />
-            <PositionSlot position="LW" label="ST" {...pos(12, 37)} />
-            <PositionSlot position="ST" label="ST" {...pos(12, 63)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="CB1" label="CB" {...pos(72, 28)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 50)} />
+            <PositionSlot position="RB" label="CB" {...pos(72, 72)} />
+            <PositionSlot position="LM" label="LWB" {...pos(52, 12)} />
+            <PositionSlot position="CDM" label="CDM" {...pos(55, 50)} />
+            <PositionSlot position="CM1" label="CM" {...pos(48, 32)} />
+            <PositionSlot position="CM2" label="CM" {...pos(48, 68)} />
+            <PositionSlot position="RM" label="RWB" {...pos(52, 88)} />
+            <PositionSlot position="LW" label="ST" {...pos(20, 37)} />
+            <PositionSlot position="ST" label="ST" {...pos(20, 63)} />
           </>
         );
       case '4-2-3-1':
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="LB" label="LB" {...pos(65, 15)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 37)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 63)} />
-            <PositionSlot position="RB" label="RB" {...pos(65, 85)} />
-            <PositionSlot position="CDM" label="CDM" {...pos(48, 37)} />
-            <PositionSlot position="CM1" label="CDM" {...pos(48, 63)} />
-            <PositionSlot position="LW" label="LW" {...pos(28, 18)} />
-            <PositionSlot position="CM2" label="CAM" {...pos(30, 50)} />
-            <PositionSlot position="RW" label="RW" {...pos(28, 82)} />
-            <PositionSlot position="ST" label="ST" {...pos(10, 50)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="LB" label="LB" {...pos(70, 15)} />
+            <PositionSlot position="CB1" label="CB" {...pos(73, 37)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 63)} />
+            <PositionSlot position="RB" label="RB" {...pos(70, 85)} />
+            <PositionSlot position="CDM" label="CDM" {...pos(56, 37)} />
+            <PositionSlot position="CM1" label="CDM" {...pos(56, 63)} />
+            <PositionSlot position="LW" label="LW" {...pos(35, 18)} />
+            <PositionSlot position="CM2" label="CAM" {...pos(38, 50)} />
+            <PositionSlot position="RW" label="RW" {...pos(35, 82)} />
+            <PositionSlot position="ST" label="ST" {...pos(18, 50)} />
           </>
         );
       case '3-4-3':
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 28)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 50)} />
-            <PositionSlot position="RB" label="CB" {...pos(65, 72)} />
-            <PositionSlot position="LM" label="LM" {...pos(45, 18)} />
-            <PositionSlot position="CM1" label="CM" {...pos(45, 37)} />
-            <PositionSlot position="CM2" label="CM" {...pos(45, 63)} />
-            <PositionSlot position="RM" label="RM" {...pos(45, 82)} />
-            <PositionSlot position="LW" label="LW" {...pos(15, 18)} />
-            <PositionSlot position="ST" label="ST" {...pos(10, 50)} />
-            <PositionSlot position="CDM" label="RW" {...pos(15, 82)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="CB1" label="CB" {...pos(72, 28)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 50)} />
+            <PositionSlot position="RB" label="CB" {...pos(72, 72)} />
+            <PositionSlot position="LM" label="LM" {...pos(50, 18)} />
+            <PositionSlot position="CM1" label="CM" {...pos(52, 37)} />
+            <PositionSlot position="CM2" label="CM" {...pos(52, 63)} />
+            <PositionSlot position="RM" label="RM" {...pos(50, 82)} />
+            <PositionSlot position="LW" label="LW" {...pos(22, 18)} />
+            <PositionSlot position="ST" label="ST" {...pos(18, 50)} />
+            <PositionSlot position="CDM" label="RW" {...pos(22, 82)} />
           </>
         );
       default:
         return (
           <>
-            <PositionSlot position="GK" label="GK" {...pos(85, 50)} />
-            <PositionSlot position="LB" label="LB" {...pos(65, 15)} />
-            <PositionSlot position="CB1" label="CB" {...pos(65, 37)} />
-            <PositionSlot position="CB2" label="CB" {...pos(65, 63)} />
-            <PositionSlot position="RB" label="RB" {...pos(65, 85)} />
-            <PositionSlot position="CDM" label="CDM" {...pos(45, 50)} />
-            <PositionSlot position="CM1" label="CM" {...pos(40, 28)} />
-            <PositionSlot position="CM2" label="CM" {...pos(40, 72)} />
-            <PositionSlot position="LW" label="LW" {...pos(15, 18)} />
-            <PositionSlot position="ST" label="ST" {...pos(10, 50)} />
-            <PositionSlot position="RW" label="RW" {...pos(15, 82)} />
+            <PositionSlot position="GK" label="GK" {...pos(92, 50)} />
+            <PositionSlot position="LB" label="LB" {...pos(70, 15)} />
+            <PositionSlot position="CB1" label="CB" {...pos(73, 37)} />
+            <PositionSlot position="CB2" label="CB" {...pos(73, 63)} />
+            <PositionSlot position="RB" label="RB" {...pos(70, 85)} />
+            <PositionSlot position="CDM" label="CDM" {...pos(55, 50)} />
+            <PositionSlot position="CM1" label="CM" {...pos(45, 28)} />
+            <PositionSlot position="CM2" label="CM" {...pos(45, 72)} />
+            <PositionSlot position="LW" label="LW" {...pos(22, 18)} />
+            <PositionSlot position="ST" label="ST" {...pos(18, 50)} />
+            <PositionSlot position="RW" label="RW" {...pos(22, 82)} />
           </>
         );
     }

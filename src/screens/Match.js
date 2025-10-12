@@ -31,39 +31,39 @@ const Match = ({ onBack, activeMatchId }) => {
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
     // Returns array of {position, x, y} based on formation
-    // Coordinates match Formation.js exactly for consistency
+    // GK at y=92 (near goal), defenders at 70-75, midfielders at 45-55, attackers at 15-25
     const formations = {
       '4-3-3': [
-        { pos: 'GK', x: 50, y: 85 },
-        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
-        { pos: 'CDM', x: 50, y: 45 },
-        { pos: 'CM', x: 28, y: 40 }, { pos: 'CM', x: 72, y: 40 },
-        { pos: 'LW', x: 18, y: 15 }, { pos: 'ST', x: 50, y: 10 }, { pos: 'RW', x: 82, y: 15 }
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
+        { pos: 'CDM', x: 50, y: 55 },
+        { pos: 'CM', x: 28, y: 45 }, { pos: 'CM', x: 72, y: 45 },
+        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 82, y: 22 }
       ],
       '4-4-2': [
-        { pos: 'GK', x: 50, y: 85 },
-        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
-        { pos: 'LM', x: 18, y: 40 }, { pos: 'CM', x: 37, y: 45 }, { pos: 'CM', x: 63, y: 45 }, { pos: 'RM', x: 82, y: 40 },
-        { pos: 'ST', x: 37, y: 12 }, { pos: 'ST', x: 63, y: 12 }
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
+        { pos: 'LM', x: 18, y: 48 }, { pos: 'CM', x: 37, y: 52 }, { pos: 'CM', x: 63, y: 52 }, { pos: 'RM', x: 82, y: 48 },
+        { pos: 'ST', x: 37, y: 20 }, { pos: 'ST', x: 63, y: 20 }
       ],
       '3-5-2': [
-        { pos: 'GK', x: 50, y: 85 },
-        { pos: 'CB', x: 28, y: 65 }, { pos: 'CB', x: 50, y: 65 }, { pos: 'CB', x: 72, y: 65 },
-        { pos: 'LWB', x: 12, y: 45 }, { pos: 'CDM', x: 50, y: 48 }, { pos: 'CM', x: 32, y: 42 }, { pos: 'CM', x: 68, y: 42 }, { pos: 'RWB', x: 88, y: 45 },
-        { pos: 'ST', x: 37, y: 12 }, { pos: 'ST', x: 63, y: 12 }
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'CB', x: 28, y: 72 }, { pos: 'CB', x: 50, y: 73 }, { pos: 'CB', x: 72, y: 72 },
+        { pos: 'LWB', x: 12, y: 52 }, { pos: 'CDM', x: 50, y: 55 }, { pos: 'CM', x: 32, y: 48 }, { pos: 'CM', x: 68, y: 48 }, { pos: 'RWB', x: 88, y: 52 },
+        { pos: 'ST', x: 37, y: 20 }, { pos: 'ST', x: 63, y: 20 }
       ],
       '4-2-3-1': [
-        { pos: 'GK', x: 50, y: 85 },
-        { pos: 'LB', x: 15, y: 65 }, { pos: 'CB', x: 37, y: 65 }, { pos: 'CB', x: 63, y: 65 }, { pos: 'RB', x: 85, y: 65 },
-        { pos: 'CDM', x: 37, y: 48 }, { pos: 'CDM', x: 63, y: 48 },
-        { pos: 'LW', x: 18, y: 28 }, { pos: 'CAM', x: 50, y: 30 }, { pos: 'RW', x: 82, y: 28 },
-        { pos: 'ST', x: 50, y: 10 }
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
+        { pos: 'CDM', x: 37, y: 56 }, { pos: 'CDM', x: 63, y: 56 },
+        { pos: 'LW', x: 18, y: 35 }, { pos: 'CAM', x: 50, y: 38 }, { pos: 'RW', x: 82, y: 35 },
+        { pos: 'ST', x: 50, y: 18 }
       ],
       '3-4-3': [
-        { pos: 'GK', x: 50, y: 85 },
-        { pos: 'CB', x: 28, y: 65 }, { pos: 'CB', x: 50, y: 65 }, { pos: 'CB', x: 72, y: 65 },
-        { pos: 'LM', x: 18, y: 45 }, { pos: 'CM', x: 37, y: 45 }, { pos: 'CM', x: 63, y: 45 }, { pos: 'RM', x: 82, y: 45 },
-        { pos: 'LW', x: 18, y: 15 }, { pos: 'ST', x: 50, y: 10 }, { pos: 'RW', x: 82, y: 15 }
+        { pos: 'GK', x: 50, y: 92 },
+        { pos: 'CB', x: 28, y: 72 }, { pos: 'CB', x: 50, y: 73 }, { pos: 'CB', x: 72, y: 72 },
+        { pos: 'LM', x: 18, y: 50 }, { pos: 'CM', x: 37, y: 52 }, { pos: 'CM', x: 63, y: 52 }, { pos: 'RM', x: 82, y: 50 },
+        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 82, y: 22 }
       ]
     };
 
@@ -668,8 +668,27 @@ const Match = ({ onBack, activeMatchId }) => {
   const simulatePracticeMatch = () => {
     console.log('Starting practice match simulation');
 
-    const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
-    const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+    let homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
+    let awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
+
+    // Apply tactic bonuses
+    const homeTactic = currentMatch.homeTactic || 'Balanced';
+    const awayTactic = currentMatch.awayTactic || 'Balanced';
+
+    const applyTacticBonus = (strength, tactic) => {
+      if (tactic === 'Attacking') {
+        return strength * 1.15; // +15% attacking power
+      } else if (tactic === 'Defensive') {
+        return strength * 0.90; // -10% attacking power (more defensive)
+      }
+      return strength; // Balanced - no change
+    };
+
+    homeStrength = applyTacticBonus(homeStrength, homeTactic);
+    awayStrength = applyTacticBonus(awayStrength, awayTactic);
+
+    console.log('Practice match - Home:', homeStrength, '(', homeTactic, ') Away:', awayStrength, '(', awayTactic, ')');
+
     const totalStrength = homeStrength + awayStrength;
 
     const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
@@ -842,10 +861,29 @@ const Match = ({ onBack, activeMatchId }) => {
     }
 
     // Calculate team strengths
-    const homeStrength = calculateTeamStrength(match.homeManager.squad);
-    const awayStrength = calculateTeamStrength(match.awayManager.squad);
+    let homeStrength = calculateTeamStrength(match.homeManager.squad);
+    let awayStrength = calculateTeamStrength(match.awayManager.squad);
 
-    console.log('Team strengths - Home:', homeStrength, 'Away:', awayStrength);
+    // Apply tactic bonuses
+    const homeTactic = match.homeTactic || 'Balanced';
+    const awayTactic = match.awayTactic || 'Balanced';
+
+    // Attacking: +15% attack, -10% defense
+    // Defensive: +15% defense, -10% attack
+    // Balanced: no change
+    const applyTacticBonus = (strength, tactic) => {
+      if (tactic === 'Attacking') {
+        return strength * 1.15; // +15% attacking power
+      } else if (tactic === 'Defensive') {
+        return strength * 0.90; // -10% attacking power (more defensive)
+      }
+      return strength; // Balanced - no change
+    };
+
+    homeStrength = applyTacticBonus(homeStrength, homeTactic);
+    awayStrength = applyTacticBonus(awayStrength, awayTactic);
+
+    console.log('Team strengths - Home:', homeStrength, '(', homeTactic, ') Away:', awayStrength, '(', awayTactic, ')');
 
     if (homeStrength === 0 || awayStrength === 0) {
       console.error('Squad strength is 0, cannot simulate match');
