@@ -6,7 +6,7 @@ import {
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { ref, set, get, update } from 'firebase/database';
+import { ref, set, get, update, onValue } from 'firebase/database';
 
 const AuthContext = createContext();
 
@@ -62,22 +62,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let profileUnsubscribe = null;
+
+    const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', user?.uid);
       setCurrentUser(user);
 
+      // Clean up previous profile listener if exists
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+        profileUnsubscribe = null;
+      }
+
       if (user) {
         try {
-          // Fetch manager profile
+          // Set up real-time listener for manager profile
           const managerRef = ref(database, `managers/${user.uid}`);
+
+          // First check if profile exists
           const snapshot = await get(managerRef);
           console.log('Profile snapshot exists:', snapshot.exists());
 
-          if (snapshot.exists()) {
-            const profileData = snapshot.val();
-            console.log('Loaded profile:', profileData);
-            setManagerProfile(profileData);
-          } else {
+          if (!snapshot.exists()) {
             console.error('No manager profile found for user:', user.uid);
             // Create profile if it doesn't exist
             const managerData = {
@@ -94,9 +100,18 @@ export const AuthProvider = ({ children }) => {
               losses: 0,
               points: 0
             };
-            await set(ref(database, `managers/${user.uid}`), managerData);
-            setManagerProfile(managerData);
+            await set(managerRef, managerData);
           }
+
+          // Set up real-time listener for profile changes
+          profileUnsubscribe = onValue(managerRef, (snapshot) => {
+            if (snapshot.exists()) {
+              const profileData = snapshot.val();
+              console.log('Profile updated:', profileData);
+              setManagerProfile(profileData);
+            }
+          });
+
         } catch (error) {
           console.error('Error loading profile:', error);
         }
@@ -107,7 +122,13 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    return unsubscribe;
+    // Cleanup both listeners on unmount
+    return () => {
+      authUnsubscribe();
+      if (profileUnsubscribe) {
+        profileUnsubscribe();
+      }
+    };
   }, []);
 
   const value = {

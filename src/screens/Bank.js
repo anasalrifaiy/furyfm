@@ -205,6 +205,7 @@ const Bank = ({ onBack }) => {
           from: managerProfile.managerName,
           fromId: currentUser.uid,
           amount: amount,
+          message: `${managerProfile.managerName} is requesting a loan of ${formatCurrency(amount)} from you.`,
           loanId: newLoanRef.key,
           timestamp: Date.now(),
           read: false
