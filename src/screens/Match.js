@@ -2195,8 +2195,8 @@ const Match = ({ onBack, activeMatchId }) => {
     };
 
     const requestSubstitution = async (playerOut, playerOutIndex) => {
-      if (substitutionsUsed >= 2) {
-        showAlert('No Substitutions Left', 'You have used all 2 substitutions.');
+      if (substitutionsUsed >= 5) {
+        showAlert('No Substitutions Left', 'You have used all 5 substitutions.');
         return;
       }
       setSubstitutionMode({ playerOut, playerOutIndex });
@@ -2488,13 +2488,13 @@ const Match = ({ onBack, activeMatchId }) => {
               <View style={styles.subsHeader}>
                 <View>
                   <Text style={styles.subsTitle}>
-                    Substitutions: {substitutionsUsed}/2 used
+                    Substitutions: {substitutionsUsed}/5 used
                   </Text>
-                  {substitutionsUsed < 2 && (
+                  {substitutionsUsed < 5 && (
                     <Text style={styles.subsHint}>Make tactical changes</Text>
                   )}
                 </View>
-                {substitutionsUsed < 2 && !currentMatch.paused && (
+                {substitutionsUsed < 5 && !currentMatch.paused && (
                   <View style={styles.pauseContainer}>
                   <TouchableOpacity
                     style={[
