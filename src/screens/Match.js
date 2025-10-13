@@ -966,9 +966,9 @@ const Match = ({ onBack, activeMatchId }) => {
         // Generate match events - goals, passes, shots, saves
         const eventRoll = Math.random();
 
-        // Get current data including substituted players list
-        const currentData = (await get(matchRef)).val();
-        const substitutedPlayers = currentData.substitutedPlayers || [];
+        // Get latest match data including substituted players list
+        const latestData = (await get(matchRef)).val();
+        const substitutedPlayers = latestData.substitutedPlayers || [];
 
         if (eventRoll < 0.04) {
           // GOAL EVENT (4% chance)
@@ -1003,22 +1003,22 @@ const Match = ({ onBack, activeMatchId }) => {
           }
 
           const newScore = isHomeGoal
-            ? { homeScore: (currentData.homeScore || 0) + 1 }
-            : { awayScore: (currentData.awayScore || 0) + 1 };
+            ? { homeScore: (latestData.homeScore || 0) + 1 }
+            : { awayScore: (latestData.awayScore || 0) + 1 };
 
           await update(matchRef, newScore);
 
           const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
 
           // Track goalscorer for XP rewards
-          const goalscorers = currentData.goalscorers || {};
+          const goalscorers = latestData.goalscorers || {};
           if (!goalscorers[scorer.id]) {
             goalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
           }
           goalscorers[scorer.id].goals++;
 
           // Get current events and prepend new one
-          const newEvents = [eventText, ...(currentData.events || [])];
+          const newEvents = [eventText, ...(latestData.events || [])];
           await update(matchRef, { events: newEvents, goalscorers });
 
           console.log('GOAL!', eventText);
@@ -1038,7 +1038,7 @@ const Match = ({ onBack, activeMatchId }) => {
             const eventText = gk
               ? `${matchMinute}' 🧤 Great save by ${gk.name}! ${shooter.name} denied.`
               : `${matchMinute}' 📍 ${shooter.name} shoots wide!`;
-            const newEvents = [eventText, ...(currentData.events || [])];
+            const newEvents = [eventText, ...(latestData.events || [])];
             await update(matchRef, { events: newEvents });
           }
         } else if (eventRoll < 0.18) {
@@ -1053,7 +1053,7 @@ const Match = ({ onBack, activeMatchId }) => {
             const passer = midfielders[Math.floor(Math.random() * midfielders.length)];
 
             const eventText = `${matchMinute}' ⚡ ${passer.name} with a great pass forward!`;
-            const newEvents = [eventText, ...(currentData.events || [])];
+            const newEvents = [eventText, ...(latestData.events || [])];
             await update(matchRef, { events: newEvents });
           }
         }
