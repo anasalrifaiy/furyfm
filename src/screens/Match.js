@@ -69,24 +69,95 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const formationLayout = formations[formation] || formations['4-3-3'];
 
-    // Match squad players to formation positions
-    // Sort players to ensure GK is first
-    const sortedSquad = [...squad].sort((a, b) => {
-      if (a.position === 'GK') return -1;
-      if (b.position === 'GK') return 1;
-      return 0;
+    // Smart player-to-position matching
+    const usedPlayers = new Set();
+    const positionedPlayers = [];
+
+    // Helper to check if a player fits a position
+    const playerFitsPosition = (player, targetPos) => {
+      const positionCompatibility = {
+        'GK': ['GK'],
+        'LB': ['LB', 'LWB', 'CB'],
+        'CB': ['CB', 'LB', 'RB'],
+        'RB': ['RB', 'RWB', 'CB'],
+        'LWB': ['LWB', 'LB', 'LM'],
+        'RWB': ['RWB', 'RB', 'RM'],
+        'CDM': ['CDM', 'CM', 'CB'],
+        'CM': ['CM', 'CDM', 'CAM'],
+        'CAM': ['CAM', 'CM', 'LW', 'RW'],
+        'LM': ['LM', 'LW', 'LWB'],
+        'RM': ['RM', 'RW', 'RWB'],
+        'LW': ['LW', 'LM', 'ST'],
+        'RW': ['RW', 'RM', 'ST'],
+        'ST': ['ST', 'LW', 'RW', 'CAM']
+      };
+
+      const compatiblePositions = positionCompatibility[targetPos] || [targetPos];
+      return compatiblePositions.includes(player.position);
+    };
+
+    // First pass: Try to match players exactly to their positions
+    formationLayout.forEach((layoutPos) => {
+      const bestPlayer = squad.find(player =>
+        !usedPlayers.has(player.id) && player.position === layoutPos.pos
+      );
+
+      if (bestPlayer) {
+        usedPlayers.add(bestPlayer.id);
+        positionedPlayers.push({
+          ...bestPlayer,
+          baseX: layoutPos.x,
+          baseY: layoutPos.y,
+          currentX: layoutPos.x,
+          currentY: layoutPos.y
+        });
+      } else {
+        positionedPlayers.push(null); // Placeholder
+      }
     });
 
-    return sortedSquad.map((player, idx) => {
-      const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
-      return {
-        ...player,
-        baseX: layoutPos.x,
-        baseY: layoutPos.y,
-        currentX: layoutPos.x,
-        currentY: layoutPos.y
-      };
+    // Second pass: Fill empty slots with compatible players
+    positionedPlayers.forEach((player, idx) => {
+      if (player === null) {
+        const layoutPos = formationLayout[idx];
+        const compatiblePlayer = squad.find(p =>
+          !usedPlayers.has(p.id) && playerFitsPosition(p, layoutPos.pos)
+        );
+
+        if (compatiblePlayer) {
+          usedPlayers.add(compatiblePlayer.id);
+          positionedPlayers[idx] = {
+            ...compatiblePlayer,
+            baseX: layoutPos.x,
+            baseY: layoutPos.y,
+            currentX: layoutPos.x,
+            currentY: layoutPos.y
+          };
+        }
+      }
     });
+
+    // Third pass: Fill any remaining slots with any unused players
+    positionedPlayers.forEach((player, idx) => {
+      if (player === null) {
+        const layoutPos = formationLayout[idx];
+        const anyPlayer = squad.find(p => !usedPlayers.has(p.id));
+
+        if (anyPlayer) {
+          usedPlayers.add(anyPlayer.id);
+          positionedPlayers[idx] = {
+            ...anyPlayer,
+            baseX: layoutPos.x,
+            baseY: layoutPos.y,
+            currentX: layoutPos.x,
+            currentY: layoutPos.y
+          };
+        }
+      }
+    });
+
+    // Return only non-null players
+    return positionedPlayers.filter(p => p !== null);
   };
 
   useEffect(() => {
@@ -2361,23 +2432,30 @@ const Match = ({ onBack, activeMatchId }) => {
       const homePlayers = getFormationPositions(homeFormation, homeSquad);
       const awayPlayers = getFormationPositions(awayFormation, awaySquad);
 
-      // Dynamic movement - faster and more realistic
-      const variance = Math.sin(minute / 3) * 8; // Increased movement
-      const verticalVariance = Math.cos(minute / 4) * 5;
+      // Smooth, realistic movement based on time
+      const time = minute + (Date.now() % 1000) / 1000; // Add sub-second precision
+      const baseVariance = Math.sin(time / 2) * 4; // Slower, smoother movement
+      const verticalBase = Math.cos(time / 2.5) * 3;
 
       // Simulate ball possession - alternates between teams
       const possessionTeam = Math.floor(minute / 5) % 2; // Changes every 5 minutes
-      const ballCarrier = possessionTeam === 0
-        ? homePlayers[Math.floor(Math.random() * Math.min(6, homePlayers.length))] // Front 6 players
-        : awayPlayers[Math.floor(Math.random() * Math.min(6, awayPlayers.length))];
+
+      // Select ball carrier from attacking players
+      const attackingPlayers = possessionTeam === 0
+        ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position))
+        : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+
+      const ballCarrier = attackingPlayers.length > 0
+        ? attackingPlayers[Math.floor((minute * 7) % attackingPlayers.length)]
+        : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
 
       // Ball position near the ball carrier
       const ballX = possessionTeam === 0
-        ? ballCarrier.baseX + variance
-        : 100 - ballCarrier.baseX - variance;
+        ? ballCarrier.baseX + baseVariance
+        : 100 - ballCarrier.baseX - baseVariance;
       const ballY = possessionTeam === 0
-        ? ballCarrier.baseY + verticalVariance
-        : 100 - ballCarrier.baseY + verticalVariance;
+        ? ballCarrier.baseY + verticalBase
+        : 100 - ballCarrier.baseY + verticalBase;
 
       return (
         <View style={styles.pitchContainer}>
@@ -2404,14 +2482,21 @@ const Match = ({ onBack, activeMatchId }) => {
             {/* Ball with dynamic position */}
             <View style={[styles.ball, { left: `${ballX}%`, top: `${ballY}%` }]} />
 
-            {/* Home Team (bottom) - attacking players move more */}
+            {/* Home Team (bottom) - position-based movement */}
             {homePlayers.map((player, idx) => {
-              const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
-              const moveAmount = isAttacker ? variance * 1.5 : variance;
-              const vertMove = isAttacker ? verticalVariance * 1.2 : verticalVariance * 0.8;
-              const x = player.baseX + moveAmount;
-              const y = player.baseY + vertMove;
-              const hasBall = ballCarrier.id === player.id && possessionTeam === 0;
+              // Position-specific movement multipliers
+              const isGK = player.position === 'GK';
+              const isDefender = ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position);
+              const isMidfielder = ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position);
+              const isAttacker = ['ST', 'LW', 'RW'].includes(player.position);
+
+              // GK stays mostly still, defenders move less, attackers move more
+              const horizontalMultiplier = isGK ? 0.2 : (isDefender ? 0.6 : (isMidfielder ? 1.0 : 1.3));
+              const verticalMultiplier = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.9 : 1.4));
+
+              const x = player.baseX + (baseVariance * horizontalMultiplier);
+              const y = player.baseY + (verticalBase * verticalMultiplier);
+              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 0;
 
               return (
                 <View
@@ -2429,14 +2514,20 @@ const Match = ({ onBack, activeMatchId }) => {
               );
             })}
 
-            {/* Away Team (top) - inverted Y positions (attacking downward) */}
+            {/* Away Team (top) - position-based movement, inverted Y */}
             {awayPlayers.map((player, idx) => {
-              const isAttacker = ['ST', 'LW', 'RW', 'CAM'].includes(player.position);
-              const moveAmount = isAttacker ? variance * 1.5 : variance;
-              const vertMove = isAttacker ? verticalVariance * 1.2 : verticalVariance * 0.8;
-              const x = player.baseX + moveAmount; // Keep same X (left-right position)
-              const y = 100 - player.baseY - vertMove;
-              const hasBall = ballCarrier.id === player.id && possessionTeam === 1;
+              // Position-specific movement multipliers
+              const isGK = player.position === 'GK';
+              const isDefender = ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position);
+              const isMidfielder = ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position);
+              const isAttacker = ['ST', 'LW', 'RW'].includes(player.position);
+
+              const horizontalMultiplier = isGK ? 0.2 : (isDefender ? 0.6 : (isMidfielder ? 1.0 : 1.3));
+              const verticalMultiplier = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.9 : 1.4));
+
+              const x = player.baseX + (baseVariance * horizontalMultiplier);
+              const y = 100 - player.baseY - (verticalBase * verticalMultiplier);
+              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
 
               return (
                 <View
