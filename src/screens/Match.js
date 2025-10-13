@@ -1229,9 +1229,18 @@ const Match = ({ onBack, activeMatchId }) => {
     const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
     const totalStrength = homeStrength + awayStrength;
 
-    // Home advantage bonus
-    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
-    const awayChance = (awayStrength / totalStrength) * 0.55;
+    // Calculate win probabilities with strength-based decisiveness
+    const strengthRatio = homeStrength / awayStrength;
+    let homeChance, awayChance;
+
+    if (strengthRatio > 1.2) {
+      homeChance = 0.65 + Math.min(0.15, (strengthRatio - 1.2) * 0.3);
+    } else if (strengthRatio < 0.83) {
+      homeChance = 0.20 - Math.min(0.05, (0.83 - strengthRatio) * 0.3);
+    } else {
+      homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    }
+    awayChance = 1 - homeChance;
 
     const interval = setInterval(async () => {
       const currentData = (await get(matchRef)).val();
@@ -1264,18 +1273,24 @@ const Match = ({ onBack, activeMatchId }) => {
 
       console.log(`Second half - second ${currentSecond}, minute ${matchMinute}`);
 
-      // Goal chance based on team strength (4% per minute scaled by strength)
-      const goalRoll = Math.random();
+      // Generate match events - goals, passes, shots, saves
+      const eventRoll = Math.random();
+      const substitutedPlayers = currentData.substitutedPlayers || [];
 
-      if (goalRoll < 0.04) {
+      if (eventRoll < 0.04) {
+        // GOAL EVENT (4% chance)
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+        const opposingTeam = isHomeGoal ? currentMatch.awayManager : currentMatch.homeManager;
+
+        // Filter out substituted players
+        const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
 
         // Realistic goal scoring - weight by position
-        const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+        const attackers = availablePlayers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+        const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+        const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
 
         let scorer;
         const scorerRoll = Math.random();
@@ -1286,7 +1301,7 @@ const Match = ({ onBack, activeMatchId }) => {
         } else if (defenders.length > 0) {
           scorer = defenders[Math.floor(Math.random() * defenders.length)];
         } else {
-          const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+          const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
         }
 
@@ -1296,7 +1311,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
         await update(matchRef, newScore);
 
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
 
         // Track goalscorer for XP rewards
         const goalscorers = currentData.goalscorers || {};
@@ -1309,6 +1324,40 @@ const Match = ({ onBack, activeMatchId }) => {
         await update(matchRef, { events: newEvents, goalscorers });
 
         console.log('GOAL!', eventText);
+      } else if (eventRoll < 0.10) {
+        // SHOT/SAVE EVENT (6% chance)
+        const teamRoll = Math.random();
+        const isHomeShot = teamRoll < 0.5;
+        const attackingTeam = isHomeShot ? currentMatch.homeManager : currentMatch.awayManager;
+        const defendingTeam = isHomeShot ? currentMatch.awayManager : currentMatch.homeManager;
+
+        const availablePlayers = attackingTeam.squad.filter(p => !substitutedPlayers.includes(p.id));
+        const shooters = availablePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+        if (shooters.length > 0) {
+          const shooter = shooters[Math.floor(Math.random() * shooters.length)];
+          const gk = defendingTeam.squad.find(p => p.position === 'GK');
+
+          const eventText = gk
+            ? `${matchMinute}' 🧤 Great save by ${gk.name}! ${shooter.name} denied.`
+            : `${matchMinute}' 📍 ${shooter.name} shoots wide!`;
+          const newEvents = [eventText, ...(currentData.events || [])];
+          await update(matchRef, { events: newEvents });
+        }
+      } else if (eventRoll < 0.18) {
+        // PASS/BUILDUP EVENT (8% chance)
+        const teamRoll = Math.random();
+        const isHome = teamRoll < 0.5;
+        const team = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+
+        const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
+        const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+        if (midfielders.length > 0) {
+          const passer = midfielders[Math.floor(Math.random() * midfielders.length)];
+
+          const eventText = `${matchMinute}' ⚡ ${passer.name} with a great pass forward!`;
+          const newEvents = [eventText, ...(currentData.events || [])];
+          await update(matchRef, { events: newEvents });
+        }
       }
 
       // Update minute and second
