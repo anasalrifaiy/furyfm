@@ -152,16 +152,103 @@ const MatchHistory = ({ onBack }) => {
                   </View>
                 </View>
 
+                {/* Match Statistics */}
+                {(match.homePossession || match.homeShots || match.topScorers) && (
+                  <View style={styles.statsSection}>
+                    <Text style={styles.statsTitle}>📊 Match Statistics</Text>
+
+                    {/* Formations & Tactics */}
+                    {match.homeManager.formation && (
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Formation</Text>
+                        <Text style={styles.statValue}>
+                          {match.homeManager.uid === currentUser.uid ? match.homeManager.formation : match.awayManager.formation}
+                          {' vs '}
+                          {match.homeManager.uid === currentUser.uid ? match.awayManager.formation : match.homeManager.formation}
+                        </Text>
+                      </View>
+                    )}
+
+                    {match.homeManager.tactic && (
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Tactic</Text>
+                        <Text style={styles.statValue}>
+                          {match.homeManager.uid === currentUser.uid ? match.homeManager.tactic : match.awayManager.tactic}
+                          {' vs '}
+                          {match.homeManager.uid === currentUser.uid ? match.awayManager.tactic : match.homeManager.tactic}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Possession */}
+                    {match.homePossession && (
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Possession</Text>
+                        <View style={styles.possessionBar}>
+                          <View style={[styles.possessionHome, {
+                            width: `${match.homeManager.uid === currentUser.uid ? match.homePossession : match.awayPossession}%`
+                          }]} />
+                          <Text style={styles.possessionText}>
+                            {match.homeManager.uid === currentUser.uid ? match.homePossession : match.awayPossession}%
+                            {' - '}
+                            {match.homeManager.uid === currentUser.uid ? match.awayPossession : match.homePossession}%
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Shots */}
+                    {match.homeShots !== undefined && (
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Shots</Text>
+                        <Text style={styles.statValue}>
+                          {match.homeManager.uid === currentUser.uid ? match.homeShots : match.awayShots}
+                          {' - '}
+                          {match.homeManager.uid === currentUser.uid ? match.awayShots : match.homeShots}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Shots on Target */}
+                    {match.homeShotsOnTarget !== undefined && (
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>On Target</Text>
+                        <Text style={styles.statValue}>
+                          {match.homeManager.uid === currentUser.uid ? match.homeShotsOnTarget : match.awayShotsOnTarget}
+                          {' - '}
+                          {match.homeManager.uid === currentUser.uid ? match.awayShotsOnTarget : match.homeShotsOnTarget}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Squad Strength */}
+                    <View style={styles.statRow}>
+                      <Text style={styles.statLabel}>Squad Strength</Text>
+                      <Text style={styles.statValue}>
+                        {match.homeManager.uid === currentUser.uid ? match.homeStrength : match.awayStrength}
+                        {' - '}
+                        {match.homeManager.uid === currentUser.uid ? match.awayStrength : match.homeStrength}
+                      </Text>
+                    </View>
+
+                    {/* Top Scorers */}
+                    {match.topScorers && match.topScorers.length > 0 && (
+                      <View style={styles.scorersSection}>
+                        <Text style={styles.scorersTitle}>⚽ Goal Scorers</Text>
+                        {match.topScorers.map((scorer, idx) => (
+                          <Text key={idx} style={styles.scorerText}>
+                            {scorer.name} ({scorer.goals})
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+
                 {match.matchReport && (
                   <View style={styles.matchReport}>
                     <Text style={styles.reportTitle}>📋 Match Analysis</Text>
                     <Text style={styles.reportText}>{match.matchReport}</Text>
-                  </View>
-                )}
-
-                {match.events && match.events.length > 0 && (
-                  <View style={styles.matchFooter}>
-                    <Text style={styles.footerText}>⚽ Goals: {match.events.length}</Text>
                   </View>
                 )}
               </View>
@@ -326,6 +413,79 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     textAlign: 'center',
+  },
+  statsSection: {
+    backgroundColor: '#141829',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 15,
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 12,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#888',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'right',
+  },
+  possessionBar: {
+    flex: 1,
+    height: 20,
+    backgroundColor: '#2d3561',
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  possessionHome: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    background: 'linear-gradient(90deg, #43e97b 0%, #38f9d7 100%)',
+    borderRadius: 10,
+  },
+  possessionText: {
+    fontSize: 11,
+    color: '#ffffff',
+    fontWeight: 'bold',
+    zIndex: 1,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+  },
+  scorersSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#2d3561',
+  },
+  scorersTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 6,
+  },
+  scorerText: {
+    fontSize: 11,
+    color: '#43e97b',
+    marginLeft: 8,
+    marginBottom: 4,
   },
 });
 

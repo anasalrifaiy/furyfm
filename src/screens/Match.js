@@ -31,46 +31,53 @@ const Match = ({ onBack, activeMatchId }) => {
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
     // Returns array of {position, x, y} based on formation
-    // GK at y=92 (near goal), defenders at 70-75, midfielders at 45-55, attackers at 15-25
+    // GK at y=95 (very close to goal), defenders at 72-78, midfielders at 45-55, attackers at 15-25
     const formations = {
       '4-3-3': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
+        { pos: 'GK', x: 50, y: 95 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 37, y: 78 }, { pos: 'CB', x: 63, y: 78 }, { pos: 'RB', x: 85, y: 75 },
         { pos: 'CDM', x: 50, y: 55 },
         { pos: 'CM', x: 28, y: 45 }, { pos: 'CM', x: 72, y: 45 },
-        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 82, y: 22 }
+        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 15 }, { pos: 'RW', x: 82, y: 22 }
       ],
       '4-4-2': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
+        { pos: 'GK', x: 50, y: 95 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 37, y: 78 }, { pos: 'CB', x: 63, y: 78 }, { pos: 'RB', x: 85, y: 75 },
         { pos: 'LM', x: 18, y: 48 }, { pos: 'CM', x: 37, y: 52 }, { pos: 'CM', x: 63, y: 52 }, { pos: 'RM', x: 82, y: 48 },
-        { pos: 'ST', x: 37, y: 20 }, { pos: 'ST', x: 63, y: 20 }
+        { pos: 'ST', x: 37, y: 18 }, { pos: 'ST', x: 63, y: 18 }
       ],
       '3-5-2': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'CB', x: 28, y: 72 }, { pos: 'CB', x: 50, y: 73 }, { pos: 'CB', x: 72, y: 72 },
+        { pos: 'GK', x: 50, y: 95 },
+        { pos: 'CB', x: 28, y: 76 }, { pos: 'CB', x: 50, y: 78 }, { pos: 'CB', x: 72, y: 76 },
         { pos: 'LWB', x: 12, y: 52 }, { pos: 'CDM', x: 50, y: 55 }, { pos: 'CM', x: 32, y: 48 }, { pos: 'CM', x: 68, y: 48 }, { pos: 'RWB', x: 88, y: 52 },
-        { pos: 'ST', x: 37, y: 20 }, { pos: 'ST', x: 63, y: 20 }
+        { pos: 'ST', x: 37, y: 18 }, { pos: 'ST', x: 63, y: 18 }
       ],
       '4-2-3-1': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'LB', x: 15, y: 70 }, { pos: 'CB', x: 37, y: 73 }, { pos: 'CB', x: 63, y: 73 }, { pos: 'RB', x: 85, y: 70 },
-        { pos: 'CDM', x: 37, y: 56 }, { pos: 'CDM', x: 63, y: 56 },
+        { pos: 'GK', x: 50, y: 95 },
+        { pos: 'LB', x: 15, y: 75 }, { pos: 'CB', x: 37, y: 78 }, { pos: 'CB', x: 63, y: 78 }, { pos: 'RB', x: 85, y: 75 },
+        { pos: 'CDM', x: 37, y: 58 }, { pos: 'CDM', x: 63, y: 58 },
         { pos: 'LW', x: 18, y: 35 }, { pos: 'CAM', x: 50, y: 38 }, { pos: 'RW', x: 82, y: 35 },
-        { pos: 'ST', x: 50, y: 18 }
+        { pos: 'ST', x: 50, y: 15 }
       ],
       '3-4-3': [
-        { pos: 'GK', x: 50, y: 92 },
-        { pos: 'CB', x: 28, y: 72 }, { pos: 'CB', x: 50, y: 73 }, { pos: 'CB', x: 72, y: 72 },
+        { pos: 'GK', x: 50, y: 95 },
+        { pos: 'CB', x: 28, y: 76 }, { pos: 'CB', x: 50, y: 78 }, { pos: 'CB', x: 72, y: 76 },
         { pos: 'LM', x: 18, y: 50 }, { pos: 'CM', x: 37, y: 52 }, { pos: 'CM', x: 63, y: 52 }, { pos: 'RM', x: 82, y: 50 },
-        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 18 }, { pos: 'RW', x: 82, y: 22 }
+        { pos: 'LW', x: 18, y: 22 }, { pos: 'ST', x: 50, y: 15 }, { pos: 'RW', x: 82, y: 22 }
       ]
     };
 
     const formationLayout = formations[formation] || formations['4-3-3'];
 
     // Match squad players to formation positions
-    return squad.map((player, idx) => {
+    // Sort players to ensure GK is first
+    const sortedSquad = [...squad].sort((a, b) => {
+      if (a.position === 'GK') return -1;
+      if (b.position === 'GK') return 1;
+      return 0;
+    });
+
+    return sortedSquad.map((player, idx) => {
       const layoutPos = formationLayout[idx] || { x: 50, y: 50 };
       return {
         ...player,
@@ -892,9 +899,22 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const totalStrength = homeStrength + awayStrength;
 
-    // Home advantage bonus
-    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
-    const awayChance = (awayStrength / totalStrength) * 0.55;
+    // Calculate win probabilities with strength-based decisiveness
+    // Stronger team has higher chance, but upset is still possible (10-15% chance)
+    const strengthRatio = homeStrength / awayStrength;
+    let homeChance, awayChance;
+
+    if (strengthRatio > 1.2) {
+      // Home team significantly stronger
+      homeChance = 0.65 + Math.min(0.15, (strengthRatio - 1.2) * 0.3); // 65-80%
+    } else if (strengthRatio < 0.83) {
+      // Away team significantly stronger
+      homeChance = 0.20 - Math.min(0.05, (0.83 - strengthRatio) * 0.3); // 15-20%
+    } else {
+      // Teams evenly matched - home advantage applies
+      homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+    }
+    awayChance = 1 - homeChance;
 
     let currentSecond = 0;
 
@@ -943,18 +963,27 @@ const Match = ({ onBack, activeMatchId }) => {
 
         console.log(`Match second ${currentSecond}, minute ${matchMinute}`);
 
-        // Goal chance based on team strength (4% per minute scaled by strength)
-        const goalRoll = Math.random();
+        // Generate match events - goals, passes, shots, saves
+        const eventRoll = Math.random();
 
-        if (goalRoll < 0.04) {
+        // Get current data including substituted players list
+        const currentData = (await get(matchRef)).val();
+        const substitutedPlayers = currentData.substitutedPlayers || [];
+
+        if (eventRoll < 0.04) {
+          // GOAL EVENT (4% chance)
           const teamRoll = Math.random();
           const isHomeGoal = teamRoll < homeChance;
           const team = isHomeGoal ? match.homeManager : match.awayManager;
+          const opposingTeam = isHomeGoal ? match.awayManager : match.homeManager;
+
+          // Filter out substituted players
+          const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
 
           // Realistic goal scoring - weight by position
-          const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-          const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-          const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+          const attackers = availablePlayers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+          const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+          const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
 
           let scorer;
           const scorerRoll = Math.random();
@@ -969,32 +998,64 @@ const Match = ({ onBack, activeMatchId }) => {
             scorer = defenders[Math.floor(Math.random() * defenders.length)];
           } else {
             // Fallback to any outfield player (excluding GK)
-            const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
+            const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
             scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
           }
 
-          const currentData = (await get(matchRef)).val();
           const newScore = isHomeGoal
             ? { homeScore: (currentData.homeScore || 0) + 1 }
             : { awayScore: (currentData.awayScore || 0) + 1 };
 
           await update(matchRef, newScore);
 
-          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
 
           // Track goalscorer for XP rewards
-          const goalscorers = (await get(matchRef)).val().goalscorers || {};
+          const goalscorers = currentData.goalscorers || {};
           if (!goalscorers[scorer.id]) {
             goalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
           }
           goalscorers[scorer.id].goals++;
 
           // Get current events and prepend new one
-          const updatedData = (await get(matchRef)).val();
-          const newEvents = [eventText, ...(updatedData.events || [])];
+          const newEvents = [eventText, ...(currentData.events || [])];
           await update(matchRef, { events: newEvents, goalscorers });
 
           console.log('GOAL!', eventText);
+        } else if (eventRoll < 0.10) {
+          // SHOT/SAVE EVENT (6% chance)
+          const teamRoll = Math.random();
+          const isHomeShot = teamRoll < 0.5;
+          const attackingTeam = isHomeShot ? match.homeManager : match.awayManager;
+          const defendingTeam = isHomeShot ? match.awayManager : match.homeManager;
+
+          const availablePlayers = attackingTeam.squad.filter(p => !substitutedPlayers.includes(p.id));
+          const shooters = availablePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+          if (shooters.length > 0) {
+            const shooter = shooters[Math.floor(Math.random() * shooters.length)];
+            const gk = defendingTeam.squad.find(p => p.position === 'GK');
+
+            const eventText = gk
+              ? `${matchMinute}' 🧤 Great save by ${gk.name}! ${shooter.name} denied.`
+              : `${matchMinute}' 📍 ${shooter.name} shoots wide!`;
+            const newEvents = [eventText, ...(currentData.events || [])];
+            await update(matchRef, { events: newEvents });
+          }
+        } else if (eventRoll < 0.18) {
+          // PASS/BUILDUP EVENT (8% chance)
+          const teamRoll = Math.random();
+          const isHome = teamRoll < 0.5;
+          const team = isHome ? match.homeManager : match.awayManager;
+
+          const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
+          const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
+          if (midfielders.length > 0) {
+            const passer = midfielders[Math.floor(Math.random() * midfielders.length)];
+
+            const eventText = `${matchMinute}' ⚡ ${passer.name} with a great pass forward!`;
+            const newEvents = [eventText, ...(currentData.events || [])];
+            await update(matchRef, { events: newEvents });
+          }
         }
 
         // Update minute in Firebase
@@ -1323,22 +1384,67 @@ const Match = ({ onBack, activeMatchId }) => {
       }
     }
 
-    // Create match history record
+    // Calculate detailed statistics
+    const allEvents = matchData.events || [];
+    const goalEvents = allEvents.filter(e => e.includes('⚽ GOAL'));
+    const saveEvents = allEvents.filter(e => e.includes('🧤'));
+    const passEvents = allEvents.filter(e => e.includes('⚡'));
+
+    // Calculate possession percentage based on pass events
+    const homePassEvents = passEvents.filter(e => e.includes(matchData.homeManager.name)).length;
+    const awayPassEvents = passEvents.filter(e => e.includes(matchData.awayManager.name)).length;
+    const totalPassEvents = homePassEvents + awayPassEvents;
+    const homePossession = totalPassEvents > 0 ? Math.round((homePassEvents / totalPassEvents) * 100) : 50;
+    const awayPossession = 100 - homePossession;
+
+    // Count shots (goals + saves + misses)
+    const homeShots = allEvents.filter(e =>
+      (e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍')) &&
+      (e.includes(`for ${matchData.homeManager.name}`) || e.includes(`${matchData.homeManager.name}`))
+    ).length;
+    const awayShots = allEvents.filter(e =>
+      (e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍')) &&
+      (e.includes(`for ${matchData.awayManager.name}`) || e.includes(`${matchData.awayManager.name}`))
+    ).length;
+
+    // Get goalscorers
+    const goalscorersData = matchData.goalscorers || {};
+    const topScorers = Object.values(goalscorersData)
+      .map(gs => {
+        const player = matchData.homeManager.squad.find(p => p.id === gs.playerId) ||
+                      matchData.awayManager.squad.find(p => p.id === gs.playerId);
+        return player ? { name: player.name, goals: gs.goals } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.goals - a.goals);
+
+    // Create match history record with detailed stats
     const matchHistory = {
       id: matchData.id,
       homeManager: {
         uid: matchData.homeManager.uid,
-        name: matchData.homeManager.name
+        name: matchData.homeManager.name,
+        formation: matchData.homeManager.formation || '4-3-3',
+        tactic: matchData.homeTactic || 'Balanced'
       },
       awayManager: {
         uid: matchData.awayManager.uid,
-        name: matchData.awayManager.name
+        name: matchData.awayManager.name,
+        formation: matchData.awayManager.formation || '4-3-3',
+        tactic: matchData.awayTactic || 'Balanced'
       },
       homeScore: finalHomeScore,
       awayScore: finalAwayScore,
       homeStrength: homeStrength.toFixed(1),
       awayStrength: awayStrength.toFixed(1),
-      events: matchData.events || [],
+      homePossession,
+      awayPossession,
+      homeShots,
+      awayShots,
+      homeShotsOnTarget: allEvents.filter(e => (e.includes('⚽ GOAL') || e.includes('🧤')) && e.includes(`for ${matchData.homeManager.name}`)).length,
+      awayShotsOnTarget: allEvents.filter(e => (e.includes('⚽ GOAL') || e.includes('🧤')) && e.includes(`for ${matchData.awayManager.name}`)).length,
+      topScorers,
+      events: allEvents,
       matchReport: matchReport,
       playedAt: Date.now()
     };
@@ -2229,13 +2335,11 @@ const Match = ({ onBack, activeMatchId }) => {
           <View style={styles.pitch}>
             {/* Top Goal (Away) */}
             <View style={styles.goalTop}>
-              <View style={styles.goalPost} />
               <View style={styles.goalNet} />
             </View>
 
             {/* Bottom Goal (Home) */}
             <View style={styles.goalBottom}>
-              <View style={styles.goalPost} />
               <View style={styles.goalNet} />
             </View>
 
@@ -2323,14 +2427,21 @@ const Match = ({ onBack, activeMatchId }) => {
         const teamPath = isHome ? 'homeManager' : 'awayManager';
         await update(ref(database, `matches/${currentMatch.id}/${teamPath}`), { squad: newSquad });
 
-        // Add substitution event
+        // Add substitution event and track substituted player
         const eventText = `${minute}' 🔄 SUB: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
         const currentData = (await get(matchRef)).val();
         const newEvents = [eventText, ...(currentData.events || [])];
 
+        // Track substituted players
+        const substitutedPlayersList = currentData.substitutedPlayers || [];
+        if (!substitutedPlayersList.includes(substitutionMode.playerOut.id)) {
+          substitutedPlayersList.push(substitutionMode.playerOut.id);
+        }
+
         // Resume match after substitution
         await update(matchRef, {
           events: newEvents,
+          substitutedPlayers: substitutedPlayersList,
           paused: false,
           pausedBy: null,
           pauseReason: null

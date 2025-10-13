@@ -329,6 +329,15 @@ const Formation = ({ onBack }) => {
         </View>
 
         <View style={styles.pitch}>
+          {/* Pitch markings - similar to match simulation */}
+          <View style={styles.pitchHalfLine} />
+          <View style={styles.pitchCenterCircle} />
+          <View style={styles.pitchCenterDot} />
+          <View style={styles.penaltyAreaTop} />
+          <View style={styles.penaltyAreaBottom} />
+          <View style={styles.goalTop} />
+          <View style={styles.goalBottom} />
+
           {renderFormation()}
         </View>
 
@@ -492,8 +501,9 @@ const styles = StyleSheet.create({
     height: 550,
     maxWidth: '100%',
     alignSelf: 'center',
-    // Add grass-like gradient effect
-    backgroundImage: 'repeating-linear-gradient(0deg, #2d5016 0px, #3a6b1f 40px, #2d5016 80px)',
+    // Add grass-like gradient effect with horizontal stripes
+    backgroundImage: 'repeating-linear-gradient(0deg, #2d5016 0px, #3a6b1f 30px, #2d5016 60px, #3a6b1f 90px)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 50px rgba(0, 0, 0, 0.2)',
   },
   positionSlot: {
     position: 'absolute',
@@ -653,6 +663,82 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  // Pitch markings
+  pitchHalfLine: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  pitchCenterCircle: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    transform: [{ translateX: -40 }, { translateY: -40 }],
+  },
+  pitchCenterDot: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    transform: [{ translateX: -4 }, { translateY: -4 }],
+  },
+  penaltyAreaTop: {
+    position: 'absolute',
+    top: 0,
+    left: '25%',
+    width: '50%',
+    height: '15%',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  penaltyAreaBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: '25%',
+    width: '50%',
+    height: '15%',
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderTopWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  goalTop: {
+    position: 'absolute',
+    top: 0,
+    left: '35%',
+    width: '30%',
+    height: 20,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  goalBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: '35%',
+    width: '30%',
+    height: 20,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderTopWidth: 3,
+    borderColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
 });
 
