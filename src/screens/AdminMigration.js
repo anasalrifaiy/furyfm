@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { migrateBudgetsToTarget } from '../utils/migrateBudgets';
-import { migrateMarketPlayers } from '../utils/migrateMarketPlayers';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { migrateBudgetsToTarget, addBudgetToAllUsers, resetAllPointsToZero } from '../utils/migrateBudgets';
+import { add50NewPlayers, removeDuplicatePlayers, clearAllPendingMatches } from '../utils/migrateMarketPlayers';
 
 const AdminMigration = ({ onBack }) => {
   const [migrating, setMigrating] = useState(false);
   const [result, setResult] = useState(null);
   const [migratingPlayers, setMigratingPlayers] = useState(false);
   const [playersResult, setPlayersResult] = useState(null);
+  const [budgetAmount, setBudgetAmount] = useState('');
+  const [removingDuplicates, setRemovingDuplicates] = useState(false);
+  const [duplicatesResult, setDuplicatesResult] = useState(null);
+  const [resettingPoints, setResettingPoints] = useState(false);
+  const [pointsResult, setPointsResult] = useState(null);
+  const [clearingMatches, setClearingMatches] = useState(false);
+  const [matchesResult, setMatchesResult] = useState(null);
 
   const runMigration = async () => {
     if (!window.confirm('Are you sure you want to migrate all user budgets to 900M? This action will update all users with budgets below 900M.')) {
@@ -31,7 +38,7 @@ const AdminMigration = ({ onBack }) => {
   };
 
   const runPlayersMigration = async () => {
-    if (!window.confirm('Are you sure you want to add the 200 new players to the market?')) {
+    if (!window.confirm('Are you sure you want to add 50 new players to the market?')) {
       return;
     }
 
@@ -39,7 +46,7 @@ const AdminMigration = ({ onBack }) => {
     setPlayersResult(null);
 
     try {
-      const migrationResult = await migrateMarketPlayers();
+      const migrationResult = await add50NewPlayers();
       setPlayersResult(migrationResult);
     } catch (error) {
       setPlayersResult({
@@ -51,27 +58,118 @@ const AdminMigration = ({ onBack }) => {
     }
   };
 
+  const runRemoveDuplicates = async () => {
+    if (!window.confirm('Are you sure you want to remove duplicate players from the market? This will keep only one version of each player (highest rated).')) {
+      return;
+    }
+
+    setRemovingDuplicates(true);
+    setDuplicatesResult(null);
+
+    try {
+      const result = await removeDuplicatePlayers();
+      setDuplicatesResult(result);
+    } catch (error) {
+      setDuplicatesResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setRemovingDuplicates(false);
+    }
+  };
+
+  const runAddBudget = async () => {
+    const amount = parseFloat(budgetAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid positive number');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to add $${amount}M to ALL users?`)) {
+      return;
+    }
+
+    setMigrating(true);
+    setResult(null);
+
+    try {
+      const migrationResult = await addBudgetToAllUsers(amount * 1000000);
+      setResult(migrationResult);
+      setBudgetAmount('');
+    } catch (error) {
+      setResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const runResetPoints = async () => {
+    if (!window.confirm('Are you sure you want to reset ALL users\' points to 0? This action cannot be undone!')) {
+      return;
+    }
+
+    setResettingPoints(true);
+    setPointsResult(null);
+
+    try {
+      const result = await resetAllPointsToZero();
+      setPointsResult(result);
+    } catch (error) {
+      setPointsResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setResettingPoints(false);
+    }
+  };
+
+  const runClearMatches = async () => {
+    if (!window.confirm('Are you sure you want to clear ALL pending matches for all users? This will remove all active match references.')) {
+      return;
+    }
+
+    setClearingMatches(true);
+    setMatchesResult(null);
+
+    try {
+      const result = await clearAllPendingMatches();
+      setMatchesResult(result);
+    } catch (error) {
+      setMatchesResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setClearingMatches(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Admin: Budget Migration</Text>
+        <Text style={styles.title}>Admin Tools</Text>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.warningCard}>
           <Text style={styles.warningIcon}>⚽</Text>
-          <Text style={styles.warningTitle}>Add 200 New Players</Text>
+          <Text style={styles.warningTitle}>Add 50 New Players</Text>
           <Text style={styles.warningText}>
-            This will add 200 new players (IDs 201-400) to the transfer market.
+            Add 50 new players to the transfer market. Perfect for refreshing the market when it feels empty.
           </Text>
           <Text style={styles.warningText}>
-            • Players that already exist will be skipped
+            • Adds 50 players from the pool that aren't already on the market
           </Text>
           <Text style={styles.warningText}>
-            • New players will be immediately available on the market
+            • Players will be immediately available for purchase
           </Text>
         </View>
 
@@ -81,7 +179,7 @@ const AdminMigration = ({ onBack }) => {
           disabled={migratingPlayers}
         >
           <Text style={styles.migrateButtonText}>
-            {migratingPlayers ? 'Adding Players...' : 'Add 200 New Players'}
+            {migratingPlayers ? 'Adding Players...' : '⚽ Add 50 New Players'}
           </Text>
         </TouchableOpacity>
 
@@ -104,6 +202,164 @@ const AdminMigration = ({ onBack }) => {
               </>
             ) : (
               <Text style={styles.errorText}>Error: {playersResult.error}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Remove Duplicates Section */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>🧹</Text>
+          <Text style={styles.warningTitle}>Remove Duplicate Players</Text>
+          <Text style={styles.warningText}>
+            Scan and remove duplicate players from the market (keeps highest rated version).
+          </Text>
+          <Text style={styles.warningText}>
+            • Identifies players with same name
+          </Text>
+          <Text style={styles.warningText}>
+            • Keeps only the highest rated version
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.migrateButton, removingDuplicates && styles.migrateButtonDisabled]}
+          onPress={runRemoveDuplicates}
+          disabled={removingDuplicates}
+        >
+          <Text style={styles.migrateButtonText}>
+            {removingDuplicates ? 'Removing Duplicates...' : '🧹 Remove Duplicates'}
+          </Text>
+        </TouchableOpacity>
+
+        {duplicatesResult && (
+          <View style={[styles.resultCard, duplicatesResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {duplicatesResult.success ? '✓ Duplicates Removed' : '✗ Operation Failed'}
+            </Text>
+            {duplicatesResult.success ? (
+              <Text style={styles.resultText}>
+                Removed: {duplicatesResult.removedCount} duplicate players
+              </Text>
+            ) : (
+              <Text style={styles.errorText}>Error: {duplicatesResult.error}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Add Custom Budget Section */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>💰</Text>
+          <Text style={styles.warningTitle}>Add Budget to All Users</Text>
+          <Text style={styles.warningText}>
+            Add a custom amount of money to ALL users' budgets.
+          </Text>
+          <Text style={styles.warningText}>
+            • Enter amount in millions (M)
+          </Text>
+          <Text style={styles.warningText}>
+            • Amount will be added to current budgets
+          </Text>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter amount in millions (e.g., 100)"
+            placeholderTextColor="#888"
+            keyboardType="numeric"
+            value={budgetAmount}
+            onChangeText={setBudgetAmount}
+          />
+          <TouchableOpacity
+            style={[styles.migrateButton, (migrating || !budgetAmount) && styles.migrateButtonDisabled]}
+            onPress={runAddBudget}
+            disabled={migrating || !budgetAmount}
+          >
+            <Text style={styles.migrateButtonText}>
+              {migrating ? 'Adding Budget...' : '💰 Add Budget'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Reset Points Section */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>🔄</Text>
+          <Text style={styles.warningTitle}>Reset All Points</Text>
+          <Text style={styles.warningText}>
+            Reset all users' points (wins/draws/losses/league points) to 0. Perfect for starting a new season.
+          </Text>
+          <Text style={styles.warningText}>
+            • Resets wins, draws, losses to 0
+          </Text>
+          <Text style={styles.warningText}>
+            • Resets league points to 0
+          </Text>
+          <Text style={styles.warningText}>
+            • Does NOT affect budgets or squads
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.migrateButton, resettingPoints && styles.migrateButtonDisabled]}
+          onPress={runResetPoints}
+          disabled={resettingPoints}
+        >
+          <Text style={styles.migrateButtonText}>
+            {resettingPoints ? 'Resetting Points...' : '🔄 Reset All Points'}
+          </Text>
+        </TouchableOpacity>
+
+        {pointsResult && (
+          <View style={[styles.resultCard, pointsResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {pointsResult.success ? '✓ Points Reset' : '✗ Operation Failed'}
+            </Text>
+            {pointsResult.success ? (
+              <Text style={styles.resultText}>
+                Reset: {pointsResult.resetCount} users' points
+              </Text>
+            ) : (
+              <Text style={styles.errorText}>Error: {pointsResult.error}</Text>
+            )}
+          </View>
+        )}
+
+        {/* Clear Matches Section */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>❌</Text>
+          <Text style={styles.warningTitle}>Clear All Pending Matches</Text>
+          <Text style={styles.warningText}>
+            Clear all users' pending/stuck matches. Use this to fix stuck match states.
+          </Text>
+          <Text style={styles.warningText}>
+            • Removes activeMatchId from all users
+          </Text>
+          <Text style={styles.warningText}>
+            • Does NOT delete match history
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.migrateButton, clearingMatches && styles.migrateButtonDisabled]}
+          onPress={runClearMatches}
+          disabled={clearingMatches}
+        >
+          <Text style={styles.migrateButtonText}>
+            {clearingMatches ? 'Clearing Matches...' : '❌ Clear Pending Matches'}
+          </Text>
+        </TouchableOpacity>
+
+        {matchesResult && (
+          <View style={[styles.resultCard, matchesResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {matchesResult.success ? '✓ Matches Cleared' : '✗ Operation Failed'}
+            </Text>
+            {matchesResult.success ? (
+              <Text style={styles.resultText}>
+                Cleared: {matchesResult.clearedCount} users' pending matches
+              </Text>
+            ) : (
+              <Text style={styles.errorText}>Error: {matchesResult.error}</Text>
             )}
           </View>
         )}
@@ -304,6 +560,19 @@ const styles = StyleSheet.create({
   updateDetails: {
     fontSize: 12,
     color: '#43e97b',
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: '#1a1f3a',
+    color: '#ffffff',
+    fontSize: 16,
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#2d3561',
+    marginBottom: 10,
   },
 });
 
