@@ -18,6 +18,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [substitutionMode, setSubstitutionMode] = useState(null); // { playerOut: player, playerOutIndex: number }
   const [selectedTactic, setSelectedTactic] = useState('Balanced');
   const [substitutionsUsed, setSubstitutionsUsed] = useState(0);
+  const [substitutedPlayers, setSubstitutedPlayers] = useState([]); // Track players who have been subbed out
   const [pauseCountdown, setPauseCountdown] = useState(0);
   const [liveMatches, setLiveMatches] = useState([]);
   const [homePausesUsed, setHomePausesUsed] = useState(0);
@@ -164,6 +165,26 @@ const Match = ({ onBack, activeMatchId }) => {
     if (managerProfile) {
       loadFriends();
       cleanupStuckMatches();
+
+      // Restore practice match from localStorage if exists
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const storedPracticeMatch = localStorage.getItem('practiceMatch');
+        const storedPracticeMatchState = localStorage.getItem('practiceMatchState');
+
+        if (storedPracticeMatch && storedPracticeMatchState && !activeMatchId) {
+          try {
+            const matchData = JSON.parse(storedPracticeMatch);
+            setCurrentMatch(matchData);
+            setIsHome(true);
+            setMatchState(storedPracticeMatchState);
+            console.log('Restored practice match from localStorage');
+          } catch (error) {
+            console.error('Failed to restore practice match:', error);
+            localStorage.removeItem('practiceMatch');
+            localStorage.removeItem('practiceMatchState');
+          }
+        }
+      }
     }
   }, [managerProfile]);
 
@@ -621,9 +642,33 @@ const Match = ({ onBack, activeMatchId }) => {
       createdAt: Date.now()
     };
 
+    // Save practice match to localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('practiceMatch', JSON.stringify(matchData));
+      localStorage.setItem('practiceMatchState', 'ready');
+    }
+
     setCurrentMatch(matchData);
     setIsHome(true);
     setMatchState('ready');
+  };
+
+  // Helper to save practice match to localStorage
+  const savePracticeMatchToStorage = (matchData, state) => {
+    if (typeof window !== 'undefined' && window.localStorage && matchData?.isPractice) {
+      localStorage.setItem('practiceMatch', JSON.stringify(matchData));
+      if (state) {
+        localStorage.setItem('practiceMatchState', state);
+      }
+    }
+  };
+
+  // Helper to clear practice match from localStorage
+  const clearPracticeMatchFromStorage = () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('practiceMatch');
+      localStorage.removeItem('practiceMatchState');
+    }
   };
 
   const generateAISquad = () => {
@@ -690,7 +735,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
     // For practice matches, just start immediately (no Firebase)
     if (currentMatch.isPractice) {
-      setCurrentMatch({
+      const updatedMatch = {
         ...currentMatch,
         state: 'playing',
         homeKickoffReady: true,
@@ -698,8 +743,10 @@ const Match = ({ onBack, activeMatchId }) => {
         startedAt: Date.now(),
         minute: 0,
         second: 0
-      });
+      };
+      setCurrentMatch(updatedMatch);
       setMatchState('playing');
+      savePracticeMatchToStorage(updatedMatch, 'playing');
       // Start simulation immediately for practice match
       simulatePracticeMatch();
       return;
@@ -1795,6 +1842,8 @@ const Match = ({ onBack, activeMatchId }) => {
       setCurrentMatch(updatedMatch);
     }
 
+    // Track substituted player locally
+    setSubstitutedPlayers([...substitutedPlayers, substitutionMode.playerOut.id]);
     setSubstitutionMode(null);
     setSubstitutionsUsed(substitutionsUsed + 1);
     showAlert('Substitution Made', `${playerIn.name} is now on the pitch.`);
@@ -2617,8 +2666,11 @@ const Match = ({ onBack, activeMatchId }) => {
           pauseReason: null
         };
         setCurrentMatch(updatedMatch);
+        savePracticeMatchToStorage(updatedMatch, matchState);
       }
 
+      // Track substituted player locally
+      setSubstitutedPlayers([...substitutedPlayers, substitutionMode.playerOut.id]);
       setSubstitutionsUsed(substitutionsUsed + 1);
       setSubstitutionMode(null);
       showAlert('Substitution Complete', `${playerIn.name} is now on the pitch. Match resumed.`);
@@ -2632,6 +2684,7 @@ const Match = ({ onBack, activeMatchId }) => {
             {currentMatch.isPractice && (
               <TouchableOpacity
                 onPress={() => {
+                  clearPracticeMatchFromStorage();
                   setMatchState('select');
                   setCurrentMatch(null);
                 }}
@@ -2906,9 +2959,12 @@ const Match = ({ onBack, activeMatchId }) => {
               <Text style={styles.benchTitle}>Choose Replacement from Bench:</Text>
               <ScrollView style={styles.benchList}>
                 {(() => {
-                  const benchPlayers = (managerProfile.squad || []).filter(p => !mySquad.some(fp => fp.id === p.id));
+                  const benchPlayers = (managerProfile.squad || [])
+                    .filter(p => !mySquad.some(fp => fp.id === p.id))
+                    .filter(p => !substitutedPlayers.includes(p.id));
                   console.log('Total squad:', managerProfile.squad?.length || 0);
                   console.log('Starting 11:', mySquad.length);
+                  console.log('Substituted players:', substitutedPlayers.length);
                   console.log('Bench players available:', benchPlayers.length);
 
                   if (benchPlayers.length === 0) {
