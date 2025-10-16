@@ -431,9 +431,9 @@ const MainApp = () => {
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
-          <Text style={styles.menuIcon}>🏟️</Text>
-          <Text style={styles.menuTitle}>{t('match')}</Text>
-          <Text style={styles.menuDesc}>{t('matchDesc')}</Text>
+          <Text style={styles.menuIcon}>🤝</Text>
+          <Text style={styles.menuTitle}>Friendly Match</Text>
+          <Text style={styles.menuDesc}>Challenge friends for fun!</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('proleague')}>

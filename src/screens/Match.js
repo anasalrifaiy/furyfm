@@ -1990,7 +1990,7 @@ const Match = ({ onBack, activeMatchId }) => {
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Match - Challenge a Friend</Text>
+          <Text style={styles.title}>🤝 Friendly Match</Text>
         </View>
 
         <ScrollView style={styles.content}>
@@ -2430,7 +2430,11 @@ const Match = ({ onBack, activeMatchId }) => {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Match Ready!</Text>
+          <Text style={styles.title}>
+            {currentMatch.isPractice ? 'Practice Match Ready!' :
+             currentMatch.isProLeague ? '🏆 Pro League Ready!' :
+             '🤝 Friendly Match Ready!'}
+          </Text>
         </View>
 
         <ScrollView style={styles.content}>
@@ -2847,7 +2851,11 @@ const Match = ({ onBack, activeMatchId }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.title}>{currentMatch.isPractice ? 'Practice Match vs AI' : 'Match in Progress'}</Text>
+            <Text style={styles.title}>
+              {currentMatch.isPractice ? 'Practice Match vs AI' :
+               currentMatch.isProLeague ? '🏆 Pro League Match' :
+               '🤝 Friendly Match'}
+            </Text>
             {!currentMatch.spectators?.[currentUser?.uid] && (
               <TouchableOpacity
                 style={styles.forfeitButton}
@@ -3331,9 +3339,21 @@ const Match = ({ onBack, activeMatchId }) => {
               <Text style={styles.finalScore}>{homeScore} - {awayScore}</Text>
               <Text style={styles.finalTeam}>{currentMatch.awayManager.name}</Text>
             </View>
-            <Text style={styles.pointsEarned}>
-              Points earned: {result === 'WIN' ? '+3' : result === 'DRAW' ? '+1' : '0'}
-            </Text>
+            {currentMatch.isProLeague && (
+              <Text style={styles.pointsEarned}>
+                League Points: {result === 'WIN' ? '+3' : result === 'DRAW' ? '+1' : '0'}
+              </Text>
+            )}
+            {currentMatch.isPractice && (
+              <Text style={styles.practiceLabel}>
+                ⚽ Practice Match - No league points
+              </Text>
+            )}
+            {!currentMatch.isProLeague && !currentMatch.isPractice && (
+              <Text style={styles.friendlyLabel}>
+                🤝 Friendly Match - No league points
+              </Text>
+            )}
           </View>
 
           {currentMatch.matchReport && (
@@ -3817,6 +3837,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#43e97b',
     fontWeight: 'bold',
+  },
+  practiceLabel: {
+    fontSize: 16,
+    color: '#ffa726',
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+  },
+  friendlyLabel: {
+    fontSize: 16,
+    color: '#667eea',
+    fontWeight: 'bold',
+    fontStyle: 'italic',
   },
   matchSummary: {
     backgroundColor: '#1a1f3a',
