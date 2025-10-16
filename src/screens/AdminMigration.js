@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { migrateBudgetsToTarget, addBudgetToAllUsers, resetAllPointsToZero, addBudgetToSpecificUser } from '../utils/migrateBudgets';
 import { add50NewPlayers, removeDuplicatePlayers, clearAllPendingMatches } from '../utils/migrateMarketPlayers';
+import { recoverAllSquads } from '../utils/recoverSquads';
 
 const AdminMigration = ({ onBack }) => {
   const [migrating, setMigrating] = useState(false);
@@ -19,6 +20,8 @@ const AdminMigration = ({ onBack }) => {
   const [specificUserAmount, setSpecificUserAmount] = useState('');
   const [addingToSpecificUser, setAddingToSpecificUser] = useState(false);
   const [specificUserResult, setSpecificUserResult] = useState(null);
+  const [recoveringSquads, setRecoveringSquads] = useState(false);
+  const [squadRecoveryResult, setSquadRecoveryResult] = useState(null);
 
   const runMigration = async () => {
     if (!window.confirm('Are you sure you want to migrate all user budgets to 900M? This action will update all users with budgets below 900M.')) {
@@ -189,6 +192,27 @@ const AdminMigration = ({ onBack }) => {
     }
   };
 
+  const runSquadRecovery = async () => {
+    if (!window.confirm('Are you sure you want to recover all squads from match history? This will scan all matches and restore missing players.')) {
+      return;
+    }
+
+    setRecoveringSquads(true);
+    setSquadRecoveryResult(null);
+
+    try {
+      const result = await recoverAllSquads();
+      setSquadRecoveryResult(result);
+    } catch (error) {
+      setSquadRecoveryResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setRecoveringSquads(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -199,6 +223,64 @@ const AdminMigration = ({ onBack }) => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Squad Recovery Section - URGENT */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>🚨</Text>
+          <Text style={styles.warningTitle}>URGENT: Recover Lost Players</Text>
+          <Text style={styles.warningText}>
+            This will scan match history and restore players that were lost due to a substitution bug.
+          </Text>
+          <Text style={styles.warningText}>
+            • Recovers players from all managers' match history
+          </Text>
+          <Text style={styles.warningText}>
+            • Safe to run multiple times (won't duplicate players)
+          </Text>
+          <Text style={styles.warningText}>
+            • Run this ONCE to fix the current data loss
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.migrateButton, recoveringSquads && styles.migrateButtonDisabled]}
+          onPress={runSquadRecovery}
+          disabled={recoveringSquads}
+        >
+          <Text style={styles.migrateButtonText}>
+            {recoveringSquads ? 'Recovering Squads...' : '🚨 Recover All Squads'}
+          </Text>
+        </TouchableOpacity>
+
+        {squadRecoveryResult && (
+          <View style={[styles.resultCard, squadRecoveryResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {squadRecoveryResult.success ? '✓ Squad Recovery Complete' : '✗ Recovery Failed'}
+            </Text>
+            {squadRecoveryResult.success ? (
+              <>
+                <Text style={styles.resultText}>
+                  Recovered: {squadRecoveryResult.recoveredCount} managers' squads
+                </Text>
+                {squadRecoveryResult.details && squadRecoveryResult.details.length > 0 && (
+                  <View style={styles.updatesList}>
+                    <Text style={styles.updatesTitle}>Recovery Details:</Text>
+                    {squadRecoveryResult.details.map((detail, index) => (
+                      <View key={index} style={styles.updateItem}>
+                        <Text style={styles.updateName}>{detail.manager}</Text>
+                        <Text style={styles.updateDetails}>
+                          Squad size: {detail.before} → {detail.after} (+{detail.recovered} players)
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={styles.errorText}>Error: {squadRecoveryResult.error}</Text>
+            )}
+          </View>
+        )}
+
         <View style={styles.warningCard}>
           <Text style={styles.warningIcon}>⚽</Text>
           <Text style={styles.warningTitle}>Add 50 New Players</Text>

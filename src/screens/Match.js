@@ -1868,11 +1868,10 @@ const Match = ({ onBack, activeMatchId }) => {
         const newBudget = (winnerData.budget || 0) + totalReward;
 
         // Award bonus XP to all players in winning squad (100 XP each)
-        const winningSquad = winnerUid === matchData.homeManager.uid
-          ? matchData.homeManager.squad
-          : matchData.awayManager.squad;
+        // IMPORTANT: Use the full manager squad from Firebase, not the match squad (which is only 11 players)
+        const fullWinningSquad = winnerData.squad || [];
 
-        const updatedWinningSquad = winningSquad.map(player => ({
+        const updatedWinningSquad = fullWinningSquad.map(player => ({
           ...player,
           xp: (player.xp || 0) + 100
         }));
