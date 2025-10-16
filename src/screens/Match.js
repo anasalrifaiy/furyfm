@@ -372,6 +372,13 @@ const Match = ({ onBack, activeMatchId }) => {
         setAwayResumeReady(matchData.awayResumeReady || false);
 
         // Detect state change to 'playing' - start simulation if home manager
+        console.log('Checking if should start simulation:', {
+          'matchData.state': matchData.state,
+          'previousState': previousState,
+          'isHome': isHome,
+          'condition': matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch') && isHome
+        });
+
         if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch') && isHome) {
           console.log('Match state changed to playing - starting simulation');
           simulateMatch(matchData);
