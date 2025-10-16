@@ -165,19 +165,32 @@ const Match = ({ onBack, activeMatchId }) => {
     if (managerProfile) {
       loadFriends();
       cleanupStuckMatches();
+    }
+  }, [managerProfile]);
 
-      // Restore practice match from localStorage if exists
+  // Restore practice match from localStorage on mount or when returning to screen
+  useEffect(() => {
+    console.log('Match screen mounted/updated - checking for practice match');
+    console.log('activeMatchId:', activeMatchId);
+    console.log('matchState:', matchState);
+    console.log('currentMatch:', currentMatch?.id);
+
+    // Only restore if no current match
+    if (!currentMatch && !activeMatchId) {
       if (typeof window !== 'undefined' && window.localStorage) {
         const storedPracticeMatch = localStorage.getItem('practiceMatch');
         const storedPracticeMatchState = localStorage.getItem('practiceMatchState');
 
-        if (storedPracticeMatch && storedPracticeMatchState && !activeMatchId) {
+        console.log('Stored practice match exists:', !!storedPracticeMatch);
+        console.log('Stored practice state:', storedPracticeMatchState);
+
+        if (storedPracticeMatch && storedPracticeMatchState) {
           try {
             const matchData = JSON.parse(storedPracticeMatch);
+            console.log('Restoring practice match:', matchData.id);
             setCurrentMatch(matchData);
             setIsHome(true);
             setMatchState(storedPracticeMatchState);
-            console.log('Restored practice match from localStorage');
           } catch (error) {
             console.error('Failed to restore practice match:', error);
             localStorage.removeItem('practiceMatch');
@@ -186,7 +199,7 @@ const Match = ({ onBack, activeMatchId }) => {
         }
       }
     }
-  }, [managerProfile]);
+  }, [activeMatchId, currentMatch]); // Run when activeMatchId or currentMatch changes
 
   // Load active match when activeMatchId changes
   useEffect(() => {
@@ -717,6 +730,11 @@ const Match = ({ onBack, activeMatchId }) => {
         timestamp: Date.now(),
         read: false
       });
+    }
+
+    // Clear practice match from localStorage if applicable
+    if (currentMatch?.isPractice) {
+      clearPracticeMatchFromStorage();
     }
 
     // Reset to selection screen
