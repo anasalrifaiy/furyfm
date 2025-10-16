@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
@@ -28,6 +28,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [prematchStarting11, setPrematchStarting11] = useState([]);
   const [prematchFormation, setPrematchFormation] = useState('4-3-3');
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
+  const previousMatchStateRef = useRef(matchState);
 
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
@@ -341,7 +342,7 @@ const Match = ({ onBack, activeMatchId }) => {
     const unsubscribe = onValue(matchRef, (snapshot) => {
       if (snapshot.exists()) {
         const matchData = snapshot.val();
-        const previousState = matchState;
+        const previousState = previousMatchStateRef.current;
 
         console.log('Firebase listener triggered - state change:', previousState, '->', matchData.state);
         console.log('Match data:', matchData);
@@ -349,6 +350,7 @@ const Match = ({ onBack, activeMatchId }) => {
         // Update match state based on Firebase data
         console.log('Setting matchState to:', matchData.state);
         setMatchState(matchData.state);
+        previousMatchStateRef.current = matchData.state;
         setHomeScore(matchData.homeScore || 0);
         setAwayScore(matchData.awayScore || 0);
         setMinute(matchData.minute || 0);
