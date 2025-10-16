@@ -287,6 +287,10 @@ const Match = ({ onBack, activeMatchId }) => {
 
     // Determine if I'm home or away
     const amHome = matchData.homeManager.uid === currentUser.uid;
+    console.log('acceptMatchChallenge - currentUser.uid:', currentUser.uid);
+    console.log('acceptMatchChallenge - homeManager.uid:', matchData.homeManager.uid);
+    console.log('acceptMatchChallenge - awayManager.uid:', matchData.awayManager.uid);
+    console.log('acceptMatchChallenge - amHome:', amHome);
     setIsHome(amHome);
 
     // Mark myself as ready (accepting the challenge)
@@ -304,8 +308,8 @@ const Match = ({ onBack, activeMatchId }) => {
 
     console.log('Updated match data:', updatedMatchData);
 
-    // Set local state to prematch with complete data
-    setCurrentMatch(updatedMatchData);
+    // Set local state to prematch with complete data - IMPORTANT: include id!
+    setCurrentMatch({ ...updatedMatchData, id: matchId });
     setMatchState('prematch');
 
     console.log('Local state updated to prematch');
@@ -320,6 +324,10 @@ const Match = ({ onBack, activeMatchId }) => {
     if (snapshot.exists()) {
       const matchData = snapshot.val();
       const amHome = matchData.homeManager.uid === currentUser.uid;
+      console.log('loadActiveMatch - currentUser.uid:', currentUser.uid);
+      console.log('loadActiveMatch - homeManager.uid:', matchData.homeManager?.uid);
+      console.log('loadActiveMatch - awayManager.uid:', matchData.awayManager?.uid);
+      console.log('loadActiveMatch - amHome:', amHome);
       setIsHome(amHome);
       // IMPORTANT: Add the id to the match object so the Firebase listener can work
       setCurrentMatch({ ...matchData, id: matchId });
