@@ -382,7 +382,7 @@ const Match = ({ onBack, activeMatchId }) => {
     });
 
     return () => off(matchRef);
-  }, [currentMatch?.id, matchState, isHome]);
+  }, [currentMatch?.id, isHome]);
 
   // Handle pause countdown timer
   useEffect(() => {
