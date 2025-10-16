@@ -1685,7 +1685,7 @@ const Match = ({ onBack, activeMatchId }) => {
     await push(ref(database, `managers/${matchData.homeManager.uid}/matchHistory`), matchHistory);
     await push(ref(database, `managers/${matchData.awayManager.uid}/matchHistory`), matchHistory);
 
-    // Update home manager stats
+    // Update manager stats - separate friendly and league stats
     const homeManagerRef = ref(database, `managers/${matchData.homeManager.uid}`);
     const homeSnapshot = await get(homeManagerRef);
     if (homeSnapshot.exists()) {
@@ -1694,17 +1694,43 @@ const Match = ({ onBack, activeMatchId }) => {
         wins: homeData.wins || 0,
         draws: homeData.draws || 0,
         losses: homeData.losses || 0,
-        points: homeData.points || 0
       };
 
+      // For Pro League matches, update league stats and points
+      if (matchData.isProLeague) {
+        homeUpdate.leagueWins = homeData.leagueWins || 0;
+        homeUpdate.leagueDraws = homeData.leagueDraws || 0;
+        homeUpdate.leagueLosses = homeData.leagueLosses || 0;
+        homeUpdate.leaguePoints = homeData.leaguePoints || 0;
+        homeUpdate.leagueGoalsFor = (homeData.leagueGoalsFor || 0) + finalHomeScore;
+        homeUpdate.leagueGoalsAgainst = (homeData.leagueGoalsAgainst || 0) + finalAwayScore;
+
+        if (finalHomeScore > finalAwayScore) {
+          homeUpdate.leagueWins++;
+          homeUpdate.leaguePoints += 3;
+        } else if (finalHomeScore < finalAwayScore) {
+          homeUpdate.leagueLosses++;
+        } else {
+          homeUpdate.leagueDraws++;
+          homeUpdate.leaguePoints += 1;
+        }
+
+        // Record this match in league matches history (for daily tracking)
+        const today = Date.now();
+        await update(ref(database, `managers/${matchData.homeManager.uid}/leagueMatches/${matchData.awayManager.uid}`), {
+          timestamp: today,
+          result: finalHomeScore > finalAwayScore ? 'win' : (finalHomeScore < finalAwayScore ? 'loss' : 'draw'),
+          score: `${finalHomeScore}-${finalAwayScore}`
+        });
+      }
+
+      // Always update friendly stats (no points)
       if (finalHomeScore > finalAwayScore) {
         homeUpdate.wins++;
-        homeUpdate.points += 3;
       } else if (finalHomeScore < finalAwayScore) {
         homeUpdate.losses++;
       } else {
         homeUpdate.draws++;
-        homeUpdate.points += 1;
       }
 
       await update(homeManagerRef, homeUpdate);
@@ -1719,17 +1745,43 @@ const Match = ({ onBack, activeMatchId }) => {
         wins: awayData.wins || 0,
         draws: awayData.draws || 0,
         losses: awayData.losses || 0,
-        points: awayData.points || 0
       };
 
+      // For Pro League matches, update league stats and points
+      if (matchData.isProLeague) {
+        awayUpdate.leagueWins = awayData.leagueWins || 0;
+        awayUpdate.leagueDraws = awayData.leagueDraws || 0;
+        awayUpdate.leagueLosses = awayData.leagueLosses || 0;
+        awayUpdate.leaguePoints = awayData.leaguePoints || 0;
+        awayUpdate.leagueGoalsFor = (awayData.leagueGoalsFor || 0) + finalAwayScore;
+        awayUpdate.leagueGoalsAgainst = (awayData.leagueGoalsAgainst || 0) + finalHomeScore;
+
+        if (finalAwayScore > finalHomeScore) {
+          awayUpdate.leagueWins++;
+          awayUpdate.leaguePoints += 3;
+        } else if (finalAwayScore < finalHomeScore) {
+          awayUpdate.leagueLosses++;
+        } else {
+          awayUpdate.leagueDraws++;
+          awayUpdate.leaguePoints += 1;
+        }
+
+        // Record this match in league matches history (for daily tracking)
+        const today = Date.now();
+        await update(ref(database, `managers/${matchData.awayManager.uid}/leagueMatches/${matchData.homeManager.uid}`), {
+          timestamp: today,
+          result: finalAwayScore > finalHomeScore ? 'win' : (finalAwayScore < finalHomeScore ? 'loss' : 'draw'),
+          score: `${finalAwayScore}-${finalHomeScore}`
+        });
+      }
+
+      // Always update friendly stats (no points)
       if (finalAwayScore > finalHomeScore) {
         awayUpdate.wins++;
-        awayUpdate.points += 3;
       } else if (finalAwayScore < finalHomeScore) {
         awayUpdate.losses++;
       } else {
         awayUpdate.draws++;
-        awayUpdate.points += 1;
       }
 
       await update(awayManagerRef, awayUpdate);

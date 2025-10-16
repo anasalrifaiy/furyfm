@@ -18,6 +18,7 @@ import AdminMigration from './screens/AdminMigration';
 import CoachingStaff from './screens/CoachingStaff';
 import ClubFacilities from './screens/ClubFacilities';
 import Bank from './screens/Bank';
+import ProLeague from './screens/ProLeague';
 import { database } from './firebase';
 import { ref, onValue, update, get } from 'firebase/database';
 
@@ -435,6 +436,12 @@ const MainApp = () => {
           <Text style={styles.menuDesc}>{t('matchDesc')}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('proleague')}>
+          <Text style={styles.menuIcon}>🏆</Text>
+          <Text style={styles.menuTitle}>Pro League</Text>
+          <Text style={styles.menuDesc}>Compete for points and glory!</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('matchHistory')}>
           <Text style={styles.menuIcon}>📊</Text>
           <Text style={styles.menuTitle}>{t('matchHistory')}</Text>
@@ -505,6 +512,8 @@ const MainApp = () => {
         return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
       case 'profile':
         return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
+      case 'proleague':
+        return <ProLeague onBack={() => setCurrentScreen('home')} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />;
       case 'adminMigration':
         // Only allow admin user to access this screen
         if (currentUser?.email === 'anasalrifai90@gmail.com') {
