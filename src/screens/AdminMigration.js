@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { migrateBudgetsToTarget, addBudgetToAllUsers, resetAllPointsToZero } from '../utils/migrateBudgets';
+import { migrateBudgetsToTarget, addBudgetToAllUsers, resetAllPointsToZero, addBudgetToSpecificUser } from '../utils/migrateBudgets';
 import { add50NewPlayers, removeDuplicatePlayers, clearAllPendingMatches } from '../utils/migrateMarketPlayers';
 
 const AdminMigration = ({ onBack }) => {
@@ -15,6 +15,10 @@ const AdminMigration = ({ onBack }) => {
   const [pointsResult, setPointsResult] = useState(null);
   const [clearingMatches, setClearingMatches] = useState(false);
   const [matchesResult, setMatchesResult] = useState(null);
+  const [specificUserIdentifier, setSpecificUserIdentifier] = useState('');
+  const [specificUserAmount, setSpecificUserAmount] = useState('');
+  const [addingToSpecificUser, setAddingToSpecificUser] = useState(false);
+  const [specificUserResult, setSpecificUserResult] = useState(null);
 
   const runMigration = async () => {
     if (!window.confirm('Are you sure you want to migrate all user budgets to 900M? This action will update all users with budgets below 900M.')) {
@@ -149,6 +153,42 @@ const AdminMigration = ({ onBack }) => {
     }
   };
 
+  const runAddBudgetToSpecificUser = async () => {
+    const amount = parseFloat(specificUserAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid positive number');
+      return;
+    }
+
+    if (!specificUserIdentifier.trim()) {
+      alert('Please enter a user email or manager name');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to add $${amount}M to user: ${specificUserIdentifier}?`)) {
+      return;
+    }
+
+    setAddingToSpecificUser(true);
+    setSpecificUserResult(null);
+
+    try {
+      const result = await addBudgetToSpecificUser(specificUserIdentifier, amount * 1000000);
+      setSpecificUserResult(result);
+      if (result.success) {
+        setSpecificUserIdentifier('');
+        setSpecificUserAmount('');
+      }
+    } catch (error) {
+      setSpecificUserResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setAddingToSpecificUser(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -280,6 +320,79 @@ const AdminMigration = ({ onBack }) => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Add Budget to Specific User Section */}
+        <View style={styles.warningCard}>
+          <Text style={styles.warningIcon}>👤</Text>
+          <Text style={styles.warningTitle}>Add Budget to Specific User</Text>
+          <Text style={styles.warningText}>
+            Add money to a specific user's budget by their email or manager name.
+          </Text>
+          <Text style={styles.warningText}>
+            • Search by email address or manager name
+          </Text>
+          <Text style={styles.warningText}>
+            • Amount will be added to their current budget
+          </Text>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="User email or manager name"
+            placeholderTextColor="#888"
+            value={specificUserIdentifier}
+            onChangeText={setSpecificUserIdentifier}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Enter amount in millions (e.g., 50)"
+            placeholderTextColor="#888"
+            keyboardType="numeric"
+            value={specificUserAmount}
+            onChangeText={setSpecificUserAmount}
+          />
+          <TouchableOpacity
+            style={[styles.migrateButton, (addingToSpecificUser || !specificUserIdentifier || !specificUserAmount) && styles.migrateButtonDisabled]}
+            onPress={runAddBudgetToSpecificUser}
+            disabled={addingToSpecificUser || !specificUserIdentifier || !specificUserAmount}
+          >
+            <Text style={styles.migrateButtonText}>
+              {addingToSpecificUser ? 'Adding Budget...' : '👤 Add Budget to User'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {specificUserResult && (
+          <View style={[styles.resultCard, specificUserResult.success ? styles.successCard : styles.errorCard]}>
+            <Text style={styles.resultTitle}>
+              {specificUserResult.success ? '✓ Budget Added' : '✗ Operation Failed'}
+            </Text>
+            {specificUserResult.success ? (
+              <>
+                <Text style={styles.resultText}>
+                  User: {specificUserResult.user.name}
+                </Text>
+                <Text style={styles.resultText}>
+                  Email: {specificUserResult.user.email}
+                </Text>
+                <Text style={styles.resultText}>
+                  Old Budget: ${(specificUserResult.user.oldBudget / 1000000).toFixed(1)}M
+                </Text>
+                <Text style={styles.resultText}>
+                  Added: ${(specificUserResult.user.additionalBudget / 1000000).toFixed(1)}M
+                </Text>
+                <Text style={styles.resultText}>
+                  New Budget: ${(specificUserResult.user.newBudget / 1000000).toFixed(1)}M
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.errorText}>
+                {specificUserResult.error || specificUserResult.message}
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Reset Points Section */}
         <View style={styles.warningCard}>

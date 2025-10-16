@@ -180,9 +180,77 @@ export async function resetAllPointsToZero() {
   }
 }
 
+// Add budget to specific user by email or manager name
+export async function addBudgetToSpecificUser(identifier, amount) {
+  console.log(`Adding $${amount / 1000000}M to user: ${identifier}...`);
+
+  try {
+    const managersRef = ref(database, 'managers');
+    const snapshot = await get(managersRef);
+
+    if (!snapshot.exists()) {
+      return { success: false, message: 'No managers found' };
+    }
+
+    const managers = snapshot.val();
+    let foundUser = null;
+    let foundUid = null;
+
+    // Search for user by email or manager name
+    for (const uid in managers) {
+      const manager = managers[uid];
+      const emailMatch = manager.email?.toLowerCase() === identifier.toLowerCase();
+      const nameMatch = manager.managerName?.toLowerCase() === identifier.toLowerCase();
+
+      if (emailMatch || nameMatch) {
+        foundUser = manager;
+        foundUid = uid;
+        break;
+      }
+    }
+
+    if (!foundUser) {
+      return {
+        success: false,
+        message: `User not found with identifier: ${identifier}`
+      };
+    }
+
+    const currentBudget = foundUser.budget || 0;
+    const newBudget = currentBudget + amount;
+
+    await update(ref(database, `managers/${foundUid}`), {
+      budget: newBudget
+    });
+
+    console.log(`✓ Updated ${foundUser.managerName || foundUser.email}`);
+    console.log(`  Old budget: $${(currentBudget / 1000000).toFixed(1)}M`);
+    console.log(`  Added: $${(amount / 1000000).toFixed(1)}M`);
+    console.log(`  New budget: $${(newBudget / 1000000).toFixed(1)}M`);
+
+    return {
+      success: true,
+      user: {
+        name: foundUser.managerName || foundUser.email,
+        email: foundUser.email,
+        oldBudget: currentBudget,
+        additionalBudget: amount,
+        newBudget
+      }
+    };
+  } catch (error) {
+    console.error('Error adding budget to specific user:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 // For browser console usage
 if (typeof window !== 'undefined') {
   window.migrateBudgetsToTarget = migrateBudgetsToTarget;
   window.addBudgetToAllUsers = addBudgetToAllUsers;
   window.resetAllPointsToZero = resetAllPointsToZero;
+  window.addBudgetToSpecificUser = addBudgetToSpecificUser;
 }
