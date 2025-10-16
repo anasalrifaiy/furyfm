@@ -115,17 +115,23 @@ const MainApp = () => {
             foundActiveMatch = { ...match, id: childSnapshot.key };
           }
         });
+
         setActiveMatch(foundActiveMatch);
-        if (foundActiveMatch && !activeMatchId) {
-          setActiveMatchId(foundActiveMatch.id);
-          // Auto-navigate to match screen if we found an active match after page refresh
+
+        if (foundActiveMatch) {
+          // Always update activeMatchId if we found a match
+          if (activeMatchId !== foundActiveMatch.id) {
+            setActiveMatchId(foundActiveMatch.id);
+          }
+          // Auto-navigate to match screen if we're on home screen
           if (currentScreen === 'home') {
             setCurrentScreen('match');
           }
-        }
-        // If we have a stored activeMatchId but no active match found, clear it
-        if (!foundActiveMatch && activeMatchId) {
-          setActiveMatchId(null);
+        } else {
+          // If we have a stored activeMatchId but no active match found, clear it
+          if (activeMatchId) {
+            setActiveMatchId(null);
+          }
         }
       } else {
         setActiveMatch(null);
@@ -136,7 +142,7 @@ const MainApp = () => {
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, currentScreen]);
 
   // Handle browser back button navigation
   useEffect(() => {

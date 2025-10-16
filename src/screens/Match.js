@@ -2577,13 +2577,14 @@ const Match = ({ onBack, activeMatchId }) => {
       const newSquad = [...mySquad];
       newSquad[substitutionMode.playerOutIndex] = playerIn;
 
+      const eventText = `${minute}' 🔄 SUB: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
+
       if (!currentMatch.isPractice) {
         const matchRef = ref(database, `matches/${currentMatch.id}`);
         const teamPath = isHome ? 'homeManager' : 'awayManager';
         await update(ref(database, `matches/${currentMatch.id}/${teamPath}`), { squad: newSquad });
 
         // Add substitution event and track substituted player
-        const eventText = `${minute}' 🔄 SUB: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
         const currentData = (await get(matchRef)).val();
         const newEvents = [eventText, ...(currentData.events || [])];
 
@@ -2601,6 +2602,21 @@ const Match = ({ onBack, activeMatchId }) => {
           pausedBy: null,
           pauseReason: null
         });
+      } else {
+        // For practice matches, update local state only
+        const myTeam = isHome ? 'homeManager' : 'awayManager';
+        const updatedMatch = {
+          ...currentMatch,
+          [myTeam]: {
+            ...currentMatch[myTeam],
+            squad: newSquad
+          },
+          events: [eventText, ...(currentMatch.events || [])],
+          paused: false,
+          pausedBy: null,
+          pauseReason: null
+        };
+        setCurrentMatch(updatedMatch);
       }
 
       setSubstitutionsUsed(substitutionsUsed + 1);
@@ -2889,9 +2905,22 @@ const Match = ({ onBack, activeMatchId }) => {
 
               <Text style={styles.benchTitle}>Choose Replacement from Bench:</Text>
               <ScrollView style={styles.benchList}>
-                {(managerProfile.squad || [])
-                  .filter(p => !mySquad.some(fp => fp.id === p.id))
-                  .map(player => (
+                {(() => {
+                  const benchPlayers = (managerProfile.squad || []).filter(p => !mySquad.some(fp => fp.id === p.id));
+                  console.log('Total squad:', managerProfile.squad?.length || 0);
+                  console.log('Starting 11:', mySquad.length);
+                  console.log('Bench players available:', benchPlayers.length);
+
+                  if (benchPlayers.length === 0) {
+                    return (
+                      <View style={styles.noBenchPlayers}>
+                        <Text style={styles.noBenchText}>No substitutes available</Text>
+                        <Text style={styles.noBenchSubtext}>You need more than 11 players in your squad to make substitutions</Text>
+                      </View>
+                    );
+                  }
+
+                  return benchPlayers.map(player => (
                     <TouchableOpacity
                       key={player.id}
                       style={styles.benchPlayerOption}
@@ -2905,7 +2934,8 @@ const Match = ({ onBack, activeMatchId }) => {
                       </View>
                       <Text style={styles.benchPlayerRating}>{player.overall}</Text>
                     </TouchableOpacity>
-                  ))}
+                  ));
+                })()}
               </ScrollView>
 
               <TouchableOpacity
@@ -3678,6 +3708,23 @@ const styles = StyleSheet.create({
     color: '#43e97b',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  noBenchPlayers: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noBenchText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  noBenchSubtext: {
+    color: '#888',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   cancelButton: {
     backgroundColor: '#f5576c',
