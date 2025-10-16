@@ -245,14 +245,27 @@ const MainApp = () => {
         <Text style={styles.logo}>🔥 {t('appTitle')}</Text>
         <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={() => switchLanguage(language === 'en' ? 'ar' : 'en')}
-      >
-        <Text style={styles.languageButtonText}>
-          {language === 'en' ? 'العربية' : 'English'}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.topButtons}>
+        <TouchableOpacity
+          style={styles.languageButton}
+          onPress={() => switchLanguage(language === 'en' ? 'ar' : 'en')}
+        >
+          <Text style={styles.languageButtonText}>
+            {language === 'en' ? 'العربية' : 'English'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => setCurrentScreen('notifications')}
+        >
+          <Text style={styles.notificationIcon}>🔔</Text>
+          {unreadNotifications > 0 && (
+            <View style={styles.notificationBadgeTop}>
+              <Text style={styles.badgeTextTop}>{unreadNotifications}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
           <Text style={styles.statLabel}>{t('manager')}</Text>
@@ -368,19 +381,6 @@ const MainApp = () => {
           <Text style={styles.menuIcon}>🏆</Text>
           <Text style={styles.menuTitle}>{t('leaderboard')}</Text>
           <Text style={styles.menuDesc}>{t('leaderboardDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('notifications')}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.menuIcon}>🔔</Text>
-            {unreadNotifications > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>{unreadNotifications}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.menuTitle}>{t('notifications')}</Text>
-          <Text style={styles.menuDesc}>{t('notificationsDesc')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => handleViewProfile(currentUser.uid)}>
@@ -542,17 +542,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
+  topButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 15,
+  },
   languageButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
-    alignSelf: 'center',
-    marginBottom: 15,
   },
   languageButtonText: {
     color: '#ffffff',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  notificationButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    position: 'relative',
+  },
+  notificationIcon: {
+    fontSize: 20,
+  },
+  notificationBadgeTop: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#f5576c',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeTextTop: {
+    color: '#ffffff',
+    fontSize: 10,
     fontWeight: 'bold',
   },
   logo: {

@@ -144,7 +144,7 @@ const Formation = ({ onBack }) => {
           top: top,
           left: left,
         }]}
-        onPress={() => player ? null : handleSelectPlayer(position)}
+        onPress={() => handleSelectPlayer(position)}
         onLongPress={() => player && removePlayer(position)}
       >
         {player ? (

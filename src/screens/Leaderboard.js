@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get } from 'firebase/database';
+import { getCountryFlag } from '../data/countries';
 
 const Leaderboard = ({ onBack, onViewProfile }) => {
   const { currentUser } = useAuth();
@@ -128,10 +129,18 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
               </View>
 
               <View style={styles.managerInfo}>
-                <Text style={styles.managerName}>
-                  {manager.managerName}
-                  {isCurrentUser && <Text style={styles.youBadge}> (You)</Text>}
-                </Text>
+                <View style={styles.nameRow}>
+                  {manager.country && (
+                    <Text style={styles.flagIcon}>{getCountryFlag(manager.country)}</Text>
+                  )}
+                  <Text style={styles.managerName}>
+                    {manager.managerName}
+                    {isCurrentUser && <Text style={styles.youBadge}> (You)</Text>}
+                  </Text>
+                </View>
+                {manager.clubName && (
+                  <Text style={styles.clubName}>⚽ {manager.clubName}</Text>
+                )}
                 <Text style={styles.managerStats}>
                   {sortBy === 'points' && `${manager.points || 0} points`}
                   {sortBy === 'squadValue' && formatCurrency(manager.squadValue || 0)}
@@ -139,6 +148,9 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
                 </Text>
                 <Text style={styles.managerDetails}>
                   Squad: {manager.squad?.length || 0} • W:{manager.wins || 0} D:{manager.draws || 0} L:{manager.losses || 0}
+                </Text>
+                <Text style={styles.managerDetails}>
+                  Budget: {formatCurrency(manager.budget || 0)} • Value: {formatCurrency(manager.squadValue || 0)}
                 </Text>
               </View>
 
@@ -259,10 +271,24 @@ const styles = StyleSheet.create({
   managerInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  flagIcon: {
+    fontSize: 18,
+    marginRight: 8,
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
+  },
   managerName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  clubName: {
+    fontSize: 13,
+    color: '#667eea',
     marginBottom: 4,
   },
   youBadge: {

@@ -37,6 +37,28 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
     return () => unsubscribe();
   }, [currentUser]);
 
+  // Mark all notifications as read when screen opens
+  useEffect(() => {
+    if (!currentUser || notifications.length === 0) return;
+
+    const markAllAsRead = async () => {
+      const updates = {};
+      notifications.forEach(notification => {
+        if (!notification.read) {
+          updates[`managers/${currentUser.uid}/notifications/${notification.id}/read`] = true;
+        }
+      });
+
+      if (Object.keys(updates).length > 0) {
+        await update(ref(database), updates);
+      }
+    };
+
+    // Mark all as read after a short delay to allow the user to see the screen
+    const timer = setTimeout(markAllAsRead, 500);
+    return () => clearTimeout(timer);
+  }, [currentUser, notifications.length]);
+
   const markAsRead = async (notificationId) => {
     const notifRef = ref(database, `managers/${currentUser.uid}/notifications/${notificationId}`);
     await update(notifRef, { read: true });
