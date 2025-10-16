@@ -92,56 +92,81 @@ const MainApp = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    // Real-time listener for active matches
+    // Real-time listener for active matches (including practice matches)
     if (!currentUser) return;
 
-    const matchesRef = ref(database, 'matches');
+    const checkMatches = () => {
+      // First check for practice match from localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const storedPracticeMatch = localStorage.getItem('practiceMatch');
+        const storedPracticeMatchState = localStorage.getItem('practiceMatchState');
 
-    const unsubscribe = onValue(matchesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        let foundActiveMatch = null;
-        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour ago
+        if (storedPracticeMatch && storedPracticeMatchState) {
+          try {
+            const practiceMatch = JSON.parse(storedPracticeMatch);
+            console.log('Found practice match in localStorage:', practiceMatch.id);
 
-        snapshot.forEach(childSnapshot => {
-          const match = childSnapshot.val();
-          // Check if this match involves the current user and is in progress
-          // Also check if match is recent (created within last hour) to avoid stale matches
-          if (
-            (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid) &&
-            (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
-            match.state !== 'cancelled' &&
-            (match.createdAt && match.createdAt > oneHourAgo)
-          ) {
-            foundActiveMatch = { ...match, id: childSnapshot.key };
+            setActiveMatch(practiceMatch);
+
+            if (activeMatchId !== practiceMatch.id) {
+              setActiveMatchId(practiceMatch.id);
+            }
+            return; // Don't check Firebase if we have a practice match
+          } catch (error) {
+            console.error('Failed to parse practice match:', error);
+            localStorage.removeItem('practiceMatch');
+            localStorage.removeItem('practiceMatchState');
+            localStorage.removeItem('activeMatchId');
           }
-        });
+        }
+      }
 
-        setActiveMatch(foundActiveMatch);
+      // If no practice match, check Firebase for regular matches
+      const matchesRef = ref(database, 'matches');
 
-        if (foundActiveMatch) {
-          // Always update activeMatchId if we found a match
-          if (activeMatchId !== foundActiveMatch.id) {
-            setActiveMatchId(foundActiveMatch.id);
-          }
-          // Auto-navigate to match screen if we're on home screen
-          if (currentScreen === 'home') {
-            setCurrentScreen('match');
+      get(matchesRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          let foundActiveMatch = null;
+          const oneHourAgo = Date.now() - (60 * 60 * 1000);
+
+          snapshot.forEach(childSnapshot => {
+            const match = childSnapshot.val();
+            if (
+              (match.homeManager?.uid === currentUser.uid || match.awayManager?.uid === currentUser.uid) &&
+              (match.state === 'waiting' || match.state === 'prematch' || match.state === 'ready' || match.state === 'playing' || match.state === 'halftime') &&
+              match.state !== 'cancelled' &&
+              (match.createdAt && match.createdAt > oneHourAgo)
+            ) {
+              foundActiveMatch = { ...match, id: childSnapshot.key };
+            }
+          });
+
+          setActiveMatch(foundActiveMatch);
+
+          if (foundActiveMatch) {
+            if (activeMatchId !== foundActiveMatch.id) {
+              setActiveMatchId(foundActiveMatch.id);
+            }
+          } else {
+            if (activeMatchId && !activeMatchId.startsWith('practice_')) {
+              setActiveMatchId(null);
+            }
           }
         } else {
-          // If we have a stored activeMatchId but no active match found, clear it
-          if (activeMatchId) {
+          setActiveMatch(null);
+          if (activeMatchId && !activeMatchId.startsWith('practice_')) {
             setActiveMatchId(null);
           }
         }
-      } else {
-        setActiveMatch(null);
-        if (activeMatchId) {
-          setActiveMatchId(null);
-        }
-      }
-    });
+      });
+    };
 
-    return () => unsubscribe();
+    checkMatches();
+
+    // Re-check periodically (every 2 seconds) to catch updates
+    const interval = setInterval(checkMatches, 2000);
+
+    return () => clearInterval(interval);
   }, [currentUser, currentScreen]);
 
   // Handle browser back button navigation
@@ -205,12 +230,23 @@ const MainApp = () => {
     if (!activeMatch) return;
 
     try {
-      const matchRef = ref(database, `matches/${activeMatch.id}`);
-      await update(matchRef, {
-        state: 'cancelled',
-        cancelledBy: currentUser.uid,
-        cancelledAt: Date.now()
-      });
+      // Check if it's a practice match
+      if (activeMatch.isPractice || activeMatch.id?.startsWith('practice_')) {
+        // Just clear localStorage for practice matches
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.removeItem('practiceMatch');
+          localStorage.removeItem('practiceMatchState');
+          localStorage.removeItem('activeMatchId');
+        }
+      } else {
+        // Update Firebase for regular matches
+        const matchRef = ref(database, `matches/${activeMatch.id}`);
+        await update(matchRef, {
+          state: 'cancelled',
+          cancelledBy: currentUser.uid,
+          cancelledAt: Date.now()
+        });
+      }
 
       // Clear local state
       setActiveMatch(null);

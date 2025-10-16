@@ -659,6 +659,7 @@ const Match = ({ onBack, activeMatchId }) => {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('practiceMatch', JSON.stringify(matchData));
       localStorage.setItem('practiceMatchState', 'ready');
+      localStorage.setItem('activeMatchId', matchData.id); // Store as active match
     }
 
     setCurrentMatch(matchData);
@@ -2699,19 +2700,7 @@ const Match = ({ onBack, activeMatchId }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            {currentMatch.isPractice && (
-              <TouchableOpacity
-                onPress={() => {
-                  clearPracticeMatchFromStorage();
-                  setMatchState('select');
-                  setCurrentMatch(null);
-                }}
-                style={styles.backButton}
-              >
-                <Text style={styles.backButtonText}>← Back</Text>
-              </TouchableOpacity>
-            )}
-            <Text style={styles.title}>Match in Progress</Text>
+            <Text style={styles.title}>{currentMatch.isPractice ? 'Practice Match vs AI' : 'Match in Progress'}</Text>
             {!currentMatch.spectators?.[currentUser?.uid] && (
               <TouchableOpacity
                 style={styles.forfeitButton}
