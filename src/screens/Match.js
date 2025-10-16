@@ -2187,38 +2187,54 @@ const Match = ({ onBack, activeMatchId }) => {
     const myPrematchReady = isHome ? currentMatch.homePrematchReady : currentMatch.awayPrematchReady;
     const opponentPrematchReady = isHome ? currentMatch.awayPrematchReady : currentMatch.homePrematchReady;
 
+    console.log('Prematch screen - myPrematchReady:', myPrematchReady, 'opponentPrematchReady:', opponentPrematchReady, 'isHome:', isHome);
+
     const confirmPrematch = async () => {
-      if (!currentMatch.isPractice) {
-        const matchRef = ref(database, `matches/${currentMatch.id}`);
-        const readyField = isHome ? 'homePrematchReady' : 'awayPrematchReady';
-        const tacticField = isHome ? 'homeTactic' : 'awayTactic';
-        const squadField = isHome ? 'homeManager/squad' : 'awayManager/squad';
-        const formationField = isHome ? 'homeManager/formation' : 'awayManager/formation';
+      try {
+        console.log('confirmPrematch called - isHome:', isHome, 'isPractice:', currentMatch.isPractice);
 
-        await update(matchRef, {
-          [readyField]: true,
-          [tacticField]: selectedTactic,
-          [squadField]: prematchStarting11,
-          [formationField]: prematchFormation
-        });
+        if (!currentMatch.isPractice) {
+          const matchRef = ref(database, `matches/${currentMatch.id}`);
+          const readyField = isHome ? 'homePrematchReady' : 'awayPrematchReady';
+          const tacticField = isHome ? 'homeTactic' : 'awayTactic';
+          const squadField = isHome ? 'homeManager/squad' : 'awayManager/squad';
+          const formationField = isHome ? 'homeManager/formation' : 'awayManager/formation';
 
-        // Check if both ready
-        const updatedSnapshot = await get(matchRef);
-        const updatedMatch = updatedSnapshot.val();
+          console.log('Updating Firebase with ready status:', readyField);
 
-        if (updatedMatch.homePrematchReady && updatedMatch.awayPrematchReady) {
-          // Both ready - start match immediately (skip 'ready' waiting screen)
           await update(matchRef, {
-            state: 'playing',
-            startedAt: Date.now(),
-            minute: 0,
-            second: 0,
-            homeScore: 0,
-            awayScore: 0,
-            events: []
+            [readyField]: true,
+            [tacticField]: selectedTactic,
+            [squadField]: prematchStarting11,
+            [formationField]: prematchFormation
           });
-        }
-      } else {
+
+          console.log('Firebase updated, checking if both ready...');
+
+          // Check if both ready
+          const updatedSnapshot = await get(matchRef);
+          const updatedMatch = updatedSnapshot.val();
+
+          console.log('Home ready:', updatedMatch.homePrematchReady, 'Away ready:', updatedMatch.awayPrematchReady);
+
+          if (updatedMatch.homePrematchReady && updatedMatch.awayPrematchReady) {
+            // Both ready - start match immediately (skip 'ready' waiting screen)
+            console.log('Both managers ready! Starting match...');
+            await update(matchRef, {
+              state: 'playing',
+              startedAt: Date.now(),
+              minute: 0,
+              second: 0,
+              homeScore: 0,
+              awayScore: 0,
+              events: []
+            });
+            console.log('Match state updated to playing');
+          } else {
+            console.log('Waiting for other manager to ready up...');
+            showAlert('Ready!', 'Waiting for opponent to confirm...');
+          }
+        } else {
         // Practice match - go directly to playing
         setCurrentMatch({
           ...currentMatch,
@@ -2237,6 +2253,10 @@ const Match = ({ onBack, activeMatchId }) => {
         setMatchState('playing');
         // Start practice match simulation
         simulatePracticeMatch();
+        }
+      } catch (error) {
+        console.error('Error in confirmPrematch:', error);
+        showAlert('Error', 'Failed to confirm ready. Please try again.');
       }
     };
 
