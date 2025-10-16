@@ -344,8 +344,10 @@ const Match = ({ onBack, activeMatchId }) => {
         const previousState = matchState;
 
         console.log('Firebase listener triggered - state change:', previousState, '->', matchData.state);
+        console.log('Match data:', matchData);
 
         // Update match state based on Firebase data
+        console.log('Setting matchState to:', matchData.state);
         setMatchState(matchData.state);
         setHomeScore(matchData.homeScore || 0);
         setAwayScore(matchData.awayScore || 0);
@@ -2106,7 +2108,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Waiting for opponent to accept challenge
   if (matchState === 'waiting') {
-    console.log('Rendering waiting screen');
+    console.log('Rendering waiting screen - matchState:', matchState, 'currentMatch.state:', currentMatch?.state);
     console.log('currentMatch:', currentMatch);
     console.log('Has homeManager?', !!currentMatch?.homeManager);
     console.log('Has awayManager?', !!currentMatch?.awayManager);
@@ -2171,6 +2173,8 @@ const Match = ({ onBack, activeMatchId }) => {
 
   // Pre-match setup - adjust formation and tactics
   if (matchState === 'prematch') {
+    console.log('Rendering prematch screen - matchState:', matchState, 'currentMatch.state:', currentMatch?.state);
+
     if (!currentMatch || !currentMatch.homeManager || !currentMatch.awayManager) {
       return (
         <View style={styles.container}>
