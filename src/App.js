@@ -30,7 +30,13 @@ const MainApp = () => {
   const [authScreen, setAuthScreen] = useState('login');
   const [selectedManagerId, setSelectedManagerId] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [activeMatchId, setActiveMatchId] = useState(null);
+  const [activeMatchId, setActiveMatchId] = useState(() => {
+    // Restore active match ID from localStorage on initialization
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem('activeMatchId') || null;
+    }
+    return null;
+  });
   const [activeMatch, setActiveMatch] = useState(null);
 
   useEffect(() => {
@@ -51,6 +57,17 @@ const MainApp = () => {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    // Save activeMatchId to localStorage whenever it changes
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (activeMatchId) {
+        localStorage.setItem('activeMatchId', activeMatchId);
+      } else {
+        localStorage.removeItem('activeMatchId');
+      }
+    }
+  }, [activeMatchId]);
 
   useEffect(() => {
     // Real-time listener for unread notifications count
@@ -101,9 +118,20 @@ const MainApp = () => {
         setActiveMatch(foundActiveMatch);
         if (foundActiveMatch && !activeMatchId) {
           setActiveMatchId(foundActiveMatch.id);
+          // Auto-navigate to match screen if we found an active match after page refresh
+          if (currentScreen === 'home') {
+            setCurrentScreen('match');
+          }
+        }
+        // If we have a stored activeMatchId but no active match found, clear it
+        if (!foundActiveMatch && activeMatchId) {
+          setActiveMatchId(null);
         }
       } else {
         setActiveMatch(null);
+        if (activeMatchId) {
+          setActiveMatchId(null);
+        }
       }
     });
 

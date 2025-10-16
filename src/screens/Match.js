@@ -1771,17 +1771,32 @@ const Match = ({ onBack, activeMatchId }) => {
     const newSquad = [...mySquad];
     newSquad[substitutionMode.playerOutIndex] = playerIn;
 
-    // Update in Firebase
-    const matchRef = ref(database, `matches/${currentMatch.id}/${myTeam}`);
-    await update(matchRef, { squad: newSquad });
-
     const newEvent = `${minute}' 🔄 ${isHome ? currentMatch.homeManager.name : currentMatch.awayManager.name}: ${playerIn.name} replaces ${substitutionMode.playerOut.name}`;
-    const currentEvents = (await get(ref(database, `matches/${currentMatch.id}`))).val().events || [];
-    await update(ref(database, `matches/${currentMatch.id}`), {
-      events: [newEvent, ...currentEvents]
-    });
+
+    // Update in Firebase or local state depending on match type
+    if (!currentMatch.isPractice) {
+      const matchRef = ref(database, `matches/${currentMatch.id}/${myTeam}`);
+      await update(matchRef, { squad: newSquad });
+
+      const currentEvents = (await get(ref(database, `matches/${currentMatch.id}`))).val().events || [];
+      await update(ref(database, `matches/${currentMatch.id}`), {
+        events: [newEvent, ...currentEvents]
+      });
+    } else {
+      // For practice matches, update local state only
+      const updatedMatch = {
+        ...currentMatch,
+        [myTeam]: {
+          ...currentMatch[myTeam],
+          squad: newSquad
+        },
+        events: [newEvent, ...(currentMatch.events || [])]
+      };
+      setCurrentMatch(updatedMatch);
+    }
 
     setSubstitutionMode(null);
+    setSubstitutionsUsed(substitutionsUsed + 1);
     showAlert('Substitution Made', `${playerIn.name} is now on the pitch.`);
   };
 
