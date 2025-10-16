@@ -321,7 +321,8 @@ const Match = ({ onBack, activeMatchId }) => {
       const matchData = snapshot.val();
       const amHome = matchData.homeManager.uid === currentUser.uid;
       setIsHome(amHome);
-      setCurrentMatch(matchData);
+      // IMPORTANT: Add the id to the match object so the Firebase listener can work
+      setCurrentMatch({ ...matchData, id: matchId });
       setMatchState(matchData.state);
 
       // If I'm the away manager and match is still in 'waiting' state, auto-accept it
@@ -355,7 +356,8 @@ const Match = ({ onBack, activeMatchId }) => {
         setAwayScore(matchData.awayScore || 0);
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
-        setCurrentMatch(matchData);
+        // IMPORTANT: Preserve the id when updating from Firebase
+        setCurrentMatch({ ...matchData, id: currentMatch.id });
         setHomePausesUsed(matchData.homePausesUsed || 0);
         setAwayPausesUsed(matchData.awayPausesUsed || 0);
         setHomeResumeReady(matchData.homeResumeReady || false);
