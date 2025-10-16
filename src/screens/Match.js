@@ -346,14 +346,17 @@ const Match = ({ onBack, activeMatchId }) => {
     if (!currentMatch?.id) return;
 
     console.log('Setting up Firebase listener for match:', currentMatch.id);
+    const matchId = currentMatch.id; // Capture the id to avoid stale closure
 
-    const matchRef = ref(database, `matches/${currentMatch.id}`);
-    const unsubscribe = onValue(matchRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const matchData = snapshot.val();
-        const previousState = previousMatchStateRef.current;
+    const matchRef = ref(database, `matches/${matchId}`);
+    const unsubscribe = onValue(matchRef,
+      (snapshot) => {
+        console.log('Firebase listener callback fired!'); // This should fire on EVERY change
+        if (snapshot.exists()) {
+          const matchData = snapshot.val();
+          const previousState = previousMatchStateRef.current;
 
-        console.log('Firebase listener triggered - minute:', matchData.minute, 'state:', matchData.state);
+          console.log('Firebase listener triggered - minute:', matchData.minute, 'state:', matchData.state);
 
         // Update match state based on Firebase data
         setMatchState(matchData.state);
@@ -362,8 +365,8 @@ const Match = ({ onBack, activeMatchId }) => {
         setAwayScore(matchData.awayScore || 0);
         setMinute(matchData.minute || 0);
         setEvents(matchData.events || []);
-        // IMPORTANT: Preserve the id when updating from Firebase
-        setCurrentMatch({ ...matchData, id: currentMatch.id });
+        // IMPORTANT: Preserve the id when updating from Firebase using captured matchId
+        setCurrentMatch({ ...matchData, id: matchId });
         setHomePausesUsed(matchData.homePausesUsed || 0);
         setAwayPausesUsed(matchData.awayPausesUsed || 0);
         setHomeResumeReady(matchData.homeResumeReady || false);
@@ -395,10 +398,18 @@ const Match = ({ onBack, activeMatchId }) => {
         if (matchData.state === 'finished' && matchState !== 'finished') {
           handleMatchFinished(matchData);
         }
+      } else {
+        console.warn('Firebase listener: snapshot does not exist');
       }
+    },
+    (error) => {
+      console.error('Firebase listener error:', error);
     });
 
-    return () => off(matchRef);
+    return () => {
+      console.log('Cleaning up Firebase listener for match:', matchId);
+      off(matchRef);
+    };
   }, [currentMatch?.id, isHome]);
 
   // Handle pause countdown timer
