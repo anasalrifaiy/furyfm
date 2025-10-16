@@ -631,6 +631,10 @@ const Match = ({ onBack, activeMatchId }) => {
     // Generate AI team "Alkawaya Pro" with balanced squad
     const aiSquad = generateAISquad();
 
+    // Generate random AI tactic
+    const aiTactics = ['Defensive', 'Balanced', 'Attacking'];
+    const randomAITactic = aiTactics[Math.floor(Math.random() * aiTactics.length)];
+
     // Create practice match (doesn't go to database, just local)
     const matchData = {
       id: `practice_${Date.now()}`,
@@ -652,6 +656,8 @@ const Match = ({ onBack, activeMatchId }) => {
       awayScore: 0,
       minute: 0,
       events: [],
+      homeTactic: 'Balanced',
+      awayTactic: randomAITactic,
       createdAt: Date.now()
     };
 
@@ -815,9 +821,9 @@ const Match = ({ onBack, activeMatchId }) => {
     let homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
     let awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
 
-    // Apply tactic bonuses
-    const homeTactic = currentMatch.homeTactic || 'Balanced';
-    const awayTactic = currentMatch.awayTactic || 'Balanced';
+    // Track current tactics (can change during match)
+    let currentHomeTactic = currentMatch.homeTactic || 'Balanced';
+    let currentAwayTactic = currentMatch.awayTactic || 'Balanced';
 
     const applyTacticBonus = (strength, tactic) => {
       if (tactic === 'Attacking') {
@@ -827,16 +833,6 @@ const Match = ({ onBack, activeMatchId }) => {
       }
       return strength; // Balanced - no change
     };
-
-    homeStrength = applyTacticBonus(homeStrength, homeTactic);
-    awayStrength = applyTacticBonus(awayStrength, awayTactic);
-
-    console.log('Practice match - Home:', homeStrength, '(', homeTactic, ') Away:', awayStrength, '(', awayTactic, ')');
-
-    const totalStrength = homeStrength + awayStrength;
-
-    const homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
-    const awayChance = (awayStrength / totalStrength) * 0.55;
 
     let currentSecond = 0;
     let localHomeScore = 0;
@@ -849,6 +845,25 @@ const Match = ({ onBack, activeMatchId }) => {
       const matchMinute = Math.floor(currentSecond / (120 / 90)); // 120 seconds = 90 minutes
 
       setMinute(matchMinute);
+
+      // AI tactical changes at certain minutes (20, 40, 60, 70)
+      if ([20, 40, 60, 70].includes(matchMinute) && Math.random() < 0.4) { // 40% chance to change
+        const tactics = ['Defensive', 'Balanced', 'Attacking'];
+        const newAITactic = tactics[Math.floor(Math.random() * tactics.length)];
+        if (newAITactic !== currentAwayTactic) {
+          currentAwayTactic = newAITactic;
+          const eventText = `${matchMinute}' 📋 Alkawaya Pro changes tactics to ${newAITactic}`;
+          localEvents = [eventText, ...localEvents];
+          setEvents(localEvents);
+          console.log('AI changed tactic:', newAITactic);
+        }
+      }
+
+      // Recalculate strengths with current tactics
+      const adjustedHomeStrength = applyTacticBonus(homeStrength, currentHomeTactic);
+      const adjustedAwayStrength = applyTacticBonus(awayStrength, currentAwayTactic);
+      const totalStrength = adjustedHomeStrength + adjustedAwayStrength;
+      const homeChance = (adjustedHomeStrength / totalStrength) * 0.55 + 0.05;
 
       // Goal chance
       const goalRoll = Math.random();
@@ -907,7 +922,9 @@ const Match = ({ onBack, activeMatchId }) => {
           awayScore: localAwayScore,
           minute: matchMinute,
           events: localEvents,
-          goalscorers: localGoalscorers
+          goalscorers: localGoalscorers,
+          homeTactic: currentHomeTactic,
+          awayTactic: currentAwayTactic
         });
         setMatchState('halftime');
       }
@@ -926,9 +943,12 @@ const Match = ({ onBack, activeMatchId }) => {
     const homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
     const awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
 
+    const playerWon = finalHomeScore > finalAwayScore;
+    const isDraw = finalHomeScore === finalAwayScore;
+
     // Generate match report
     let matchReport = '';
-    if (finalHomeScore > finalAwayScore) {
+    if (playerWon) {
       matchReport = `${currentMatch.homeManager.name} won ${finalHomeScore}-${finalAwayScore} in practice. `;
       if (homeStrength > awayStrength + 3) {
         matchReport += 'Good warm-up against weaker opposition.';
@@ -938,7 +958,7 @@ const Match = ({ onBack, activeMatchId }) => {
     } else if (finalAwayScore > finalHomeScore) {
       matchReport = `Alkawaya Pro won ${finalAwayScore}-${finalHomeScore}. A tough practice match - room for improvement.`;
     } else {
-      matchReport = `Practice match ended ${finalHomeScore}-${finalHomeScore}. Good training session.`;
+      matchReport = `Practice match ended ${finalHomeScore}-${finalAwayScore}. Good training session.`;
     }
 
     setCurrentMatch({
@@ -955,37 +975,63 @@ const Match = ({ onBack, activeMatchId }) => {
     });
     setMatchState('finished');
 
-    // Award XP to goalscorers (only benefit of practice matches)
-    for (const scorerId in goalscorers) {
-      const scorerData = goalscorers[scorerId];
-      const managerId = scorerData.managerId;
+    const managerRef = ref(database, `managers/${currentUser.uid}`);
+    const managerSnapshot = await get(managerRef);
 
-      // Only award XP to the human player's squad
-      if (managerId === currentUser.uid) {
-        const xpEarned = scorerData.goals * 50;
+    if (managerSnapshot.exists()) {
+      const managerData = managerSnapshot.val();
+      let totalPlayerXP = 0;
+      let clubFacilitiesXP = 0;
 
-        const managerRef = ref(database, `managers/${managerId}`);
-        const managerSnapshot = await get(managerRef);
-
-        if (managerSnapshot.exists()) {
-          const managerData = managerSnapshot.val();
-          const updatedSquad = (managerData.squad || []).map(player => {
-            if (player.id === scorerData.playerId) {
-              return {
-                ...player,
-                xp: (player.xp || 0) + xpEarned
-              };
-            }
-            return player;
-          });
-
-          await update(managerRef, { squad: updatedSquad });
-          console.log(`Awarded ${xpEarned} XP to player ${scorerData.playerId} from practice match`);
+      // Award XP to goalscorers (player training XP)
+      const updatedSquad = (managerData.squad || []).map(player => {
+        const scorerData = goalscorers[player.id];
+        if (scorerData && scorerData.managerId === currentUser.uid) {
+          const xpEarned = scorerData.goals * 50;
+          totalPlayerXP += xpEarned;
+          return {
+            ...player,
+            xp: (player.xp || 0) + xpEarned
+          };
         }
-      }
-    }
+        return player;
+      });
 
-    showAlert('Practice Match Complete', 'Your goalscorers earned XP! No points or budget affected.');
+      // Award club facilities XP for winning or drawing
+      if (playerWon) {
+        clubFacilitiesXP = 100; // Win: 100 XP
+      } else if (isDraw) {
+        clubFacilitiesXP = 50; // Draw: 50 XP
+      }
+      // Loss: 0 XP
+
+      const currentClubXP = managerData.clubFacilitiesXP || 0;
+      const newClubXP = currentClubXP + clubFacilitiesXP;
+
+      // Update manager profile with new squad and club XP
+      await update(managerRef, {
+        squad: updatedSquad,
+        clubFacilitiesXP: newClubXP
+      });
+
+      console.log(`Practice match rewards - Player XP: ${totalPlayerXP}, Club Facilities XP: ${clubFacilitiesXP}`);
+
+      // Show detailed results
+      let rewardMessage = '';
+      if (totalPlayerXP > 0) {
+        rewardMessage += `⚽ Goalscorers earned ${totalPlayerXP} XP for training!\n`;
+      }
+      if (clubFacilitiesXP > 0) {
+        rewardMessage += `🏗️ Club earned ${clubFacilitiesXP} Facilities XP ${playerWon ? '(WIN)' : '(DRAW)'}!\n`;
+      }
+      if (!rewardMessage) {
+        rewardMessage = 'No XP earned this match. Try scoring goals and winning!';
+      } else {
+        rewardMessage += '\n💡 Use Facilities XP to upgrade your club infrastructure!';
+      }
+
+      showAlert('Practice Match Complete', rewardMessage);
+    }
   };
 
   const simulateMatch = async (matchData) => {
@@ -2324,6 +2370,11 @@ const Match = ({ onBack, activeMatchId }) => {
     const myKickoffReady = isHome ? currentMatch.homeKickoffReady : currentMatch.awayKickoffReady;
     const opponentKickoffReady = isHome ? currentMatch.awayKickoffReady : currentMatch.homeKickoffReady;
 
+    const myTacticField = isHome ? 'homeTactic' : 'awayTactic';
+    const opponentTacticField = isHome ? 'awayTactic' : 'homeTactic';
+    const myCurrentTactic = currentMatch[myTacticField] || 'Balanced';
+    const opponentCurrentTactic = currentMatch[opponentTacticField] || 'Balanced';
+
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -2345,9 +2396,53 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           </View>
 
+          {/* Tactics Selection */}
+          <View style={styles.tacticsCard}>
+            <Text style={styles.tacticsCardTitle}>Select Your Starting Tactic</Text>
+            <Text style={styles.tacticsCardSubtitle}>Current: {myCurrentTactic}</Text>
+            {currentMatch.isPractice && (
+              <Text style={styles.tacticsCardSubtitle}>AI Tactic: {opponentCurrentTactic}</Text>
+            )}
+
+            <View style={styles.tacticsButtons}>
+              {['Defensive', 'Balanced', 'Attacking'].map(tactic => (
+                <TouchableOpacity
+                  key={tactic}
+                  style={[
+                    styles.tacticButton,
+                    myCurrentTactic === tactic && styles.tacticButtonActive
+                  ]}
+                  onPress={async () => {
+                    if (!myKickoffReady) {
+                      if (currentMatch.isPractice) {
+                        const updatedMatch = { ...currentMatch, [myTacticField]: tactic };
+                        setCurrentMatch(updatedMatch);
+                        savePracticeMatchToStorage(updatedMatch, 'ready');
+                      } else {
+                        const matchRef = ref(database, `matches/${currentMatch.id}`);
+                        await update(matchRef, { [myTacticField]: tactic });
+                      }
+                    }
+                  }}
+                  disabled={myKickoffReady}
+                >
+                  <Text style={styles.tacticButtonIcon}>
+                    {tactic === 'Defensive' ? '🛡️' : tactic === 'Attacking' ? '⚔️' : '⚖️'}
+                  </Text>
+                  <Text style={styles.tacticButtonText}>{tactic}</Text>
+                  <Text style={styles.tacticButtonDesc}>
+                    {tactic === 'Defensive' ? 'Solid defense, counter-attacks' :
+                     tactic === 'Attacking' ? 'Press forward, take risks' :
+                     'Balanced approach'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           <View style={styles.kickoffInfo}>
             <Text style={styles.kickoffInfoText}>
-              Both managers must click "Start Match" to begin
+              {currentMatch.isPractice ? 'Click "Start Match" to begin' : 'Both managers must click "Start Match" to begin'}
             </Text>
           </View>
 
@@ -4795,6 +4890,60 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textAlign: 'center',
     opacity: 0.8,
+  },
+  tacticsCard: {
+    backgroundColor: '#1a1f3a',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+  },
+  tacticsCardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  tacticsCardSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  tacticsButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  tacticButton: {
+    flex: 1,
+    backgroundColor: '#252b54',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#2d3561',
+  },
+  tacticButtonActive: {
+    borderColor: '#667eea',
+    backgroundColor: '#2d3561',
+  },
+  tacticButtonIcon: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+  tacticButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 5,
+  },
+  tacticButtonDesc: {
+    fontSize: 11,
+    color: '#888',
+    textAlign: 'center',
   },
 });
 

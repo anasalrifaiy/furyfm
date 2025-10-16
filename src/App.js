@@ -541,6 +541,7 @@ const MainApp = () => {
         <TouchableOpacity
           style={styles.activeMatchBanner}
           onPress={() => {
+            console.log('Banner clicked - navigating to match:', activeMatch.id);
             setActiveMatchId(activeMatch.id);
             setCurrentScreen('match');
           }}
@@ -818,19 +819,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   activeMatchBanner: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#1a1f3a',
-    borderRadius: 15,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
     padding: 15,
-    borderWidth: 2,
+    borderTopWidth: 2,
     borderColor: '#667eea',
     elevation: 10,
-    zIndex: 1000,
+    zIndex: 9999,
     shadowColor: '#667eea',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.5,
     shadowRadius: 12,
   },
