@@ -1969,6 +1969,14 @@ const Match = ({ onBack, activeMatchId }) => {
     showAlert('Substitution Made', `${playerIn.name} is now on the pitch.`);
   };
 
+  // Log every render to debug state issues
+  console.log('===== MATCH RENDER =====');
+  console.log('matchState:', matchState);
+  console.log('currentMatch?.state:', currentMatch?.state);
+  console.log('currentMatch?.id:', currentMatch?.id);
+  console.log('isHome:', isHome);
+  console.log('========================');
+
   if (!managerProfile) {
     return (
       <View style={styles.container}>
