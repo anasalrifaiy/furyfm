@@ -102,6 +102,8 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
         return '🔄';
       case 'match_challenge':
         return '⚽';
+      case 'proleague_challenge':
+        return '🏆';
       case 'match_finished':
         return '🏆';
       case 'loan_request':
@@ -443,7 +445,7 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
                   </View>
                 )}
 
-                {notification.type === 'match_challenge' && (
+                {(notification.type === 'match_challenge' || notification.type === 'proleague_challenge') && (
                   <View style={styles.actionButtons}>
                     <TouchableOpacity
                       style={styles.acceptButton}

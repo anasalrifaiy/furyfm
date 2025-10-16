@@ -3025,7 +3025,7 @@ const Match = ({ onBack, activeMatchId }) => {
                     disabled={(isHome ? homePausesUsed : awayPausesUsed) >= 2}
                   >
                     <Text style={styles.pauseSubButtonText}>
-                      ⏸️ Pause & Sub ({2 - (isHome ? homePausesUsed : awayPausesUsed)}/2 left)
+                      ⏸️ {2 - (isHome ? homePausesUsed : awayPausesUsed)}/2
                     </Text>
                   </TouchableOpacity>
                   </View>
@@ -4861,19 +4861,21 @@ const styles = StyleSheet.create({
   },
   pauseSubButton: {
     backgroundColor: '#f5576c',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+    minWidth: 80,
   },
   pauseSubButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   quickSubList: {
     backgroundColor: '#1a1f3a',

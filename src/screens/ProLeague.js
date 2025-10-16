@@ -27,13 +27,20 @@ const ProLeague = ({ onBack, onStartMatch }) => {
 
       if (snapshot.exists()) {
         const managersData = [];
+        const opponentsData = [];
         snapshot.forEach(childSnapshot => {
           const manager = childSnapshot.val();
-          if (childSnapshot.key !== currentUser.uid) { // Exclude self
-            managersData.push({
-              uid: childSnapshot.key,
-              ...manager
-            });
+          const managerWithUid = {
+            uid: childSnapshot.key,
+            ...manager
+          };
+
+          // Add all managers to standings
+          managersData.push(managerWithUid);
+
+          // Only add opponents (exclude self) to available matches
+          if (childSnapshot.key !== currentUser.uid) {
+            opponentsData.push(managerWithUid);
           }
         });
 
@@ -49,8 +56,8 @@ const ProLeague = ({ onBack, onStartMatch }) => {
           return bGD - aGD;
         });
 
-        setAllManagers(managersData);
-        setStandings(sortedStandings);
+        setAllManagers(opponentsData); // Only opponents for match challenges
+        setStandings(sortedStandings); // All managers including self for standings
       }
       setLoading(false);
     } catch (error) {
