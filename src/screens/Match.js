@@ -353,11 +353,9 @@ const Match = ({ onBack, activeMatchId }) => {
         const matchData = snapshot.val();
         const previousState = previousMatchStateRef.current;
 
-        console.log('Firebase listener triggered - state change:', previousState, '->', matchData.state);
-        console.log('Match data:', matchData);
+        console.log('Firebase listener triggered - minute:', matchData.minute, 'state:', matchData.state);
 
         // Update match state based on Firebase data
-        console.log('Setting matchState to:', matchData.state);
         setMatchState(matchData.state);
         previousMatchStateRef.current = matchData.state;
         setHomeScore(matchData.homeScore || 0);
