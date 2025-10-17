@@ -382,7 +382,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
         if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch' || previousState === 'select' || previousState === 'waiting') && isHome) {
           console.log('Match state changed to playing - starting simulation');
-          simulateMatch(matchData);
+          simulateMatch();
         }
 
         // Detect second half start - check for secondHalfStarted flag
