@@ -377,10 +377,10 @@ const Match = ({ onBack, activeMatchId }) => {
           'matchData.state': matchData.state,
           'previousState': previousState,
           'isHome': isHome,
-          'condition': matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch') && isHome
+          'condition': matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch' || previousState === 'select' || previousState === 'waiting') && isHome
         });
 
-        if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch') && isHome) {
+        if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch' || previousState === 'select' || previousState === 'waiting') && isHome) {
           console.log('Match state changed to playing - starting simulation');
           simulateMatch(matchData);
         }
