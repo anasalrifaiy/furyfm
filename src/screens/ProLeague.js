@@ -14,17 +14,11 @@ const ProLeague = ({ onBack, onStartMatch }) => {
   const [selectedTab, setSelectedTab] = useState('matches'); // 'matches' or 'standings'
 
   useEffect(() => {
-    if (currentUser) {
-      loadAllManagers();
-      loadPlayedToday();
-    }
-  }, [currentUser]);
+    if (!currentUser) return;
 
-  const loadAllManagers = async () => {
-    try {
-      const managersRef = ref(database, 'managers');
-      const snapshot = await get(managersRef);
-
+    // Set up realtime listener for managers
+    const managersRef = ref(database, 'managers');
+    const unsubscribe = onValue(managersRef, (snapshot) => {
       if (snapshot.exists()) {
         const managersData = [];
         const opponentsData = [];
@@ -58,12 +52,17 @@ const ProLeague = ({ onBack, onStartMatch }) => {
 
         setAllManagers(opponentsData); // Only opponents for match challenges
         setStandings(sortedStandings); // All managers including self for standings
+        setLoading(false);
       }
-      setLoading(false);
-    } catch (error) {
-      console.error('Error loading managers:', error);
-      setLoading(false);
-    }
+    });
+
+    loadPlayedToday();
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  const loadAllManagers = async () => {
+    // This function is no longer needed, kept for compatibility
   };
 
   const loadPlayedToday = async () => {
