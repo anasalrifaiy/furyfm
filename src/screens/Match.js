@@ -1586,26 +1586,47 @@ const Match = ({ onBack, activeMatchId }) => {
   };
 
   const finishMatch = async () => {
-    if (!currentMatch) return;
+    if (!currentMatch) {
+      console.error('finishMatch called but currentMatch is null');
+      return;
+    }
 
-    const matchRef = ref(database, `matches/${currentMatch.id}`);
-    const matchData = (await get(matchRef)).val();
+    console.log('finishMatch called for match:', currentMatch.id);
 
-    await update(matchRef, {
-      state: 'finished',
-      finishedAt: Date.now()
-    });
+    try {
+      const matchRef = ref(database, `matches/${currentMatch.id}`);
+      const matchData = (await get(matchRef)).val();
 
-    // Only process stats once per manager
-    if (!matchData.statsProcessed) {
-      await update(matchRef, { statsProcessed: true });
-      await updateMatchStats(matchData);
+      console.log('Match data retrieved:', matchData);
+
+      await update(matchRef, {
+        state: 'finished',
+        finishedAt: Date.now()
+      });
+
+      console.log('Match state updated to finished');
+
+      // Only process stats once per manager
+      if (!matchData.statsProcessed) {
+        console.log('Processing match stats...');
+        await update(matchRef, { statsProcessed: true });
+        await updateMatchStats(matchData);
+        console.log('Match stats processed successfully');
+      } else {
+        console.log('Stats already processed, skipping');
+      }
+    } catch (error) {
+      console.error('Error in finishMatch:', error);
     }
   };
 
   const updateMatchStats = async (matchData) => {
+    console.log('updateMatchStats called with matchData:', matchData);
+
     const finalHomeScore = matchData.homeScore || 0;
     const finalAwayScore = matchData.awayScore || 0;
+
+    console.log('Final score:', finalHomeScore, '-', finalAwayScore);
 
     // Calculate team strengths for match report
     const homeStrength = calculateTeamStrength(matchData.homeManager.squad);
