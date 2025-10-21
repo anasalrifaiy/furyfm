@@ -2083,27 +2083,29 @@ const Match = ({ onBack, activeMatchId }) => {
                 style={styles.clearStuckMatchesButton}
                 onPress={async () => {
                   if (typeof window !== 'undefined' && window.confirm) {
-                    const confirmed = window.confirm('Clear all stuck watch matches? This will cancel matches that are over 1 hour old.');
+                    const confirmed = window.confirm('Clear ALL visible live/stuck matches? This will cancel all matches shown below.');
                     if (!confirmed) return;
                   }
 
                   try {
                     const matchesRef = ref(database, 'matches');
                     const snapshot = await get(matchesRef);
-                    const oneHourAgo = Date.now() - (60 * 60 * 1000);
                     let clearedCount = 0;
 
                     if (snapshot.exists()) {
                       const updates = {};
                       snapshot.forEach(childSnapshot => {
                         const match = childSnapshot.val();
-                        // Cancel old stuck matches
+                        // Cancel all stuck matches (playing, halftime, waiting, prematch)
                         if (
-                          (match.state === 'playing' || match.state === 'halftime' || match.state === 'waiting' || match.state === 'prematch') &&
-                          match.createdAt && match.createdAt < oneHourAgo
+                          match.state === 'playing' ||
+                          match.state === 'halftime' ||
+                          match.state === 'waiting' ||
+                          match.state === 'prematch' ||
+                          match.state === 'ready'
                         ) {
                           updates[`matches/${childSnapshot.key}/state`] = 'cancelled';
-                          updates[`matches/${childSnapshot.key}/cancelledReason`] = 'Stuck match cleanup';
+                          updates[`matches/${childSnapshot.key}/cancelledReason`] = 'Bulk cleanup - stuck match';
                           updates[`matches/${childSnapshot.key}/cancelledAt`] = Date.now();
                           clearedCount++;
                         }
@@ -2111,9 +2113,9 @@ const Match = ({ onBack, activeMatchId }) => {
 
                       if (Object.keys(updates).length > 0) {
                         await update(ref(database), updates);
-                        showAlert('Success', `Cleared ${clearedCount} stuck match(es)`);
+                        showAlert('Success', `Cleared ${clearedCount} match(es)`);
                       } else {
-                        showAlert('Info', 'No stuck matches found (older than 1 hour)');
+                        showAlert('Info', 'No active matches found to clear');
                       }
                     }
                   } catch (error) {
@@ -2122,47 +2124,75 @@ const Match = ({ onBack, activeMatchId }) => {
                   }
                 }}
               >
-                <Text style={styles.clearStuckMatchesText}>🧹 Clear Stuck Matches (1+ hour old)</Text>
+                <Text style={styles.clearStuckMatchesText}>🧹 Clear ALL Visible Matches</Text>
               </TouchableOpacity>
 
               {liveMatches.map(match => (
-                <TouchableOpacity
-                  key={match.id}
-                  style={styles.liveMatchCard}
-                  onPress={async () => {
-                    // Register as spectator
-                    const matchRef = ref(database, `matches/${match.id}`);
-                    const spectators = match.spectators || {};
-                    spectators[currentUser.uid] = {
-                      name: managerProfile.managerName,
-                      joinedAt: Date.now()
-                    };
-                    await update(matchRef, { spectators });
+                <View key={match.id} style={styles.liveMatchCard}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      // Register as spectator
+                      const matchRef = ref(database, `matches/${match.id}`);
+                      const spectators = match.spectators || {};
+                      spectators[currentUser.uid] = {
+                        name: managerProfile.managerName,
+                        joinedAt: Date.now()
+                      };
+                      await update(matchRef, { spectators });
 
-                    setCurrentMatch({ ...match, id: match.id });
-                    setIsHome(false); // Spectator mode
-                    setMatchState('spectator');
-                  }}
-                >
-                  <View style={styles.liveMatchHeader}>
-                    <Text style={styles.liveMatchIcon}>🔴 LIVE</Text>
-                    <Text style={styles.liveMatchMinute}>{match.minute}'</Text>
-                  </View>
-                  <View style={styles.liveMatchTeams}>
-                    <View style={styles.liveMatchTeam}>
-                      <Text style={styles.liveMatchTeamName}>{match.homeManager.managerName}</Text>
-                      <Text style={styles.liveMatchScore}>{match.homeScore || 0}</Text>
+                      setCurrentMatch({ ...match, id: match.id });
+                      setIsHome(false); // Spectator mode
+                      setMatchState('spectator');
+                    }}
+                  >
+                    <View style={styles.liveMatchHeader}>
+                      <Text style={styles.liveMatchIcon}>🔴 LIVE</Text>
+                      <Text style={styles.liveMatchMinute}>{match.minute}'</Text>
+                      <TouchableOpacity
+                        style={styles.cancelLiveMatchButton}
+                        onPress={async (e) => {
+                          e.stopPropagation();
+                          if (typeof window !== 'undefined' && window.confirm) {
+                            const confirmed = window.confirm(`Cancel this match between ${match.homeManager.managerName} and ${match.awayManager.managerName}?`);
+                            if (!confirmed) return;
+                          }
+
+                          try {
+                            const matchRef = ref(database, `matches/${match.id}`);
+                            await update(matchRef, {
+                              state: 'cancelled',
+                              cancelledReason: 'Manually cancelled by admin',
+                              cancelledAt: Date.now()
+                            });
+                            showAlert('Success', 'Match cancelled successfully');
+                          } catch (error) {
+                            console.error('Error cancelling match:', error);
+                            showAlert('Error', 'Failed to cancel match');
+                          }
+                        }}
+                      >
+                        <Text style={styles.cancelLiveMatchText}>✕</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.liveMatchVs}>vs</Text>
-                    <View style={styles.liveMatchTeam}>
-                      <Text style={styles.liveMatchScore}>{match.awayScore || 0}</Text>
-                      <Text style={styles.liveMatchTeamName}>{match.awayManager.managerName}</Text>
+                    <View style={styles.liveMatchTeams}>
+                      <View style={styles.liveMatchTeam}>
+                        <Text style={styles.liveMatchTeamName}>{match.homeManager.managerName}</Text>
+                        <Text style={styles.liveMatchScore}>{match.homeScore || 0}</Text>
+                      </View>
+                      <Text style={styles.liveMatchVs}>vs</Text>
+                      <View style={styles.liveMatchTeam}>
+                        <Text style={styles.liveMatchScore}>{match.awayScore || 0}</Text>
+                        <Text style={styles.liveMatchTeamName}>{match.awayManager.managerName}</Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.watchButton}>
-                    <Text style={styles.watchButtonText}>👁️ Watch</Text>
-                  </View>
-                </TouchableOpacity>
+                    <View style={styles.watchButton}>
+                      <Text style={styles.watchButtonText}>👁️ Watch</Text>
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.matchAge}>
+                    Created: {new Date(match.createdAt).toLocaleString()}
+                  </Text>
+                </View>
               ))}
             </>
           )}
@@ -4660,6 +4690,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#f5576c',
+  },
+  cancelLiveMatchButton: {
+    backgroundColor: '#f5576c',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  cancelLiveMatchText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  matchAge: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 8,
+    textAlign: 'center',
   },
   liveMatchMinute: {
     fontSize: 14,
