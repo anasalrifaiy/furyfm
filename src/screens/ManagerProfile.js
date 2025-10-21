@@ -21,6 +21,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
   const [editAvatar, setEditAvatar] = useState('');
   const [editProfilePicture, setEditProfilePicture] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
@@ -103,17 +104,34 @@ const ManagerProfile = ({ managerId, onBack }) => {
       return;
     }
 
-    await updateManagerProfile({
-      managerName: editName.trim(),
-      clubName: editClub.trim() || 'No Club',
-      country: editCountry.trim() || 'Unknown',
-      avatar: editAvatar || '',
-      profilePicture: editProfilePicture || ''
-    });
+    try {
+      setSavingProfile(true);
+      console.log('Saving profile with updates:', {
+        managerName: editName.trim(),
+        clubName: editClub.trim() || 'No Club',
+        country: editCountry.trim() || 'Unknown',
+        avatar: editAvatar || '',
+        profilePicture: editProfilePicture || ''
+      });
 
-    setIsEditing(false);
-    loadManager();
-    showAlert('Success', 'Profile updated successfully!');
+      await updateManagerProfile({
+        managerName: editName.trim(),
+        clubName: editClub.trim() || 'No Club',
+        country: editCountry.trim() || 'Unknown',
+        avatar: editAvatar || '',
+        profilePicture: editProfilePicture || ''
+      });
+
+      console.log('Profile updated successfully');
+      setIsEditing(false);
+      await loadManager();
+      showAlert('Success', 'Profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      showAlert('Error', `Failed to save profile: ${error.message}`);
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -486,10 +504,13 @@ const ManagerProfile = ({ managerId, onBack }) => {
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.submitButton}
+              style={[styles.submitButton, savingProfile && styles.submitButtonDisabled]}
               onPress={saveProfile}
+              disabled={savingProfile}
             >
-              <Text style={styles.submitButtonText}>Save Changes</Text>
+              <Text style={styles.submitButtonText}>
+                {savingProfile ? 'Saving...' : 'Save Changes'}
+              </Text>
             </TouchableOpacity>
           </View>
           </View>
@@ -1005,6 +1026,10 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#888',
+    opacity: 0.5,
   },
   submitButtonText: {
     color: '#ffffff',
