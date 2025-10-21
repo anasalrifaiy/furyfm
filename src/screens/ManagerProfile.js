@@ -17,7 +17,9 @@ const ManagerProfile = ({ managerId, onBack }) => {
   const [editName, setEditName] = useState('');
   const [editClub, setEditClub] = useState('');
   const [editCountry, setEditCountry] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
 
   useEffect(() => {
@@ -36,6 +38,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
       setEditName(data.managerName || '');
       setEditClub(data.clubName || '');
       setEditCountry(data.country || '');
+      setEditAvatar(data.avatar || '');
     }
   };
 
@@ -52,7 +55,8 @@ const ManagerProfile = ({ managerId, onBack }) => {
     await updateManagerProfile({
       managerName: editName.trim(),
       clubName: editClub.trim() || 'No Club',
-      country: editCountry.trim() || 'Unknown'
+      country: editCountry.trim() || 'Unknown',
+      avatar: editAvatar || ''
     });
 
     setIsEditing(false);
@@ -140,9 +144,15 @@ const ManagerProfile = ({ managerId, onBack }) => {
       </View>
 
       <View style={styles.profileSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{manager.managerName.charAt(0)}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={isOwnProfile ? handleEditProfile : null}
+          disabled={!isOwnProfile}
+        >
+          <Text style={styles.avatarText}>
+            {manager.avatar || manager.managerName.charAt(0)}
+          </Text>
+        </TouchableOpacity>
         <Text style={styles.managerName}>{manager.managerName}</Text>
         {manager.clubName && <Text style={styles.clubName}>{manager.clubName}</Text>}
         {manager.country && (
@@ -330,6 +340,20 @@ const ManagerProfile = ({ managerId, onBack }) => {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Profile Avatar (Emoji)</Text>
+            <TouchableOpacity
+              style={styles.avatarSelector}
+              onPress={() => setShowAvatarPicker(true)}
+            >
+              {editAvatar ? (
+                <Text style={styles.selectedAvatar}>{editAvatar}</Text>
+              ) : (
+                <Text style={styles.placeholderText}>Select an emoji avatar</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Club Name</Text>
             <TextInput
               style={styles.textInput}
@@ -423,6 +447,43 @@ const ManagerProfile = ({ managerId, onBack }) => {
                 setShowCountryPicker(false);
                 setCountrySearch('');
               }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Portal>
+    )}
+
+    {showAvatarPicker && (
+      <Portal>
+        <View style={styles.modalOverlay} pointerEvents="auto">
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowAvatarPicker(false)}
+          />
+          <View style={styles.countryPickerModal}>
+            <Text style={styles.modalTitle}>Select Avatar Emoji</Text>
+
+            <ScrollView style={styles.avatarGrid}>
+              {['⚽', '🔥', '⭐', '🏆', '👑', '💎', '🎯', '🚀', '⚡', '🌟', '💪', '👊', '🦁', '🐉', '🐺', '🦅', '🐯', '🦈', '👤', '😎', '🤩', '😈', '🤖', '👾', '🎮', '🎲', '🎪', '🎨', '🎭', '🎬'].map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  style={styles.avatarOption}
+                  onPress={() => {
+                    setEditAvatar(emoji);
+                    setShowAvatarPicker(false);
+                  }}
+                >
+                  <Text style={styles.avatarOptionEmoji}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowAvatarPicker(false)}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
@@ -1000,6 +1061,41 @@ const styles = StyleSheet.create({
   countryOptionName: {
     color: '#ffffff',
     fontSize: 16,
+  },
+  avatarSelector: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedAvatar: {
+    fontSize: 32,
+    textAlign: 'center',
+  },
+  avatarGrid: {
+    maxHeight: 400,
+    marginBottom: 15,
+    overflow: 'auto',
+    flex: 1,
+  },
+  avatarOption: {
+    backgroundColor: '#252b54',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#2d3561',
+    cursor: 'pointer',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarOptionEmoji: {
+    fontSize: 36,
+    textAlign: 'center',
   },
 });
 

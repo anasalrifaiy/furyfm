@@ -8,9 +8,9 @@ const SocialTab = ({ onNavigate, onLogout }) => {
   const { t } = useLanguage();
 
   const socialItems = [
-    { id: 'friends', icon: '👥', title: t('friendsMenu'), desc: t('friendsDesc'), gradient: 'warning' },
-    { id: 'leaderboard', icon: '🏆', title: t('leaderboard'), desc: t('leaderboardDesc'), gradient: 'primary' },
     { id: 'profile', icon: '👤', title: t('myProfile'), desc: t('myProfileDesc'), gradient: 'accent' },
+    { id: 'leaderboard', icon: '🏆', title: t('leaderboard'), desc: t('leaderboardDesc'), gradient: 'primary' },
+    { id: 'friends', icon: '👥', title: t('friendsMenu'), desc: t('friendsDesc'), gradient: 'warning' },
   ];
 
   return (
