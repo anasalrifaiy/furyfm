@@ -28,6 +28,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [prematchStarting11, setPrematchStarting11] = useState([]);
   const [prematchFormation, setPrematchFormation] = useState('4-3-3');
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
+  const [goalCelebration, setGoalCelebration] = useState(null); // { scorer: 'Player Name', team: 'home'/'away' }
   const previousMatchStateRef = useRef(matchState);
 
   // Helper function for formation positions
@@ -397,6 +398,23 @@ const Match = ({ onBack, activeMatchId }) => {
         // Check if match is finished
         if (matchData.state === 'finished' && matchState !== 'finished') {
           handleMatchFinished(matchData);
+        }
+
+        // Check for new goals and show celebration
+        if (matchData.events && matchData.events.length > 0) {
+          const latestEvent = matchData.events[0];
+          if (latestEvent.includes('⚽ GOAL!')) {
+            // Extract scorer name from event
+            const scorerMatch = latestEvent.match(/GOAL! ([^(]+)/);
+            if (scorerMatch) {
+              const scorerName = scorerMatch[1].trim();
+              // Determine which team scored
+              const isHomeGoal = matchData.homeManager.squad.some(p => latestEvent.includes(p.name));
+              setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+              // Auto-hide after 3 seconds
+              setTimeout(() => setGoalCelebration(null), 3000);
+            }
+          }
         }
       } else {
         console.warn('Firebase listener: snapshot does not exist');
@@ -1674,22 +1692,40 @@ const Match = ({ onBack, activeMatchId }) => {
     const saveEvents = allEvents.filter(e => e.includes('🧤'));
     const passEvents = allEvents.filter(e => e.includes('⚡'));
 
-    // Calculate possession percentage based on pass events
-    const homePassEvents = passEvents.filter(e => e.includes(matchData.homeManager.name)).length;
-    const awayPassEvents = passEvents.filter(e => e.includes(matchData.awayManager.name)).length;
-    const totalPassEvents = homePassEvents + awayPassEvents;
-    const homePossession = totalPassEvents > 0 ? Math.round((homePassEvents / totalPassEvents) * 100) : 50;
+    // Calculate possession percentage based on player actions
+    // Get all home and away player names
+    const homePlayerNames = matchData.homeManager.squad.map(p => p.name);
+    const awayPlayerNames = matchData.awayManager.squad.map(p => p.name);
+
+    // Count events by team (passes, shots, saves)
+    let homeActions = 0;
+    let awayActions = 0;
+
+    allEvents.forEach(event => {
+      // Check if any home player is in the event
+      const isHomeEvent = homePlayerNames.some(name => event.includes(name));
+      const isAwayEvent = awayPlayerNames.some(name => event.includes(name));
+
+      if (isHomeEvent) homeActions++;
+      else if (isAwayEvent) awayActions++;
+    });
+
+    const totalActions = homeActions + awayActions;
+    const homePossession = totalActions > 0 ? Math.round((homeActions / totalActions) * 100) : 50;
     const awayPossession = 100 - homePossession;
 
     // Count shots (goals + saves + misses)
-    const homeShots = allEvents.filter(e =>
-      (e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍')) &&
-      (e.includes(`for ${matchData.homeManager.name}`) || e.includes(`${matchData.homeManager.name}`))
-    ).length;
-    const awayShots = allEvents.filter(e =>
-      (e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍')) &&
-      (e.includes(`for ${matchData.awayManager.name}`) || e.includes(`${matchData.awayManager.name}`))
-    ).length;
+    const homeShots = allEvents.filter(e => {
+      const isShotEvent = e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍');
+      const isHomePlayer = homePlayerNames.some(name => e.includes(name));
+      return isShotEvent && isHomePlayer;
+    }).length;
+
+    const awayShots = allEvents.filter(e => {
+      const isShotEvent = e.includes('⚽ GOAL') || e.includes('🧤') || e.includes('📍');
+      const isAwayPlayer = awayPlayerNames.some(name => e.includes(name));
+      return isShotEvent && isAwayPlayer;
+    }).length;
 
     // Get goalscorers
     const goalscorersData = matchData.goalscorers || {};
@@ -3334,6 +3370,15 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
           );
         })()}
+
+        {/* Goal Celebration Overlay */}
+        {goalCelebration && (
+          <View style={styles.goalCelebrationOverlay}>
+            <Text style={styles.goalCelebrationText}>GOAAAAAL!</Text>
+            <Text style={styles.goalCelebrationScorer}>{goalCelebration.scorer}</Text>
+            <Text style={styles.goalCelebrationEmoji}>⚽🎉</Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -5219,6 +5264,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888',
     textAlign: 'center',
+  },
+  goalCelebrationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  goalCelebrationText: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: '#667eea',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+    marginBottom: 20,
+  },
+  goalCelebrationScorer: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#667eea',
+    marginBottom: 10,
+  },
+  goalCelebrationEmoji: {
+    fontSize: 60,
   },
 });
 

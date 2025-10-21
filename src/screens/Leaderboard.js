@@ -8,7 +8,7 @@ import { getCountryFlag } from '../data/countries';
 const Leaderboard = ({ onBack, onViewProfile }) => {
   const { currentUser } = useAuth();
   const [managers, setManagers] = useState([]);
-  const [sortBy, setSortBy] = useState('points'); // 'points', 'squadValue', 'wins'
+  const [sortBy, setSortBy] = useState('leaguePoints'); // 'leaguePoints', 'points', 'squadValue', 'wins'
 
   useEffect(() => {
     loadLeaderboard();
@@ -23,16 +23,23 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
       snapshot.forEach(childSnapshot => {
         const manager = childSnapshot.val();
         const squadValue = (manager.squad || []).reduce((sum, player) => sum + player.price, 0);
+        const goalDifference = (manager.leagueGoalsFor || 0) - (manager.leagueGoalsAgainst || 0);
         managersData.push({
           uid: childSnapshot.key,
           ...manager,
-          squadValue
+          squadValue,
+          goalDifference
         });
       });
 
       // Sort based on selected criteria
       const sorted = managersData.sort((a, b) => {
         switch (sortBy) {
+          case 'leaguePoints':
+            // Pro League standings: Points first, then goal difference
+            const pointsDiff = (b.leaguePoints || 0) - (a.leaguePoints || 0);
+            if (pointsDiff !== 0) return pointsDiff;
+            return b.goalDifference - a.goalDifference;
           case 'points':
             return (b.points || 0) - (a.points || 0);
           case 'squadValue':
@@ -78,6 +85,14 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
       <View style={styles.sortSection}>
         <Text style={styles.sortLabel}>Sort by:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortOptions}>
+          <TouchableOpacity
+            style={[styles.sortChip, sortBy === 'leaguePoints' && styles.sortChipActive]}
+            onPress={() => setSortBy('leaguePoints')}
+          >
+            <Text style={[styles.sortText, sortBy === 'leaguePoints' && styles.sortTextActive]}>
+              🏆 Pro League
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.sortChip, sortBy === 'points' && styles.sortChipActive]}
             onPress={() => setSortBy('points')}
@@ -142,12 +157,16 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
                   <Text style={styles.clubName}>⚽ {manager.clubName}</Text>
                 )}
                 <Text style={styles.managerStats}>
+                  {sortBy === 'leaguePoints' && `${manager.leaguePoints || 0} pts • GD: ${manager.goalDifference >= 0 ? '+' : ''}${manager.goalDifference}`}
                   {sortBy === 'points' && `${manager.points || 0} points`}
                   {sortBy === 'squadValue' && formatCurrency(manager.squadValue || 0)}
                   {sortBy === 'wins' && `${manager.wins || 0} wins`}
                 </Text>
                 <Text style={styles.managerDetails}>
-                  Squad: {manager.squad?.length || 0} • W:{manager.wins || 0} D:{manager.draws || 0} L:{manager.losses || 0}
+                  {sortBy === 'leaguePoints'
+                    ? `League: W:${manager.leagueWins || 0} D:${manager.leagueDraws || 0} L:${manager.leagueLosses || 0} • GF:${manager.leagueGoalsFor || 0} GA:${manager.leagueGoalsAgainst || 0}`
+                    : `Squad: ${manager.squad?.length || 0} • W:${manager.wins || 0} D:${manager.draws || 0} L:${manager.losses || 0}`
+                  }
                 </Text>
                 <Text style={styles.managerDetails}>
                   Budget: {formatCurrency(manager.budget || 0)} • Value: {formatCurrency(manager.squadValue || 0)}
