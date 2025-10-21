@@ -27,6 +27,7 @@ import Bank from './screens/Bank';
 import ProLeague from './screens/ProLeague';
 import { database } from './firebase';
 import { ref, onValue, update, get } from 'firebase/database';
+import { getCountryFlag } from './data/countries';
 
 const MainApp = () => {
   const { currentUser, managerProfile, logout } = useAuth();
@@ -354,8 +355,15 @@ const MainApp = () => {
           <Text style={styles.statValue}>{formatCurrency(managerProfile?.budget || 0)}</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statLabel}>{t('points')}</Text>
-          <Text style={styles.statValue}>{managerProfile?.points || 0}</Text>
+          <Text style={styles.statLabel}>Club</Text>
+          <View style={styles.clubInfo}>
+            {managerProfile?.country && (
+              <Text style={styles.countryFlag}>{getCountryFlag(managerProfile.country)}</Text>
+            )}
+            <Text style={styles.clubName} numberOfLines={1} ellipsizeMode="tail">
+              {managerProfile?.clubName || 'No Club'}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -624,6 +632,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  clubInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    maxWidth: 120,
+  },
+  countryFlag: {
+    fontSize: 18,
+  },
+  clubName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    flexShrink: 1,
   },
   content: {
     flex: 1,

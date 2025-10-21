@@ -508,8 +508,11 @@ const Match = ({ onBack, activeMatchId }) => {
           // Only show matches that are:
           // 1. Currently playing or at halftime (truly live)
           // 2. Not involving the current user (exclude own matches)
+          // 3. Not cancelled or finished
           if (
             (match.state === 'playing' || match.state === 'halftime') &&
+            match.state !== 'cancelled' &&
+            match.state !== 'finished' &&
             match.homeManager?.uid !== currentUser.uid &&
             match.awayManager?.uid !== currentUser.uid
           ) {
@@ -3099,13 +3102,17 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
             <View style={styles.liveScoreRow}>
               <View style={styles.liveTeam}>
-                <Text style={styles.liveTeamName}>{currentMatch.homeManager.name}</Text>
+                <Text style={styles.liveTeamName} numberOfLines={1} ellipsizeMode="tail">
+                  {currentMatch.homeManager.clubName || currentMatch.homeManager.managerName}
+                </Text>
                 <Text style={styles.liveScore}>{homeScore}</Text>
               </View>
               <Text style={styles.liveDash}>-</Text>
               <View style={styles.liveTeam}>
                 <Text style={styles.liveScore}>{awayScore}</Text>
-                <Text style={styles.liveTeamName}>{currentMatch.awayManager.name}</Text>
+                <Text style={styles.liveTeamName} numberOfLines={1} ellipsizeMode="tail">
+                  {currentMatch.awayManager.clubName || currentMatch.awayManager.managerName}
+                </Text>
               </View>
             </View>
           </View>
@@ -3451,13 +3458,17 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
             <View style={styles.liveScoreRow}>
               <View style={styles.liveTeam}>
-                <Text style={styles.liveTeamName}>{currentMatch.homeManager.managerName}</Text>
+                <Text style={styles.liveTeamName} numberOfLines={1} ellipsizeMode="tail">
+                  {currentMatch.homeManager.clubName || currentMatch.homeManager.managerName}
+                </Text>
                 <Text style={styles.liveScore}>{homeScore}</Text>
               </View>
               <Text style={styles.liveDash}>-</Text>
               <View style={styles.liveTeam}>
                 <Text style={styles.liveScore}>{awayScore}</Text>
-                <Text style={styles.liveTeamName}>{currentMatch.awayManager.managerName}</Text>
+                <Text style={styles.liveTeamName} numberOfLines={1} ellipsizeMode="tail">
+                  {currentMatch.awayManager.clubName || currentMatch.awayManager.managerName}
+                </Text>
               </View>
             </View>
           </View>
@@ -3989,11 +4000,14 @@ const styles = StyleSheet.create({
   },
   liveTeam: {
     alignItems: 'center',
+    maxWidth: '40%',
   },
   liveTeamName: {
     fontSize: 14,
     color: '#888',
     marginBottom: 5,
+    textAlign: 'center',
+    maxWidth: '100%',
   },
   liveScore: {
     fontSize: 48,
@@ -4959,6 +4973,9 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#2d3561',
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
   },
   pitch: {
     backgroundColor: '#2d7a3e',
