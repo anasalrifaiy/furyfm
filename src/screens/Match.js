@@ -1610,7 +1610,8 @@ const Match = ({ onBack, activeMatchId }) => {
       if (!matchData.statsProcessed) {
         console.log('Processing match stats...');
         await update(matchRef, { statsProcessed: true });
-        await updateMatchStats(matchData);
+        // Add the match ID to matchData before passing to updateMatchStats
+        await updateMatchStats({ ...matchData, id: currentMatch.id });
         console.log('Match stats processed successfully');
       } else {
         console.log('Stats already processed, skipping');
