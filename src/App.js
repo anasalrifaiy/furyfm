@@ -4,6 +4,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
+import BottomNavigation from './components/BottomNavigation';
+import HomeTab from './components/TabContent/HomeTab';
+import TeamTab from './components/TabContent/TeamTab';
+import MatchTab from './components/TabContent/MatchTab';
+import MarketTab from './components/TabContent/MarketTab';
+import SocialTab from './components/TabContent/SocialTab';
 import TransferMarket from './screens/TransferMarket';
 import Squad from './screens/Squad';
 import Formation from './screens/Formation';
@@ -28,6 +34,7 @@ const MainApp = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.8));
   const [currentScreen, setCurrentScreen] = useState('home');
+  const [currentTab, setCurrentTab] = useState('home');
   const [authScreen, setAuthScreen] = useState('login');
   const [selectedManagerId, setSelectedManagerId] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -354,170 +361,87 @@ const MainApp = () => {
     </View>
   );
 
+  const handleNavigateFromTab = (screenId, managerId = null) => {
+    if (screenId === 'profile' && managerId) {
+      setSelectedManagerId(managerId);
+    }
+    setCurrentScreen(screenId);
+  };
+
+  const renderTabContent = () => {
+    switch (currentTab) {
+      case 'home':
+        return <HomeTab managerProfile={managerProfile} formatCurrency={formatCurrency} />;
+      case 'team':
+        return <TeamTab onNavigate={handleNavigateFromTab} />;
+      case 'match':
+        return <MatchTab onNavigate={handleNavigateFromTab} />;
+      case 'market':
+        return <MarketTab onNavigate={handleNavigateFromTab} />;
+      case 'social':
+        return <SocialTab onNavigate={handleNavigateFromTab} onLogout={logout} />;
+      default:
+        return <HomeTab managerProfile={managerProfile} formatCurrency={formatCurrency} />;
+    }
+  };
+
   const renderHomeScreen = () => {
-    // Debug: Check what email we're comparing
-    console.log('Current user email:', currentUser?.email);
-    console.log('Is admin?', currentUser?.email === 'anasalrifai90@gmail.com');
-
     return (
-    <ScrollView style={styles.content}>
-      <View style={styles.welcomeCard}>
-        <Text style={styles.welcomeTitle}>{t('welcomeBack')}, {managerProfile?.managerName}!</Text>
-        <Text style={styles.welcomeSubtitle}>{t('budget')}: {formatCurrency(managerProfile?.budget || 0)}</Text>
-
+      <View style={styles.homeContainer}>
         {activeMatch && (
-          <TouchableOpacity style={styles.clearMatchesButton} onPress={handleClearAllPendingMatches}>
-            <Text style={styles.clearMatchesButtonText}>⚠️ Clear All Pending Matches</Text>
-          </TouchableOpacity>
+          <View style={styles.clearMatchesButtonContainer}>
+            <TouchableOpacity style={styles.clearMatchesButton} onPress={handleClearAllPendingMatches}>
+              <Text style={styles.clearMatchesButtonText}>⚠️ Clear All Pending Matches</Text>
+            </TouchableOpacity>
+          </View>
         )}
-
-        <View style={styles.quickStats}>
-          <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>{t('squadSize')}</Text>
-            <Text style={styles.statCardValue}>{managerProfile?.squad?.length || 0}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>{t('wins')}</Text>
-            <Text style={styles.statCardValue}>{managerProfile?.wins || 0}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statCardLabel}>{t('friends')}</Text>
-            <Text style={styles.statCardValue}>{managerProfile?.friends?.length || 0}</Text>
-          </View>
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          {renderTabContent()}
+        </ScrollView>
+        <BottomNavigation currentTab={currentTab} onTabChange={setCurrentTab} />
       </View>
-
-      <View style={styles.menuGrid}>
-        <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('squad')}>
-          <Text style={styles.menuIcon}>👥</Text>
-          <Text style={styles.menuTitle}>{t('mySquad')}</Text>
-          <Text style={styles.menuDesc}>{t('mySquadDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('market')}>
-          <Text style={styles.menuIcon}>💰</Text>
-          <Text style={styles.menuTitle}>{t('transferMarket')}</Text>
-          <Text style={styles.menuDesc}>{t('transferMarketDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('formation')}>
-          <Text style={styles.menuIcon}>⚽</Text>
-          <Text style={styles.menuTitle}>{t('formation')}</Text>
-          <Text style={styles.menuDesc}>{t('formationDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('training')}>
-          <Text style={styles.menuIcon}>🎓</Text>
-          <Text style={styles.menuTitle}>{t('training')}</Text>
-          <Text style={styles.menuDesc}>{t('trainingDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('coaching')}>
-          <Text style={styles.menuIcon}>👨‍🏫</Text>
-          <Text style={styles.menuTitle}>{t('coachingStaff')}</Text>
-          <Text style={styles.menuDesc}>{t('coachingStaffDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('facilities')}>
-          <Text style={styles.menuIcon}>🏗️</Text>
-          <Text style={styles.menuTitle}>{t('clubFacilities')}</Text>
-          <Text style={styles.menuDesc}>{t('clubFacilitiesDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('bank')}>
-          <Text style={styles.menuIcon}>🏦</Text>
-          <Text style={styles.menuTitle}>{t('bank')}</Text>
-          <Text style={styles.menuDesc}>{t('bankDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.successCard]} onPress={() => setCurrentScreen('match')}>
-          <Text style={styles.menuIcon}>🤝</Text>
-          <Text style={styles.menuTitle}>Friendly Match</Text>
-          <Text style={styles.menuDesc}>Challenge friends for fun!</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('proleague')}>
-          <Text style={styles.menuIcon}>🏆</Text>
-          <Text style={styles.menuTitle}>Pro League</Text>
-          <Text style={styles.menuDesc}>Compete for points and glory!</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => setCurrentScreen('matchHistory')}>
-          <Text style={styles.menuIcon}>📊</Text>
-          <Text style={styles.menuTitle}>{t('matchHistory')}</Text>
-          <Text style={styles.menuDesc}>{t('matchHistoryDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={() => setCurrentScreen('friends')}>
-          <Text style={styles.menuIcon}>👥</Text>
-          <Text style={styles.menuTitle}>{t('friendsMenu')}</Text>
-          <Text style={styles.menuDesc}>{t('friendsDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.primaryCard]} onPress={() => setCurrentScreen('leaderboard')}>
-          <Text style={styles.menuIcon}>🏆</Text>
-          <Text style={styles.menuTitle}>{t('leaderboard')}</Text>
-          <Text style={styles.menuDesc}>{t('leaderboardDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.accentCard]} onPress={() => handleViewProfile(currentUser.uid)}>
-          <Text style={styles.menuIcon}>👤</Text>
-          <Text style={styles.menuTitle}>{t('myProfile')}</Text>
-          <Text style={styles.menuDesc}>{t('myProfileDesc')}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.menuCard, styles.warningCard]} onPress={logout}>
-          <Text style={styles.menuIcon}>🚪</Text>
-          <Text style={styles.menuTitle}>{t('logout')}</Text>
-          <Text style={styles.menuDesc}>{t('logoutDesc')}</Text>
-        </TouchableOpacity>
-
-        {currentUser?.email === 'anasalrifai90@gmail.com' && (
-          <TouchableOpacity style={[styles.menuCard, styles.secondaryCard]} onPress={() => setCurrentScreen('adminMigration')}>
-            <Text style={styles.menuIcon}>⚙️</Text>
-            <Text style={styles.menuTitle}>Admin: Budget Migration</Text>
-            <Text style={styles.menuDesc}>Run once to update budgets</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </ScrollView>
     );
+  };
+
+  const handleBackToHome = () => {
+    setCurrentScreen('home');
+    setCurrentTab('home');
   };
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'market':
-        return <TransferMarket onBack={() => setCurrentScreen('home')} />;
+        return <TransferMarket onBack={handleBackToHome} />;
       case 'squad':
-        return <Squad onBack={() => setCurrentScreen('home')} />;
+        return <Squad onBack={handleBackToHome} />;
       case 'formation':
-        return <Formation onBack={() => setCurrentScreen('home')} />;
+        return <Formation onBack={handleBackToHome} />;
       case 'training':
-        return <Training onBack={() => setCurrentScreen('home')} />;
+        return <Training onBack={handleBackToHome} />;
       case 'coaching':
-        return <CoachingStaff onBack={() => setCurrentScreen('home')} />;
+        return <CoachingStaff onBack={handleBackToHome} />;
       case 'facilities':
-        return <ClubFacilities onBack={() => setCurrentScreen('home')} />;
+        return <ClubFacilities onBack={handleBackToHome} />;
       case 'bank':
-        return <Bank onBack={() => setCurrentScreen('home')} />;
+        return <Bank onBack={handleBackToHome} />;
       case 'match':
-        return <Match onBack={() => { setCurrentScreen('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
+        return <Match onBack={() => { setCurrentScreen('home'); setCurrentTab('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':
-        return <MatchHistory onBack={() => setCurrentScreen('home')} />;
+        return <MatchHistory onBack={handleBackToHome} />;
       case 'friends':
-        return <Friends onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+        return <Friends onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
       case 'leaderboard':
-        return <Leaderboard onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} />;
+        return <Leaderboard onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
       case 'notifications':
-        return <Notifications onBack={() => setCurrentScreen('home')} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
+        return <Notifications onBack={handleBackToHome} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
       case 'profile':
-        return <ManagerProfile managerId={selectedManagerId} onBack={() => setCurrentScreen('home')} />;
+        return <ManagerProfile managerId={selectedManagerId} onBack={handleBackToHome} />;
       case 'proleague':
-        return <ProLeague onBack={() => setCurrentScreen('home')} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />;
+        return <ProLeague onBack={handleBackToHome} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />;
       case 'adminMigration':
         // Only allow admin user to access this screen
         if (currentUser?.email === 'anasalrifai90@gmail.com') {
-          return <AdminMigration onBack={() => setCurrentScreen('home')} />;
+          return <AdminMigration onBack={handleBackToHome} />;
         } else {
           // Redirect non-admin users back to home
           setCurrentScreen('home');
@@ -703,7 +627,16 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 80,
+  },
+  homeContainer: {
+    flex: 1,
+  },
+  clearMatchesButtonContainer: {
+    padding: 10,
+    backgroundColor: '#0a0e27',
   },
   welcomeCard: {
     backgroundColor: '#1a1f3a',
@@ -728,7 +661,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5576c',
     borderRadius: 10,
     padding: 12,
-    marginBottom: 15,
     alignItems: 'center',
   },
   clearMatchesButtonText: {

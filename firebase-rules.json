@@ -1,0 +1,64 @@
+{
+  "rules": {
+    "managers": {
+      "$uid": {
+        // Anyone authenticated can read any manager (needed for leaderboards, matchmaking, etc.)
+        ".read": "auth != null",
+
+        // Users can only write to their own data
+        ".write": "auth != null && auth.uid == $uid",
+
+        // Notifications can be written by others (for sending challenges, etc.)
+        "notifications": {
+          ".read": "auth != null && auth.uid == $uid",
+          "$notificationId": {
+            ".write": "auth != null"
+          }
+        }
+      }
+    },
+
+    "matches": {
+      "$matchId": {
+        // Anyone authenticated can read matches (needed for spectators, live matches list)
+        ".read": "auth != null",
+
+        // Both participating managers can write, or anyone can create new match
+        ".write": "auth != null && (
+          data.child('homeManager/uid').val() == auth.uid ||
+          data.child('awayManager/uid').val() == auth.uid ||
+          !data.exists()
+        )"
+      }
+    },
+
+    "players": {
+      // Players database can be read by authenticated users
+      ".read": "auth != null",
+      // Only write for initial setup or admin (you can manage separately)
+      ".write": "auth != null"
+    },
+
+    "transferMarket": {
+      // Anyone authenticated can read transfer market
+      ".read": "auth != null",
+
+      "$listingId": {
+        // Anyone can write to create listings, or owner can update
+        ".write": "auth != null"
+      }
+    },
+
+    "market": {
+      // Transfer market - anyone authenticated can read/write
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "loans": {
+      // Bank loans - anyone authenticated can read/write
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
