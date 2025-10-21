@@ -351,7 +351,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const matchRef = ref(database, `matches/${matchId}`);
     const unsubscribe = onValue(matchRef,
-      (snapshot) => {
+      async (snapshot) => {
         console.log('Firebase listener callback fired!'); // This should fire on EVERY change
         if (snapshot.exists()) {
           const matchData = snapshot.val();
@@ -391,7 +391,9 @@ const Match = ({ onBack, activeMatchId }) => {
           console.log('Second half starting - resuming simulation');
           console.log('Match data:', matchData);
           // Mark that second half simulation has started to avoid duplicate calls
-          update(ref(database, `matches/${currentMatch.id}`), { secondHalfSimulationStarted: true });
+          const matchRef = ref(database, `matches/${currentMatch.id}`);
+          await update(matchRef, { secondHalfSimulationStarted: true });
+          console.log('Second half simulation flag set, starting simulation');
           simulateSecondHalf();
         }
 
@@ -1355,11 +1357,38 @@ const Match = ({ onBack, activeMatchId }) => {
     if (updatedMatch.homeSecondHalfReady && updatedMatch.awaySecondHalfReady) {
       // Both ready - continue to second half
       console.log('Both managers ready - starting second half');
+      console.log('Current match data before update:', {
+        state: updatedMatch.state,
+        second: updatedMatch.second,
+        minute: updatedMatch.minute
+      });
+
       await update(matchRef, {
         state: 'playing',
-        secondHalfStarted: true
+        secondHalfStarted: true,
+        secondHalfSimulationStarted: false  // Ensure this is false so simulation can start
       });
-      // The listener will detect the state change and start simulation
+
+      console.log('Second half state updated in Firebase');
+
+      // If we're the home manager, start simulation immediately as backup
+      // (The listener should also catch this, but this ensures it starts)
+      if (isHome) {
+        console.log('Home manager - starting second half simulation directly');
+        setTimeout(async () => {
+          const checkData = (await get(matchRef)).val();
+          if (checkData.state === 'playing' && checkData.secondHalfStarted && !checkData.secondHalfSimulationStarted) {
+            console.log('Second half not started by listener, starting now');
+            await update(matchRef, { secondHalfSimulationStarted: true });
+            simulateSecondHalf();
+          }
+        }, 500); // Wait 500ms for listener to process
+      }
+    } else {
+      console.log('Waiting for other manager:', {
+        homeReady: updatedMatch.homeSecondHalfReady,
+        awayReady: updatedMatch.awaySecondHalfReady
+      });
     }
   };
 
