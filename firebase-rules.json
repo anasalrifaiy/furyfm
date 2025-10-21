@@ -3,8 +3,6 @@
     "managers": {
       ".read": "auth != null",
       "$uid": {
-        ".write": "auth != null && auth.uid == $uid",
-
         // Match history can be written by any authenticated user (match participants write to each other)
         "matchHistory": {
           "$historyId": {
@@ -54,6 +52,35 @@
           "$notificationId": {
             ".write": "auth != null"
           }
+        },
+
+        // Protected fields - only owner can write
+        "managerName": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "budget": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "squad": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "formation": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "friends": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "email": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "points": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "coachingStaff": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "facilities": {
+          ".write": "auth != null && auth.uid == $uid"
         }
       }
     },
