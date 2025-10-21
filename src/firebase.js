@@ -3,6 +3,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAefdSczobIyVbMXCaTnfYcKSrbb50x1tY",
@@ -21,5 +22,6 @@ const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 const auth = getAuth(app);
 const database = getDatabase(app);
 const firestore = getFirestore(app);
+const storage = getStorage(app);
 
-export { app, analytics, auth, database, firestore };
+export { app, analytics, auth, database, firestore, storage };

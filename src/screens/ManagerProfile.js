@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { database } from '../firebase';
+import { database, storage } from '../firebase';
 import { ref, get, push, update } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { showAlert } from '../utils/alert';
 import Portal from '../components/Portal';
 import { countries, getCountryFlag } from '../data/countries';
@@ -18,6 +19,8 @@ const ManagerProfile = ({ managerId, onBack }) => {
   const [editClub, setEditClub] = useState('');
   const [editCountry, setEditCountry] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
+  const [editProfilePicture, setEditProfilePicture] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
@@ -39,11 +42,52 @@ const ManagerProfile = ({ managerId, onBack }) => {
       setEditClub(data.clubName || '');
       setEditCountry(data.country || '');
       setEditAvatar(data.avatar || '');
+      setEditProfilePicture(data.profilePicture || '');
     }
   };
 
   const handleEditProfile = () => {
     setIsEditing(true);
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showAlert('Error', 'Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert('Error', 'Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+
+      // Create a reference to the storage location
+      const imageRef = storageRef(storage, `profilePictures/${currentUser.uid}/${Date.now()}_${file.name}`);
+
+      // Upload the file
+      await uploadBytes(imageRef, file);
+
+      // Get the download URL
+      const downloadURL = await getDownloadURL(imageRef);
+
+      // Update the edit state
+      setEditProfilePicture(downloadURL);
+
+      showAlert('Success', 'Image uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showAlert('Error', 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const saveProfile = async () => {
@@ -56,7 +100,8 @@ const ManagerProfile = ({ managerId, onBack }) => {
       managerName: editName.trim(),
       clubName: editClub.trim() || 'No Club',
       country: editCountry.trim() || 'Unknown',
-      avatar: editAvatar || ''
+      avatar: editAvatar || '',
+      profilePicture: editProfilePicture || ''
     });
 
     setIsEditing(false);
@@ -149,9 +194,16 @@ const ManagerProfile = ({ managerId, onBack }) => {
           onPress={isOwnProfile ? handleEditProfile : null}
           disabled={!isOwnProfile}
         >
-          <Text style={styles.avatarText}>
-            {manager.avatar || manager.managerName.charAt(0)}
-          </Text>
+          {manager.profilePicture ? (
+            <Image
+              source={{ uri: manager.profilePicture }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {manager.avatar || manager.managerName.charAt(0)}
+            </Text>
+          )}
         </TouchableOpacity>
         <Text style={styles.managerName}>{manager.managerName}</Text>
         {manager.clubName && <Text style={styles.clubName}>{manager.clubName}</Text>}
@@ -340,7 +392,45 @@ const ManagerProfile = ({ managerId, onBack }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Profile Avatar (Emoji)</Text>
+            <Text style={styles.inputLabel}>Profile Picture</Text>
+            {editProfilePicture ? (
+              <View style={styles.profilePicturePreview}>
+                <Image
+                  source={{ uri: editProfilePicture }}
+                  style={styles.profilePictureImage}
+                />
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={() => setEditProfilePicture('')}
+                >
+                  <Text style={styles.removeImageText}>✕ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                  id="profile-picture-upload"
+                />
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={() => {
+                    if (typeof document !== 'undefined') {
+                      document.getElementById('profile-picture-upload').click();
+                    }
+                  }}
+                  disabled={uploadingImage}
+                >
+                  <Text style={styles.uploadButtonText}>
+                    {uploadingImage ? 'Uploading...' : '📷 Upload Profile Picture'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+            <Text style={styles.uploadHint}>Or use an emoji avatar:</Text>
             <TouchableOpacity
               style={styles.avatarSelector}
               onPress={() => setShowAvatarPicker(true)}
@@ -348,7 +438,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
               {editAvatar ? (
                 <Text style={styles.selectedAvatar}>{editAvatar}</Text>
               ) : (
-                <Text style={styles.placeholderText}>Select an emoji avatar</Text>
+                <Text style={styles.placeholderText}>Select an emoji</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -595,6 +685,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 36,
     fontWeight: 'bold',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
   },
   managerName: {
     fontSize: 24,
@@ -1096,6 +1191,48 @@ const styles = StyleSheet.create({
   avatarOptionEmoji: {
     fontSize: 36,
     textAlign: 'center',
+  },
+  uploadButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  uploadButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  uploadHint: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 8,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  profilePicturePreview: {
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  profilePictureImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 10,
+    borderWidth: 3,
+    borderColor: '#667eea',
+  },
+  removeImageButton: {
+    backgroundColor: '#f5576c',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+  },
+  removeImageText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 
