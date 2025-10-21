@@ -30,6 +30,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
   const [goalCelebration, setGoalCelebration] = useState(null); // { scorer: 'Player Name', team: 'home'/'away' }
   const previousMatchStateRef = useRef(matchState);
+  const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
 
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
@@ -402,10 +403,10 @@ const Match = ({ onBack, activeMatchId }) => {
           handleMatchFinished(matchData);
         }
 
-        // Check for new goals and show celebration
+        // Check for new goals and show celebration (only if it's a new event)
         if (matchData.events && matchData.events.length > 0) {
           const latestEvent = matchData.events[0];
-          if (latestEvent.includes('⚽ GOAL!')) {
+          if (latestEvent.includes('⚽ GOAL!') && latestEvent !== lastCelebratedEventRef.current) {
             // Extract scorer name from event
             const scorerMatch = latestEvent.match(/GOAL! ([^(]+)/);
             if (scorerMatch) {
@@ -413,6 +414,7 @@ const Match = ({ onBack, activeMatchId }) => {
               // Determine which team scored
               const isHomeGoal = matchData.homeManager.squad.some(p => latestEvent.includes(p.name));
               setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+              lastCelebratedEventRef.current = latestEvent; // Mark this event as celebrated
               // Auto-hide after 3 seconds
               setTimeout(() => setGoalCelebration(null), 3000);
             }
@@ -3400,7 +3402,7 @@ const Match = ({ onBack, activeMatchId }) => {
           );
         })()}
 
-        {/* Goal Celebration Overlay */}
+        {/* Goal Celebration Overlay - Fixed position */}
         {goalCelebration && (
           <View style={styles.goalCelebrationOverlay}>
             <Text style={styles.goalCelebrationText}>GOAAAAAL!</Text>
@@ -5295,15 +5297,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   goalCelebrationOverlay: {
-    position: 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999,
+    zIndex: 10000,
+    pointerEvents: 'none', // Allow clicks to pass through after celebration
   },
   goalCelebrationText: {
     fontSize: 72,
