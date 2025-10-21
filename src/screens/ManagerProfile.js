@@ -417,45 +417,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Profile Picture</Text>
-            {editProfilePicture ? (
-              <View style={styles.profilePicturePreview}>
-                <Image
-                  source={{ uri: editProfilePicture }}
-                  style={styles.profilePictureImage}
-                />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => setEditProfilePicture('')}
-                >
-                  <Text style={styles.removeImageText}>✕ Remove</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  style={{ display: 'none' }}
-                  id="profile-picture-upload"
-                />
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => {
-                    if (typeof document !== 'undefined') {
-                      document.getElementById('profile-picture-upload').click();
-                    }
-                  }}
-                  disabled={uploadingImage}
-                >
-                  <Text style={styles.uploadButtonText}>
-                    {uploadingImage ? 'Uploading...' : '📷 Upload Profile Picture'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-            <Text style={styles.uploadHint}>Or use an emoji avatar:</Text>
+            <Text style={styles.inputLabel}>Avatar</Text>
             <TouchableOpacity
               style={styles.avatarSelector}
               onPress={() => setShowAvatarPicker(true)}
@@ -463,7 +425,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
               {editAvatar ? (
                 <Text style={styles.selectedAvatar}>{editAvatar}</Text>
               ) : (
-                <Text style={styles.placeholderText}>Select an emoji</Text>
+                <Text style={styles.placeholderText}>Select an emoji avatar</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -344,6 +344,15 @@ const MainApp = () => {
             </View>
           )}
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => {
+            setSelectedManagerId(currentUser.uid);
+            setCurrentScreen('profile');
+          }}
+        >
+          <Text style={styles.profileIcon}>👤</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
@@ -598,6 +607,15 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  profileButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  profileIcon: {
+    fontSize: 20,
   },
   logo: {
     fontSize: 32,
