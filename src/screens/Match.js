@@ -503,18 +503,27 @@ const Match = ({ onBack, activeMatchId }) => {
     const unsubscribe = onValue(matchesRef, (snapshot) => {
       if (snapshot.exists()) {
         const allMatches = [];
+        const now = Date.now();
+        const maxMatchAge = 3 * 60 * 60 * 1000; // 3 hours max
+
         snapshot.forEach(childSnapshot => {
           const match = childSnapshot.val();
+          const matchAge = now - (match.createdAt || 0);
+
           // Only show matches that are:
           // 1. Currently playing or at halftime (truly live)
           // 2. Not involving the current user (exclude own matches)
           // 3. Not cancelled or finished
+          // 4. Have a valid createdAt timestamp
+          // 5. Are not older than 3 hours (to filter out stuck matches)
           if (
             (match.state === 'playing' || match.state === 'halftime') &&
             match.state !== 'cancelled' &&
             match.state !== 'finished' &&
             match.homeManager?.uid !== currentUser.uid &&
-            match.awayManager?.uid !== currentUser.uid
+            match.awayManager?.uid !== currentUser.uid &&
+            match.createdAt &&
+            matchAge < maxMatchAge
           ) {
             allMatches.push({ id: childSnapshot.key, ...match });
           }
@@ -2154,48 +2163,32 @@ const Match = ({ onBack, activeMatchId }) => {
                 style={styles.clearStuckMatchesButton}
                 onPress={async () => {
                   if (typeof window !== 'undefined' && window.confirm) {
-                    const confirmed = window.confirm('Clear ALL visible live/stuck matches? This will cancel all matches shown below.');
+                    const confirmed = window.confirm(`Clear ALL ${liveMatches.length} visible live/stuck match(es)? This will cancel all matches shown below.`);
                     if (!confirmed) return;
                   }
 
                   try {
-                    const matchesRef = ref(database, 'matches');
-                    const snapshot = await get(matchesRef);
-                    let clearedCount = 0;
-
-                    if (snapshot.exists()) {
-                      const updates = {};
-                      snapshot.forEach(childSnapshot => {
-                        const match = childSnapshot.val();
-                        // Cancel all stuck matches (playing, halftime, waiting, prematch)
-                        if (
-                          match.state === 'playing' ||
-                          match.state === 'halftime' ||
-                          match.state === 'waiting' ||
-                          match.state === 'prematch' ||
-                          match.state === 'ready'
-                        ) {
-                          updates[`matches/${childSnapshot.key}/state`] = 'cancelled';
-                          updates[`matches/${childSnapshot.key}/cancelledReason`] = 'Bulk cleanup - stuck match';
-                          updates[`matches/${childSnapshot.key}/cancelledAt`] = Date.now();
-                          clearedCount++;
-                        }
-                      });
-
-                      if (Object.keys(updates).length > 0) {
-                        await update(ref(database), updates);
-                        showAlert('Success', `Cleared ${clearedCount} match(es)`);
-                      } else {
-                        showAlert('Info', 'No active matches found to clear');
-                      }
+                    if (liveMatches.length === 0) {
+                      showAlert('Info', 'No matches to clear');
+                      return;
                     }
+
+                    const updates = {};
+                    liveMatches.forEach(match => {
+                      updates[`matches/${match.id}/state`] = 'cancelled';
+                      updates[`matches/${match.id}/cancelledReason`] = 'Bulk cleanup - stuck match';
+                      updates[`matches/${match.id}/cancelledAt`] = Date.now();
+                    });
+
+                    await update(ref(database), updates);
+                    showAlert('Success', `Cleared ${liveMatches.length} match(es)`);
                   } catch (error) {
                     console.error('Error clearing stuck matches:', error);
                     showAlert('Error', 'Failed to clear stuck matches');
                   }
                 }}
               >
-                <Text style={styles.clearStuckMatchesText}>🧹 Clear ALL Visible Matches</Text>
+                <Text style={styles.clearStuckMatchesText}>🧹 Clear ALL Visible Matches ({liveMatches.length})</Text>
               </TouchableOpacity>
 
               {liveMatches.map(match => (

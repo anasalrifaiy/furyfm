@@ -68,15 +68,21 @@ const ManagerProfile = ({ managerId, onBack }) => {
 
     try {
       setUploadingImage(true);
+      console.log('Starting image upload...');
 
       // Create a reference to the storage location
       const imageRef = storageRef(storage, `profilePictures/${currentUser.uid}/${Date.now()}_${file.name}`);
+      console.log('Storage ref created:', imageRef.fullPath);
 
       // Upload the file
-      await uploadBytes(imageRef, file);
+      console.log('Uploading file...');
+      const uploadResult = await uploadBytes(imageRef, file);
+      console.log('Upload complete:', uploadResult);
 
       // Get the download URL
+      console.log('Getting download URL...');
       const downloadURL = await getDownloadURL(imageRef);
+      console.log('Download URL:', downloadURL);
 
       // Update the edit state
       setEditProfilePicture(downloadURL);
@@ -84,7 +90,8 @@ const ManagerProfile = ({ managerId, onBack }) => {
       showAlert('Success', 'Image uploaded successfully!');
     } catch (error) {
       console.error('Error uploading image:', error);
-      showAlert('Error', 'Failed to upload image. Please try again.');
+      console.error('Error details:', error.code, error.message);
+      showAlert('Error', `Failed to upload image: ${error.message}`);
     } finally {
       setUploadingImage(false);
     }
