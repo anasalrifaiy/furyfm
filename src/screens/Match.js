@@ -2079,6 +2079,52 @@ const Match = ({ onBack, activeMatchId }) => {
                 <View style={styles.dividerLine} />
               </View>
 
+              <TouchableOpacity
+                style={styles.clearStuckMatchesButton}
+                onPress={async () => {
+                  if (typeof window !== 'undefined' && window.confirm) {
+                    const confirmed = window.confirm('Clear all stuck watch matches? This will cancel matches that are over 1 hour old.');
+                    if (!confirmed) return;
+                  }
+
+                  try {
+                    const matchesRef = ref(database, 'matches');
+                    const snapshot = await get(matchesRef);
+                    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+                    let clearedCount = 0;
+
+                    if (snapshot.exists()) {
+                      const updates = {};
+                      snapshot.forEach(childSnapshot => {
+                        const match = childSnapshot.val();
+                        // Cancel old stuck matches
+                        if (
+                          (match.state === 'playing' || match.state === 'halftime' || match.state === 'waiting' || match.state === 'prematch') &&
+                          match.createdAt && match.createdAt < oneHourAgo
+                        ) {
+                          updates[`matches/${childSnapshot.key}/state`] = 'cancelled';
+                          updates[`matches/${childSnapshot.key}/cancelledReason`] = 'Stuck match cleanup';
+                          updates[`matches/${childSnapshot.key}/cancelledAt`] = Date.now();
+                          clearedCount++;
+                        }
+                      });
+
+                      if (Object.keys(updates).length > 0) {
+                        await update(ref(database), updates);
+                        showAlert('Success', `Cleared ${clearedCount} stuck match(es)`);
+                      } else {
+                        showAlert('Info', 'No stuck matches found (older than 1 hour)');
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error clearing stuck matches:', error);
+                    showAlert('Error', 'Failed to clear stuck matches');
+                  }
+                }}
+              >
+                <Text style={styles.clearStuckMatchesText}>🧹 Clear Stuck Matches (1+ hour old)</Text>
+              </TouchableOpacity>
+
               {liveMatches.map(match => (
                 <TouchableOpacity
                   key={match.id}
@@ -4583,6 +4629,18 @@ const styles = StyleSheet.create({
   pauseSubButtonDisabled: {
     backgroundColor: '#888',
     opacity: 0.5,
+  },
+  clearStuckMatchesButton: {
+    backgroundColor: '#f5576c',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  clearStuckMatchesText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   liveMatchCard: {
     backgroundColor: '#1a1f3a',
