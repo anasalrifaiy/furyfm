@@ -2223,8 +2223,11 @@ const Match = ({ onBack, activeMatchId }) => {
                         style={styles.cancelLiveMatchButton}
                         onPress={async (e) => {
                           e.stopPropagation();
+                          const homeName = match.homeManager?.managerName || match.homeManager?.name || 'Unknown';
+                          const awayName = match.awayManager?.managerName || match.awayManager?.name || 'Unknown';
+
                           if (typeof window !== 'undefined' && window.confirm) {
-                            const confirmed = window.confirm(`Cancel this match between ${match.homeManager.managerName} and ${match.awayManager.managerName}?`);
+                            const confirmed = window.confirm(`Cancel this match between ${homeName} and ${awayName}?`);
                             if (!confirmed) return;
                           }
 
@@ -2247,13 +2250,17 @@ const Match = ({ onBack, activeMatchId }) => {
                     </View>
                     <View style={styles.liveMatchTeams}>
                       <View style={styles.liveMatchTeam}>
-                        <Text style={styles.liveMatchTeamName}>{match.homeManager.managerName}</Text>
+                        <Text style={styles.liveMatchTeamName}>
+                          {match.homeManager?.clubName || match.homeManager?.managerName || match.homeManager?.name || 'Unknown'}
+                        </Text>
                         <Text style={styles.liveMatchScore}>{match.homeScore || 0}</Text>
                       </View>
                       <Text style={styles.liveMatchVs}>vs</Text>
                       <View style={styles.liveMatchTeam}>
                         <Text style={styles.liveMatchScore}>{match.awayScore || 0}</Text>
-                        <Text style={styles.liveMatchTeamName}>{match.awayManager.managerName}</Text>
+                        <Text style={styles.liveMatchTeamName}>
+                          {match.awayManager?.clubName || match.awayManager?.managerName || match.awayManager?.name || 'Unknown'}
+                        </Text>
                       </View>
                     </View>
                     <View style={styles.watchButton}>
@@ -3450,6 +3457,22 @@ const Match = ({ onBack, activeMatchId }) => {
               <Text style={styles.spectatorDesc}>You are watching this match live</Text>
             </View>
           </View>
+
+          {/* Watchers List */}
+          {currentMatch?.spectators && Object.keys(currentMatch.spectators).length > 0 && (
+            <View style={styles.watchersCard}>
+              <Text style={styles.watchersTitle}>
+                👁️ Watching ({Object.keys(currentMatch.spectators).length})
+              </Text>
+              <View style={styles.watchersList}>
+                {Object.entries(currentMatch.spectators).map(([uid, spectator]) => (
+                  <View key={uid} style={styles.watcherChip}>
+                    <Text style={styles.watcherName}>{spectator.name || 'Unknown'}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.liveScoreBoard}>
             <View style={styles.minuteDisplay}>
@@ -4881,6 +4904,38 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  watchersCard: {
+    backgroundColor: 'rgba(26, 31, 58, 0.7)',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 53, 97, 0.5)',
+  },
+  watchersTitle: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  watchersList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  watcherChip: {
+    backgroundColor: 'rgba(102, 126, 234, 0.3)',
+    borderRadius: 15,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.5)',
+  },
+  watcherName: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '500',
   },
   squadsSection: {
     marginTop: 20,
