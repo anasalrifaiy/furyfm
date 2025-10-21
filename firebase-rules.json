@@ -5,8 +5,50 @@
         // Anyone authenticated can read any manager (needed for leaderboards, matchmaking, etc.)
         ".read": "auth != null",
 
-        // Users can only write to their own data
-        ".write": "auth != null && auth.uid == $uid",
+        // Match history can be written by any authenticated user (match participants write to each other)
+        "matchHistory": {
+          ".read": "auth != null && auth.uid == $uid",
+          "$historyId": {
+            ".write": "auth != null"
+          }
+        },
+
+        // League matches can be written by any authenticated user
+        "leagueMatches": {
+          ".read": "auth != null && auth.uid == $uid",
+          "$opponentId": {
+            ".write": "auth != null"
+          }
+        },
+
+        // Stats fields that can be updated by match participants
+        "wins": {
+          ".write": "auth != null"
+        },
+        "draws": {
+          ".write": "auth != null"
+        },
+        "losses": {
+          ".write": "auth != null"
+        },
+        "leagueWins": {
+          ".write": "auth != null"
+        },
+        "leagueDraws": {
+          ".write": "auth != null"
+        },
+        "leagueLosses": {
+          ".write": "auth != null"
+        },
+        "leaguePoints": {
+          ".write": "auth != null"
+        },
+        "leagueGoalsFor": {
+          ".write": "auth != null"
+        },
+        "leagueGoalsAgainst": {
+          ".write": "auth != null"
+        },
 
         // Notifications can be written by others (for sending challenges, etc.)
         "notifications": {
@@ -14,6 +56,11 @@
           "$notificationId": {
             ".write": "auth != null"
           }
+        },
+
+        // All other fields - users can only write to their own data
+        "$other": {
+          ".write": "auth != null && auth.uid == $uid"
         }
       }
     },
