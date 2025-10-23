@@ -118,7 +118,7 @@ const Squad = ({ onBack }) => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <PositionSection title={t('goalkeepers')} players={goalkeepers} color="#4facfe" />
           <PositionSection title={t('defenders')} players={defenders} color="#43e97b" />

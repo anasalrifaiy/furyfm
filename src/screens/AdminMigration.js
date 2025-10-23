@@ -222,7 +222,7 @@ const AdminMigration = ({ onBack }) => {
         <Text style={styles.title}>Admin Tools</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Squad Recovery Section - URGENT */}
         <View style={styles.warningCard}>
           <Text style={styles.warningIcon}>🚨</Text>

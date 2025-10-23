@@ -325,7 +325,7 @@ const Bank = ({ onBack }) => {
         <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Bank Loan Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>💰 {t('bankLoan')}</Text>

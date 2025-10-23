@@ -145,7 +145,7 @@ const TransferMarket = ({ onBack }) => {
           </View>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           <View style={styles.searchSection}>
             <TextInput
               style={styles.searchInput}

@@ -123,7 +123,7 @@ const CoachingStaff = ({ onBack }) => {
         <Text style={styles.budget}>{t('budget')}: {formatCurrency(managerProfile.budget)}</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Text style={styles.infoText}>
             {t('hireCoachesDesc')}

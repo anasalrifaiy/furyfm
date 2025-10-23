@@ -280,7 +280,7 @@ const Formation = ({ onBack }) => {
         <Text style={styles.title}>{t('formationTitle')}</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         <View style={styles.formationSelector}>
           <Text style={styles.selectorLabel}>{t('formationTitle')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>

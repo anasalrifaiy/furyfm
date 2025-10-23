@@ -1012,6 +1012,38 @@ const Match = ({ onBack, activeMatchId }) => {
         }
         localGoalscorers[scorer.id].goals++;
 
+        // Trigger visual goal celebration
+        const scorerName = scorer.name;
+        setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+
+        // Trigger shot animation
+        const shooterX = 40 + Math.random() * 20;
+        const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
+        const goalX = 50;
+        const goalY = isHomeGoal ? 2 : 98;
+
+        setShotAnimation({
+          fromX: shooterX,
+          fromY: shooterY,
+          toX: goalX + (Math.random() - 0.5) * 10,
+          toY: goalY,
+          startTime: Date.now()
+        });
+
+        // Show goal moment overlay after shot
+        setTimeout(() => {
+          setGoalMoment({
+            show: true,
+            scorer: scorerName,
+            team: isHomeGoal ? 'home' : 'away',
+            startTime: Date.now()
+          });
+          setTimeout(() => setGoalMoment(null), 2500);
+        }, 800);
+
+        // Auto-hide celebration
+        setTimeout(() => setGoalCelebration(null), 3000);
+
         console.log('GOAL!', eventText);
       }
 
@@ -1562,6 +1594,38 @@ const Match = ({ onBack, activeMatchId }) => {
           localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
         }
         localGoalscorers[scorer.id].goals++;
+
+        // Trigger visual goal celebration
+        const scorerName = scorer.name;
+        setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+
+        // Trigger shot animation
+        const shooterX = 40 + Math.random() * 20;
+        const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
+        const goalX = 50;
+        const goalY = isHomeGoal ? 2 : 98;
+
+        setShotAnimation({
+          fromX: shooterX,
+          fromY: shooterY,
+          toX: goalX + (Math.random() - 0.5) * 10,
+          toY: goalY,
+          startTime: Date.now()
+        });
+
+        // Show goal moment overlay after shot
+        setTimeout(() => {
+          setGoalMoment({
+            show: true,
+            scorer: scorerName,
+            team: isHomeGoal ? 'home' : 'away',
+            startTime: Date.now()
+          });
+          setTimeout(() => setGoalMoment(null), 2500);
+        }, 800);
+
+        // Auto-hide celebration
+        setTimeout(() => setGoalCelebration(null), 3000);
 
         console.log('GOAL!', eventText);
       }

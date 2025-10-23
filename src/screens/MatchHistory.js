@@ -111,7 +111,7 @@ const MatchHistory = ({ onBack }) => {
         <Text style={styles.subtitle}>Total Matches: {matches.length}</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {matches.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>⚽</Text>
