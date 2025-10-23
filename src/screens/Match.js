@@ -30,6 +30,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
   const [goalCelebration, setGoalCelebration] = useState(null); // { scorer: 'Player Name', team: 'home'/'away' }
   const [shotAnimation, setShotAnimation] = useState(null); // { fromX, fromY, toX, toY, startTime }
+  const [goalMoment, setGoalMoment] = useState(null); // { show: true, scorer, team, startTime }
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
 
@@ -432,6 +433,18 @@ const Match = ({ onBack, activeMatchId }) => {
                 toY: goalY,
                 startTime: Date.now()
               });
+
+              // Show dramatic goal moment overlay after shot reaches goal
+              setTimeout(() => {
+                setGoalMoment({
+                  show: true,
+                  scorer: scorerName,
+                  team: isHomeGoal ? 'home' : 'away',
+                  startTime: Date.now()
+                });
+                // Hide goal moment after 2.5 seconds
+                setTimeout(() => setGoalMoment(null), 2500);
+              }, 800); // Wait for shot animation to complete
 
               // Auto-hide celebration after 3 seconds
               setTimeout(() => setGoalCelebration(null), 3000);
@@ -3115,36 +3128,36 @@ const Match = ({ onBack, activeMatchId }) => {
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide
-                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.8 : (isMidfielder ? 1.4 : 2.0));
-                const attackingVertical = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.8 : 2.5));
+                // When attacking: push forward, spread wide - SMOOTHER movement
+                const attackingHorizontal = isGK ? 0.05 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
+                const attackingVertical = isGK ? 0.05 : (isDefender ? 0.4 : (isMidfielder ? 0.6 : 0.9));
 
-                xMovement = Math.sin(time * 0.8 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.6 + idx * 0.3) * attackingVertical - (isDefender ? 1 : 3); // Push up
+                xMovement = Math.sin(time * 0.3 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.25 + idx * 0.3) * attackingVertical - (isDefender ? 0.5 : 1.2); // Push up
 
                 // Wide players move to flanks when attacking
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 1.5;
+                  xMovement -= 0.6;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 1.5;
+                  xMovement += 0.6;
                 }
               } else {
-                // When defending: drop back, compact shape
-                const defendingHorizontal = isGK ? 0.2 : (isDefender ? 0.5 : (isMidfielder ? 0.7 : 1.0));
-                const defendingVertical = isGK ? 0.1 : (isDefender ? 0.4 : (isMidfielder ? 0.8 : 1.2));
+                // When defending: drop back, compact shape - SMOOTHER movement
+                const defendingHorizontal = isGK ? 0.08 : (isDefender ? 0.2 : (isMidfielder ? 0.3 : 0.4));
+                const defendingVertical = isGK ? 0.05 : (isDefender ? 0.15 : (isMidfielder ? 0.3 : 0.4));
 
-                xMovement = Math.sin(time * 0.6 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.5 + idx * 0.3) * defendingVertical + (isAttacker ? 2 : 0); // Drop back
+                xMovement = Math.sin(time * 0.25 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.2 + idx * 0.3) * defendingVertical + (isAttacker ? 0.8 : 0); // Drop back
 
                 // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.5;
-                else if (player.baseX > 65) xMovement -= 0.5;
+                if (player.baseX < 35) xMovement += 0.2;
+                else if (player.baseX > 65) xMovement -= 0.2;
               }
 
-              // Player with ball moves more actively
+              // Player with ball moves slightly more actively
               if (hasBall) {
-                xMovement *= 1.5;
-                yMovement *= 1.5;
+                xMovement *= 1.2;
+                yMovement *= 1.2;
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
@@ -3182,36 +3195,36 @@ const Match = ({ onBack, activeMatchId }) => {
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide
-                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.8 : (isMidfielder ? 1.4 : 2.0));
-                const attackingVertical = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.8 : 2.5));
+                // When attacking: push forward, spread wide - SMOOTHER movement
+                const attackingHorizontal = isGK ? 0.05 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
+                const attackingVertical = isGK ? 0.05 : (isDefender ? 0.4 : (isMidfielder ? 0.6 : 0.9));
 
-                xMovement = Math.sin(time * 0.8 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.6 + idx * 0.3) * attackingVertical + (isDefender ? 1 : 3); // Push down (inverted)
+                xMovement = Math.sin(time * 0.3 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.25 + idx * 0.3) * attackingVertical + (isDefender ? 0.5 : 1.2); // Push down (inverted)
 
                 // Wide players move to flanks when attacking
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 1.5;
+                  xMovement -= 0.6;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 1.5;
+                  xMovement += 0.6;
                 }
               } else {
-                // When defending: drop back, compact shape
-                const defendingHorizontal = isGK ? 0.2 : (isDefender ? 0.5 : (isMidfielder ? 0.7 : 1.0));
-                const defendingVertical = isGK ? 0.1 : (isDefender ? 0.4 : (isMidfielder ? 0.8 : 1.2));
+                // When defending: drop back, compact shape - SMOOTHER movement
+                const defendingHorizontal = isGK ? 0.08 : (isDefender ? 0.2 : (isMidfielder ? 0.3 : 0.4));
+                const defendingVertical = isGK ? 0.05 : (isDefender ? 0.15 : (isMidfielder ? 0.3 : 0.4));
 
-                xMovement = Math.sin(time * 0.6 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.5 + idx * 0.3) * defendingVertical - (isAttacker ? 2 : 0); // Pull up (inverted)
+                xMovement = Math.sin(time * 0.25 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.2 + idx * 0.3) * defendingVertical - (isAttacker ? 0.8 : 0); // Pull up (inverted)
 
                 // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.5;
-                else if (player.baseX > 65) xMovement -= 0.5;
+                if (player.baseX < 35) xMovement += 0.2;
+                else if (player.baseX > 65) xMovement -= 0.2;
               }
 
-              // Player with ball moves more actively
+              // Player with ball moves slightly more actively
               if (hasBall) {
-                xMovement *= 1.5;
-                yMovement *= 1.5;
+                xMovement *= 1.2;
+                yMovement *= 1.2;
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
@@ -3635,6 +3648,20 @@ const Match = ({ onBack, activeMatchId }) => {
           </View>
           );
         })()}
+
+        {/* Goal Moment - Dramatic full-screen overlay when goal is scored */}
+        {goalMoment && (
+          <View style={styles.goalMomentOverlay}>
+            <View style={styles.goalMomentContent}>
+              <Text style={styles.goalMomentBig}>⚽</Text>
+              <Text style={styles.goalMomentTitle}>GOAAAAAL!</Text>
+              <Text style={styles.goalMomentScorer}>{goalMoment.scorer}</Text>
+              <View style={[styles.goalMomentTeamBadge, goalMoment.team === 'home' ? styles.goalMomentHome : styles.goalMomentAway]}>
+                <Text style={styles.goalMomentTeamText}>{goalMoment.team === 'home' ? currentMatch.homeManager.name : currentMatch.awayManager.name}</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Goal Celebration Overlay - Fixed position */}
         {goalCelebration && (
@@ -5607,6 +5634,64 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888',
     textAlign: 'center',
+  },
+  goalMomentOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20000,
+    pointerEvents: 'none',
+  },
+  goalMomentContent: {
+    alignItems: 'center',
+  },
+  goalMomentBig: {
+    fontSize: 120,
+    marginBottom: 20,
+  },
+  goalMomentTitle: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textShadowColor: 'rgba(255, 215, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 30,
+    marginBottom: 20,
+    letterSpacing: 8,
+  },
+  goalMomentScorer: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 30,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
+  goalMomentTeamBadge: {
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 30,
+    borderWidth: 3,
+  },
+  goalMomentHome: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    borderColor: '#667eea',
+  },
+  goalMomentAway: {
+    background: 'linear-gradient(135deg, #f5576c 0%, #f093fb 100%)',
+    borderColor: '#f5576c',
+  },
+  goalMomentTeamText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textTransform: 'uppercase',
   },
   goalCelebrationOverlay: {
     position: 'fixed',

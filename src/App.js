@@ -412,7 +412,14 @@ const MainApp = () => {
             </TouchableOpacity>
           </View>
         )}
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { minHeight: '100%' } // Ensures content fills screen height
+          ]}
+          showsVerticalScrollIndicator={true}
+        >
           {renderTabContent()}
         </ScrollView>
         <BottomNavigation currentTab={currentTab} onTabChange={setCurrentTab} />
@@ -671,7 +678,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 80,
+    paddingBottom: 100, // Increased to ensure bottom menu never overlaps content
   },
   homeContainer: {
     flex: 1,
