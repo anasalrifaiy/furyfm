@@ -419,7 +419,6 @@ const MainApp = () => {
         >
           {renderTabContent()}
         </ScrollView>
-        <BottomNavigation currentTab={currentTab} onTabChange={setCurrentTab} />
       </View>
     );
   };
@@ -430,39 +429,46 @@ const MainApp = () => {
   };
 
   const renderCurrentScreen = () => {
+    // Wrap non-home screens with bottom padding for the navigation bar
+    const wrapWithPadding = (component) => (
+      <View style={{ flex: 1, paddingBottom: currentScreen === 'match' ? 0 : 80 }}>
+        {component}
+      </View>
+    );
+
     switch (currentScreen) {
       case 'market':
-        return <TransferMarket onBack={handleBackToHome} />;
+        return wrapWithPadding(<TransferMarket onBack={handleBackToHome} />);
       case 'squad':
-        return <Squad onBack={handleBackToHome} />;
+        return wrapWithPadding(<Squad onBack={handleBackToHome} />);
       case 'formation':
-        return <Formation onBack={handleBackToHome} />;
+        return wrapWithPadding(<Formation onBack={handleBackToHome} />);
       case 'training':
-        return <Training onBack={handleBackToHome} />;
+        return wrapWithPadding(<Training onBack={handleBackToHome} />);
       case 'coaching':
-        return <CoachingStaff onBack={handleBackToHome} />;
+        return wrapWithPadding(<CoachingStaff onBack={handleBackToHome} />);
       case 'facilities':
-        return <ClubFacilities onBack={handleBackToHome} />;
+        return wrapWithPadding(<ClubFacilities onBack={handleBackToHome} />);
       case 'bank':
-        return <Bank onBack={handleBackToHome} />;
+        return wrapWithPadding(<Bank onBack={handleBackToHome} />);
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setCurrentTab('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':
-        return <MatchHistory onBack={handleBackToHome} />;
+        return wrapWithPadding(<MatchHistory onBack={handleBackToHome} />);
       case 'friends':
-        return <Friends onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
+        return wrapWithPadding(<Friends onBack={handleBackToHome} onViewProfile={handleViewProfile} />);
       case 'leaderboard':
-        return <Leaderboard onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
+        return wrapWithPadding(<Leaderboard onBack={handleBackToHome} onViewProfile={handleViewProfile} />);
       case 'notifications':
-        return <Notifications onBack={handleBackToHome} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
+        return wrapWithPadding(<Notifications onBack={handleBackToHome} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />);
       case 'profile':
-        return <ManagerProfile managerId={selectedManagerId} onBack={handleBackToHome} />;
+        return wrapWithPadding(<ManagerProfile managerId={selectedManagerId} onBack={handleBackToHome} />);
       case 'proleague':
-        return <ProLeague onBack={handleBackToHome} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />;
+        return wrapWithPadding(<ProLeague onBack={handleBackToHome} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />);
       case 'adminMigration':
         // Only allow admin user to access this screen
         if (currentUser?.email === 'anasalrifai90@gmail.com') {
-          return <AdminMigration onBack={handleBackToHome} />;
+          return wrapWithPadding(<AdminMigration onBack={handleBackToHome} />);
         } else {
           // Redirect non-admin users back to home
           setCurrentScreen('home');
@@ -489,6 +495,12 @@ const MainApp = () => {
       ]}
     >
       {renderCurrentScreen()}
+
+      {/* Bottom Navigation - Always visible on all screens */}
+      {currentScreen !== 'match' && <BottomNavigation currentTab={currentTab} onTabChange={(tab) => {
+        setCurrentTab(tab);
+        setCurrentScreen('home'); // Navigate back to home when changing tabs
+      }} />}
 
       {/* Active Match Indicator Banner */}
       {activeMatch && currentScreen !== 'match' && currentScreen !== 'notifications' && (
