@@ -219,7 +219,7 @@ const Friends = ({ onBack, onViewProfile }) => {
         </View>
       )}
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {activeTab === 'friends' ? (
           friends.length === 0 ? (
             <View style={styles.emptyState}>

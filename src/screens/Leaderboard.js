@@ -120,7 +120,7 @@ const Leaderboard = ({ onBack, onViewProfile }) => {
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {managers.map((manager, index) => {
           const isCurrentUser = manager.uid === currentUser?.uid;
 

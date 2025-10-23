@@ -305,7 +305,7 @@ const ManagerProfile = ({ managerId, onBack }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {activeTab === 'squad' ? (
           (manager.squad || []).length === 0 ? (
             <View style={styles.emptyState}>

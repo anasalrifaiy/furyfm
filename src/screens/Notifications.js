@@ -385,7 +385,7 @@ const Notifications = ({ onBack, onViewProfile, onViewOffer, onAcceptMatchChalle
         </View>
       )}
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🔔</Text>

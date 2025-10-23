@@ -288,7 +288,7 @@ const ProLeague = ({ onBack, onStartMatch }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {selectedTab === 'matches' ? (
           <>
             <View style={styles.infoCard}>
