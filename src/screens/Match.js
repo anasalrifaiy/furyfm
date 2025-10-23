@@ -29,6 +29,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [prematchFormation, setPrematchFormation] = useState('4-3-3');
   const [selectingPlayerSlot, setSelectingPlayerSlot] = useState(null);
   const [goalCelebration, setGoalCelebration] = useState(null); // { scorer: 'Player Name', team: 'home'/'away' }
+  const [shotAnimation, setShotAnimation] = useState(null); // { fromX, fromY, toX, toY, startTime }
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
 
@@ -403,7 +404,7 @@ const Match = ({ onBack, activeMatchId }) => {
           handleMatchFinished(matchData);
         }
 
-        // Check for new goals and show celebration (only if it's a new event)
+        // Check for new goals and show celebration + shot animation (only if it's a new event)
         if (matchData.events && matchData.events.length > 0) {
           const latestEvent = matchData.events[0];
           if (latestEvent.includes('⚽ GOAL!') && latestEvent !== lastCelebratedEventRef.current) {
@@ -413,10 +414,28 @@ const Match = ({ onBack, activeMatchId }) => {
               const scorerName = scorerMatch[1].trim();
               // Determine which team scored
               const isHomeGoal = matchData.homeManager.squad.some(p => latestEvent.includes(p.name));
+
+              // Show goal celebration
               setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
               lastCelebratedEventRef.current = latestEvent; // Mark this event as celebrated
-              // Auto-hide after 3 seconds
+
+              // Trigger shot animation towards goal
+              const shooterX = 40 + Math.random() * 20; // Attack zone X
+              const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15; // Attack zone Y
+              const goalX = 50; // Center of goal
+              const goalY = isHomeGoal ? 2 : 98; // Top or bottom goal
+
+              setShotAnimation({
+                fromX: shooterX,
+                fromY: shooterY,
+                toX: goalX + (Math.random() - 0.5) * 10, // Slight variation
+                toY: goalY,
+                startTime: Date.now()
+              });
+
+              // Auto-hide celebration after 3 seconds
               setTimeout(() => setGoalCelebration(null), 3000);
+              // Shot animation clears itself in renderPitch
             }
           }
         }
@@ -1114,22 +1133,40 @@ const Match = ({ onBack, activeMatchId }) => {
       await update(matchRef, { matchStartTime: now, lastUpdateTime: now });
     }
 
-    // Calculate team strengths
+    // Enhanced team strength calculation with formation and tactics consideration
     let homeStrength = calculateTeamStrength(match.homeManager.squad);
     let awayStrength = calculateTeamStrength(match.awayManager.squad);
 
-    // Apply tactic bonuses
+    // Apply formation bonuses - more attackers = higher attack strength
+    const homeFormation = match.homeManager.formation || '4-3-3';
+    const awayFormation = match.awayManager.formation || '4-3-3';
+
+    const formationBonus = (formation) => {
+      const formationMultipliers = {
+        '4-3-3': 1.05,  // Balanced attacking
+        '4-4-2': 1.0,   // Standard balanced
+        '3-5-2': 1.02,  // Slight attacking edge
+        '4-2-3-1': 1.03, // Good attacking structure
+        '3-4-3': 1.08   // Very attacking
+      };
+      return formationMultipliers[formation] || 1.0;
+    };
+
+    homeStrength *= formationBonus(homeFormation);
+    awayStrength *= formationBonus(awayFormation);
+
+    // Apply tactic bonuses with more realistic impact
     const homeTactic = match.homeTactic || 'Balanced';
     const awayTactic = match.awayTactic || 'Balanced';
 
-    // Attacking: +15% attack, -10% defense
-    // Defensive: +15% defense, -10% attack
+    // Attacking: +20% goal scoring chance, riskier defense
+    // Defensive: +10% defensive stability, -15% goal scoring
     // Balanced: no change
     const applyTacticBonus = (strength, tactic) => {
       if (tactic === 'Attacking') {
-        return strength * 1.15; // +15% attacking power
+        return strength * 1.20; // +20% attacking power
       } else if (tactic === 'Defensive') {
-        return strength * 0.90; // -10% attacking power (more defensive)
+        return strength * 0.85; // Reduce attacking threat
       }
       return strength; // Balanced - no change
     };
@@ -1146,22 +1183,36 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const totalStrength = homeStrength + awayStrength;
 
-    // Calculate win probabilities with strength-based decisiveness
-    // Stronger team has higher chance, but upset is still possible (10-15% chance)
+    // Enhanced win probability calculation with more realistic outcomes
+    // Based on real football statistics and team quality differences
     const strengthRatio = homeStrength / awayStrength;
     let homeChance, awayChance;
 
-    if (strengthRatio > 1.2) {
-      // Home team significantly stronger
-      homeChance = 0.65 + Math.min(0.15, (strengthRatio - 1.2) * 0.3); // 65-80%
+    // More sophisticated probability model
+    if (strengthRatio > 1.5) {
+      // Home team much stronger (e.g., 85 vs 75 overall)
+      homeChance = 0.70 + Math.min(0.15, (strengthRatio - 1.5) * 0.25); // 70-85%
+    } else if (strengthRatio > 1.2) {
+      // Home team stronger (e.g., 82 vs 78 overall)
+      homeChance = 0.60 + (strengthRatio - 1.2) * 0.30; // 60-70%
+    } else if (strengthRatio < 0.67) {
+      // Away team much stronger
+      homeChance = 0.15 + Math.max(0, (strengthRatio - 0.5) * 0.2); // 15-18%
     } else if (strengthRatio < 0.83) {
-      // Away team significantly stronger
-      homeChance = 0.20 - Math.min(0.05, (0.83 - strengthRatio) * 0.3); // 15-20%
+      // Away team stronger
+      homeChance = 0.30 - (0.83 - strengthRatio) * 0.4; // 25-30%
     } else {
-      // Teams evenly matched - home advantage applies
-      homeChance = (homeStrength / totalStrength) * 0.55 + 0.05;
+      // Teams evenly matched - home advantage + quality difference
+      const baseChance = homeStrength / totalStrength; // Pure strength ratio
+      const homeAdvantage = 0.08; // 8% home advantage bonus
+      homeChance = baseChance + homeAdvantage;
     }
+
+    // Ensure probability bounds
+    homeChance = Math.max(0.10, Math.min(0.90, homeChance));
     awayChance = 1 - homeChance;
+
+    console.log('Enhanced goal probability - Home:', (homeChance * 100).toFixed(1), '% Away:', (awayChance * 100).toFixed(1), '%');
 
     let currentSecond = 0;
 
@@ -1218,7 +1269,7 @@ const Match = ({ onBack, activeMatchId }) => {
         const substitutedPlayers = latestData.substitutedPlayers || [];
 
         if (eventRoll < 0.04) {
-          // GOAL EVENT (4% chance)
+          // GOAL EVENT (4% chance) - Enhanced realistic goal scoring logic
           const teamRoll = Math.random();
           const isHomeGoal = teamRoll < homeChance;
           const team = isHomeGoal ? match.homeManager : match.awayManager;
@@ -1227,24 +1278,40 @@ const Match = ({ onBack, activeMatchId }) => {
           // Filter out substituted players
           const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
 
-          // Realistic goal scoring - weight by position
+          // Enhanced realistic goal scoring - weight by position AND overall rating
           const attackers = availablePlayers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-          const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-          const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+          const attackingMids = availablePlayers.filter(p => ['CAM', 'CM'].includes(p.position));
+          const wideMids = availablePlayers.filter(p => ['LM', 'RM', 'LWB', 'RWB'].includes(p.position));
+          const defensiveMids = availablePlayers.filter(p => ['CDM'].includes(p.position));
+          const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB'].includes(p.position));
 
           let scorer;
           const scorerRoll = Math.random();
-          if (scorerRoll < 0.70 && attackers.length > 0) {
-            // 70% chance for attackers
-            scorer = attackers[Math.floor(Math.random() * attackers.length)];
-          } else if (scorerRoll < 0.95 && midfielders.length > 0) {
-            // 25% chance for midfielders
-            scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
-          } else if (defenders.length > 0) {
-            // 5% chance for defenders (headers from set pieces)
-            scorer = defenders[Math.floor(Math.random() * defenders.length)];
+
+          // Weighted scoring based on realistic probabilities and player quality
+          if (scorerRoll < 0.60 && attackers.length > 0) {
+            // 60% chance for strikers/wingers - pick best attacker with some randomness
+            const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+            weightedAttackers.sort((a, b) => b.weight - a.weight);
+            scorer = weightedAttackers[0].player;
+          } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+            // 20% chance for attacking/central midfielders
+            const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+            weightedMids.sort((a, b) => b.weight - a.weight);
+            scorer = weightedMids[0].player;
+          } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+            // 10% chance for wide midfielders/wingbacks
+            scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
+          } else if (scorerRoll < 0.96 && defenders.length > 0) {
+            // 6% chance for defenders (set pieces)
+            // Pick tallest/best defender for headers
+            const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
+            scorer = sortedDefenders[0];
+          } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+            // 3% chance for defensive midfielders (long shots)
+            scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
           } else {
-            // Fallback to any outfield player (excluding GK)
+            // 1% rare case - any outfield player (excluding GK)
             const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
             scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
           }
@@ -1255,7 +1322,10 @@ const Match = ({ onBack, activeMatchId }) => {
 
           await update(matchRef, newScore);
 
-          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+          // Enhanced goal event text with more variety
+          const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
+          const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
 
           // Track goalscorer for XP rewards
           const goalscorers = latestData.goalscorers || {};
@@ -1552,7 +1622,7 @@ const Match = ({ onBack, activeMatchId }) => {
       const substitutedPlayers = currentData.substitutedPlayers || [];
 
       if (eventRoll < 0.04) {
-        // GOAL EVENT (4% chance)
+        // GOAL EVENT (4% chance) - Enhanced realistic second half goal scoring
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
@@ -1561,20 +1631,39 @@ const Match = ({ onBack, activeMatchId }) => {
         // Filter out substituted players
         const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
 
-        // Realistic goal scoring - weight by position
+        // Enhanced realistic goal scoring - weight by position AND overall rating
         const attackers = availablePlayers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-        const midfielders = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-        const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+        const attackingMids = availablePlayers.filter(p => ['CAM', 'CM'].includes(p.position));
+        const wideMids = availablePlayers.filter(p => ['LM', 'RM', 'LWB', 'RWB'].includes(p.position));
+        const defensiveMids = availablePlayers.filter(p => ['CDM'].includes(p.position));
+        const defenders = availablePlayers.filter(p => ['CB', 'LB', 'RB'].includes(p.position));
 
         let scorer;
         const scorerRoll = Math.random();
-        if (scorerRoll < 0.70 && attackers.length > 0) {
-          scorer = attackers[Math.floor(Math.random() * attackers.length)];
-        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
-          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
-        } else if (defenders.length > 0) {
-          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+
+        // Weighted scoring based on realistic probabilities and player quality
+        if (scorerRoll < 0.60 && attackers.length > 0) {
+          // 60% chance for strikers/wingers - pick best attacker with some randomness
+          const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedAttackers.sort((a, b) => b.weight - a.weight);
+          scorer = weightedAttackers[0].player;
+        } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+          // 20% chance for attacking/central midfielders
+          const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedMids.sort((a, b) => b.weight - a.weight);
+          scorer = weightedMids[0].player;
+        } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+          // 10% chance for wide midfielders/wingbacks
+          scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
+        } else if (scorerRoll < 0.96 && defenders.length > 0) {
+          // 6% chance for defenders (set pieces)
+          const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
+          scorer = sortedDefenders[0];
+        } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+          // 3% chance for defensive midfielders (long shots)
+          scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
         } else {
+          // 1% rare case - any outfield player (excluding GK)
           const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
         }
@@ -1585,7 +1674,10 @@ const Match = ({ onBack, activeMatchId }) => {
 
         await update(matchRef, newScore);
 
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} scores for ${team.name}!`;
+        // Enhanced goal event text with more variety
+        const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort', 'counter-attack goal', 'composed finish'];
+        const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
 
         // Track goalscorer for XP rewards
         const goalscorers = currentData.goalscorers || {};
@@ -2893,30 +2985,61 @@ const Match = ({ onBack, activeMatchId }) => {
       const homePlayers = getFormationPositions(homeFormation, homeSquad);
       const awayPlayers = getFormationPositions(awayFormation, awaySquad);
 
-      // Smooth, realistic movement based on time
-      const time = minute + (Date.now() % 1000) / 1000; // Add sub-second precision
-      const baseVariance = Math.sin(time / 2) * 4; // Slower, smoother movement
-      const verticalBase = Math.cos(time / 2.5) * 3;
+      // Advanced time-based animation system for realistic movement
+      const time = minute + (Date.now() % 1000) / 1000; // Sub-second precision
 
-      // Simulate ball possession - alternates between teams
-      const possessionTeam = Math.floor(minute / 5) % 2; // Changes every 5 minutes
+      // Determine possession with more intelligent switching based on events
+      const lastEvent = events[0] || '';
+      let possessionTeam = Math.floor(time / 8) % 2; // Changes every 8 seconds for longer attacks
 
-      // Select ball carrier from attacking players
-      const attackingPlayers = possessionTeam === 0
-        ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position))
-        : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+      // Check if last event indicates clear possession
+      if (lastEvent.includes('GOAL!')) {
+        // After goal, defending team gets possession
+        possessionTeam = lastEvent.includes(homeSquad[0]?.name) ? 1 : 0;
+      } else if (lastEvent.includes('save') || lastEvent.includes('denied')) {
+        // After save, defending team clears the ball
+        const isHomeGK = lastEvent.includes('GK') && homeSquad.some(p => lastEvent.includes(p.name));
+        possessionTeam = isHomeGK ? 0 : 1;
+      }
 
-      const ballCarrier = attackingPlayers.length > 0
-        ? attackingPlayers[Math.floor((minute * 7) % attackingPlayers.length)]
+      // Determine attack phase - build up, attacking, or defending
+      const attackPhase = Math.floor(time / 3) % 3; // 0: buildup, 1: attacking, 2: defending
+
+      // Select ball carrier based on attack phase
+      let attackingPlayers, ballCarrier;
+
+      if (attackPhase === 0) {
+        // Build-up phase: midfielders and defenders with ball
+        attackingPlayers = possessionTeam === 0
+          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB'].includes(p.position))
+          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB'].includes(p.position));
+      } else if (attackPhase === 1) {
+        // Attacking phase: forwards and attacking midfielders
+        attackingPlayers = possessionTeam === 0
+          ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position))
+          : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+      } else {
+        // Defensive phase: all outfield players
+        attackingPlayers = possessionTeam === 0
+          ? homePlayers.filter(p => p.position !== 'GK')
+          : awayPlayers.filter(p => p.position !== 'GK');
+      }
+
+      ballCarrier = attackingPlayers.length > 0
+        ? attackingPlayers[Math.floor((time * 11) % attackingPlayers.length)]
         : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
 
-      // Ball position near the ball carrier
+      // Calculate ball position with smooth movement
+      const ballMovementSpeed = 2.5; // Smoother ball movement
+      const ballPhaseOffset = Math.sin(time * ballMovementSpeed) * 3;
+      const ballVerticalOffset = Math.cos(time * ballMovementSpeed * 1.3) * 2;
+
       const ballX = possessionTeam === 0
-        ? ballCarrier.baseX + baseVariance
-        : 100 - ballCarrier.baseX - baseVariance;
+        ? ballCarrier.baseX + ballPhaseOffset
+        : 100 - ballCarrier.baseX - ballPhaseOffset;
       const ballY = possessionTeam === 0
-        ? ballCarrier.baseY + verticalBase
-        : 100 - ballCarrier.baseY + verticalBase;
+        ? ballCarrier.baseY + ballVerticalOffset
+        : 100 - ballCarrier.baseY + ballVerticalOffset;
 
       return (
         <View style={styles.pitchContainer}>
@@ -2943,7 +3066,40 @@ const Match = ({ onBack, activeMatchId }) => {
             {/* Ball with dynamic position */}
             <View style={[styles.ball, { left: `${ballX}%`, top: `${ballY}%` }]} />
 
-            {/* Home Team (bottom) - position-based movement */}
+            {/* Shot trajectory animation */}
+            {shotAnimation && (() => {
+              const elapsed = Date.now() - shotAnimation.startTime;
+              const duration = 800; // 800ms shot duration
+              const progress = Math.min(elapsed / duration, 1);
+
+              if (progress >= 1) {
+                // Clear animation when complete
+                setTimeout(() => setShotAnimation(null), 100);
+              }
+
+              // Calculate ball position along trajectory with arc
+              const currentX = shotAnimation.fromX + (shotAnimation.toX - shotAnimation.fromX) * progress;
+              const currentY = shotAnimation.fromY + (shotAnimation.toY - shotAnimation.fromY) * progress;
+
+              // Add parabolic arc to shot
+              const arcHeight = 8; // Maximum arc height
+              const arc = arcHeight * Math.sin(progress * Math.PI); // Parabolic curve
+
+              return (
+                <View
+                  style={[
+                    styles.shotBall,
+                    {
+                      left: `${currentX}%`,
+                      top: `${currentY - arc}%`,
+                      opacity: 1 - progress * 0.3 // Slightly fade as it reaches goal
+                    }
+                  ]}
+                />
+              );
+            })()}
+
+            {/* Home Team (bottom) - advanced position-based movement with attacking/defending */}
             {homePlayers.map((player, idx) => {
               // Position-specific movement multipliers
               const isGK = player.position === 'GK';
@@ -2951,13 +3107,48 @@ const Match = ({ onBack, activeMatchId }) => {
               const isMidfielder = ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position);
               const isAttacker = ['ST', 'LW', 'RW'].includes(player.position);
 
-              // GK stays mostly still, defenders move less, attackers move more
-              const horizontalMultiplier = isGK ? 0.2 : (isDefender ? 0.6 : (isMidfielder ? 1.0 : 1.3));
-              const verticalMultiplier = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.9 : 1.4));
-
-              const x = player.baseX + (baseVariance * horizontalMultiplier);
-              const y = player.baseY + (verticalBase * verticalMultiplier);
+              // Determine if this team is attacking or defending
+              const isAttacking = possessionTeam === 0;
               const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 0;
+
+              // Dynamic movement based on attacking/defending state
+              let xMovement, yMovement;
+
+              if (isAttacking) {
+                // When attacking: push forward, spread wide
+                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.8 : (isMidfielder ? 1.4 : 2.0));
+                const attackingVertical = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.8 : 2.5));
+
+                xMovement = Math.sin(time * 0.8 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.6 + idx * 0.3) * attackingVertical - (isDefender ? 1 : 3); // Push up
+
+                // Wide players move to flanks when attacking
+                if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
+                  xMovement -= 1.5;
+                } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
+                  xMovement += 1.5;
+                }
+              } else {
+                // When defending: drop back, compact shape
+                const defendingHorizontal = isGK ? 0.2 : (isDefender ? 0.5 : (isMidfielder ? 0.7 : 1.0));
+                const defendingVertical = isGK ? 0.1 : (isDefender ? 0.4 : (isMidfielder ? 0.8 : 1.2));
+
+                xMovement = Math.sin(time * 0.6 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.5 + idx * 0.3) * defendingVertical + (isAttacker ? 2 : 0); // Drop back
+
+                // Compact shape - pull towards center
+                if (player.baseX < 35) xMovement += 0.5;
+                else if (player.baseX > 65) xMovement -= 0.5;
+              }
+
+              // Player with ball moves more actively
+              if (hasBall) {
+                xMovement *= 1.5;
+                yMovement *= 1.5;
+              }
+
+              const x = Math.max(5, Math.min(95, player.baseX + xMovement));
+              const y = Math.max(5, Math.min(95, player.baseY + yMovement));
 
               return (
                 <View
@@ -2975,7 +3166,7 @@ const Match = ({ onBack, activeMatchId }) => {
               );
             })}
 
-            {/* Away Team (top) - position-based movement, inverted Y */}
+            {/* Away Team (top) - advanced position-based movement with attacking/defending, inverted Y */}
             {awayPlayers.map((player, idx) => {
               // Position-specific movement multipliers
               const isGK = player.position === 'GK';
@@ -2983,12 +3174,48 @@ const Match = ({ onBack, activeMatchId }) => {
               const isMidfielder = ['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position);
               const isAttacker = ['ST', 'LW', 'RW'].includes(player.position);
 
-              const horizontalMultiplier = isGK ? 0.2 : (isDefender ? 0.6 : (isMidfielder ? 1.0 : 1.3));
-              const verticalMultiplier = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.9 : 1.4));
-
-              const x = player.baseX + (baseVariance * horizontalMultiplier);
-              const y = 100 - player.baseY - (verticalBase * verticalMultiplier);
+              // Determine if this team is attacking or defending
+              const isAttacking = possessionTeam === 1;
               const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
+
+              // Dynamic movement based on attacking/defending state
+              let xMovement, yMovement;
+
+              if (isAttacking) {
+                // When attacking: push forward, spread wide
+                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.8 : (isMidfielder ? 1.4 : 2.0));
+                const attackingVertical = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.8 : 2.5));
+
+                xMovement = Math.sin(time * 0.8 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.6 + idx * 0.3) * attackingVertical + (isDefender ? 1 : 3); // Push down (inverted)
+
+                // Wide players move to flanks when attacking
+                if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
+                  xMovement -= 1.5;
+                } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
+                  xMovement += 1.5;
+                }
+              } else {
+                // When defending: drop back, compact shape
+                const defendingHorizontal = isGK ? 0.2 : (isDefender ? 0.5 : (isMidfielder ? 0.7 : 1.0));
+                const defendingVertical = isGK ? 0.1 : (isDefender ? 0.4 : (isMidfielder ? 0.8 : 1.2));
+
+                xMovement = Math.sin(time * 0.6 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.5 + idx * 0.3) * defendingVertical - (isAttacker ? 2 : 0); // Pull up (inverted)
+
+                // Compact shape - pull towards center
+                if (player.baseX < 35) xMovement += 0.5;
+                else if (player.baseX > 65) xMovement -= 0.5;
+              }
+
+              // Player with ball moves more actively
+              if (hasBall) {
+                xMovement *= 1.5;
+                yMovement *= 1.5;
+              }
+
+              const x = Math.max(5, Math.min(95, player.baseX + xMovement));
+              const y = 100 - Math.max(5, Math.min(95, player.baseY + yMovement));
 
               return (
                 <View
@@ -5091,14 +5318,27 @@ const styles = StyleSheet.create({
   },
   ball: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#000000',
-    transform: [{ translateX: -6 }, { translateY: -6 }],
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    background: 'radial-gradient(circle at 30% 30%, #ffffff, #e8e8e8 40%, #cccccc 70%, #999999)',
+    borderWidth: 1.5,
+    borderColor: '#333333',
+    transform: [{ translateX: -8 }, { translateY: -8 }],
     zIndex: 1000,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.2)',
+  },
+  shotBall: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    background: 'radial-gradient(circle at 30% 30%, #FFD700, #FFA500 50%, #FF8C00)',
+    borderWidth: 2,
+    borderColor: '#FF6B00',
+    transform: [{ translateX: -9 }, { translateY: -9 }],
+    zIndex: 1001,
+    boxShadow: '0 0 12px rgba(255, 215, 0, 0.8), 0 3px 6px rgba(0,0,0,0.4)',
   },
   pitchCenterDot: {
     position: 'absolute',
@@ -5115,38 +5355,45 @@ const styles = StyleSheet.create({
     top: 0,
     left: '35%',
     width: '30%',
-    height: 25,
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
-    borderBottomWidth: 3,
+    height: 30,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderBottomWidth: 4,
     borderColor: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    boxShadow: 'inset 0 -3px 8px rgba(0,0,0,0.4)',
   },
   goalBottom: {
     position: 'absolute',
     bottom: 0,
     left: '35%',
     width: '30%',
-    height: 25,
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
-    borderTopWidth: 3,
+    height: 30,
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderTopWidth: 4,
     borderColor: '#ffffff',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    boxShadow: 'inset 0 3px 8px rgba(0,0,0,0.4)',
   },
   goalPost: {
     position: 'absolute',
-    width: 4,
+    width: 5,
     height: '100%',
     backgroundColor: '#ffffff',
     left: '50%',
-    transform: [{ translateX: -2 }],
+    transform: [{ translateX: -2.5 }],
+    boxShadow: '0 0 4px rgba(255,255,255,0.6)',
   },
   goalNet: {
     position: 'absolute',
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundImage: `
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.1) 0px, transparent 1px, transparent 8px, rgba(255,255,255,0.1) 9px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.1) 0px, transparent 1px, transparent 8px, rgba(255,255,255,0.1) 9px)
+    `,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   penaltyAreaTop: {
     position: 'absolute',
