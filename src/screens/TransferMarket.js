@@ -97,12 +97,17 @@ const TransferMarket = ({ onBack }) => {
   };
 
   const filteredPlayers = players.filter(player => {
-    const matchesSearch = player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.nationality.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPosition = filterPosition === 'All' || player.position === filterPosition;
+    // Safely handle potentially undefined properties
+    const playerName = player?.name || '';
+    const playerNationality = player?.nationality || '';
+    const playerPosition = player?.position || '';
+
+    const matchesSearch = playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         playerNationality.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPosition = filterPosition === 'All' || playerPosition === filterPosition;
 
     // Don't show players already in user's squad
-    const notInSquad = !(managerProfile.squad || []).some(p => p.id === player.id);
+    const notInSquad = !(managerProfile?.squad || []).some(p => p?.id === player?.id);
 
     return matchesSearch && matchesPosition && notInSquad;
   });
