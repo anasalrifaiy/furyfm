@@ -429,46 +429,39 @@ const MainApp = () => {
   };
 
   const renderCurrentScreen = () => {
-    // Wrap non-home screens with bottom padding for the navigation bar
-    const wrapWithPadding = (component) => (
-      <View style={{ flex: 1, paddingBottom: currentScreen === 'match' ? 0 : 80 }}>
-        {component}
-      </View>
-    );
-
     switch (currentScreen) {
       case 'market':
-        return wrapWithPadding(<TransferMarket onBack={handleBackToHome} />);
+        return <TransferMarket onBack={handleBackToHome} />;
       case 'squad':
-        return wrapWithPadding(<Squad onBack={handleBackToHome} />);
+        return <Squad onBack={handleBackToHome} />;
       case 'formation':
-        return wrapWithPadding(<Formation onBack={handleBackToHome} />);
+        return <Formation onBack={handleBackToHome} />;
       case 'training':
-        return wrapWithPadding(<Training onBack={handleBackToHome} />);
+        return <Training onBack={handleBackToHome} />;
       case 'coaching':
-        return wrapWithPadding(<CoachingStaff onBack={handleBackToHome} />);
+        return <CoachingStaff onBack={handleBackToHome} />;
       case 'facilities':
-        return wrapWithPadding(<ClubFacilities onBack={handleBackToHome} />);
+        return <ClubFacilities onBack={handleBackToHome} />;
       case 'bank':
-        return wrapWithPadding(<Bank onBack={handleBackToHome} />);
+        return <Bank onBack={handleBackToHome} />;
       case 'match':
         return <Match onBack={() => { setCurrentScreen('home'); setCurrentTab('home'); setActiveMatchId(null); }} activeMatchId={activeMatchId} />;
       case 'matchHistory':
-        return wrapWithPadding(<MatchHistory onBack={handleBackToHome} />);
+        return <MatchHistory onBack={handleBackToHome} />;
       case 'friends':
-        return wrapWithPadding(<Friends onBack={handleBackToHome} onViewProfile={handleViewProfile} />);
+        return <Friends onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
       case 'leaderboard':
-        return wrapWithPadding(<Leaderboard onBack={handleBackToHome} onViewProfile={handleViewProfile} />);
+        return <Leaderboard onBack={handleBackToHome} onViewProfile={handleViewProfile} />;
       case 'notifications':
-        return wrapWithPadding(<Notifications onBack={handleBackToHome} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />);
+        return <Notifications onBack={handleBackToHome} onViewProfile={handleViewProfile} onAcceptMatchChallenge={handleAcceptMatchChallenge} />;
       case 'profile':
-        return wrapWithPadding(<ManagerProfile managerId={selectedManagerId} onBack={handleBackToHome} />);
+        return <ManagerProfile managerId={selectedManagerId} onBack={handleBackToHome} />;
       case 'proleague':
-        return wrapWithPadding(<ProLeague onBack={handleBackToHome} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />);
+        return <ProLeague onBack={handleBackToHome} onStartMatch={(matchId) => { setActiveMatchId(matchId); setCurrentScreen('match'); }} />;
       case 'adminMigration':
         // Only allow admin user to access this screen
         if (currentUser?.email === 'anasalrifai90@gmail.com') {
-          return wrapWithPadding(<AdminMigration onBack={handleBackToHome} />);
+          return <AdminMigration onBack={handleBackToHome} />;
         } else {
           // Redirect non-admin users back to home
           setCurrentScreen('home');
@@ -490,7 +483,9 @@ const MainApp = () => {
         styles.container,
         {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
+          transform: [{ scale: scaleAnim }],
+          height: '100vh', // Ensure container fills full viewport height
+          position: 'relative'
         }
       ]}
     >
