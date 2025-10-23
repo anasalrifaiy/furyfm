@@ -414,10 +414,7 @@ const MainApp = () => {
         )}
         <ScrollView
           style={styles.content}
-          contentContainerStyle={[
-            styles.contentContainer,
-            { minHeight: '100%' } // Ensures content fills screen height
-          ]}
+          contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={true}
         >
           {renderTabContent()}
