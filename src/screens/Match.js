@@ -670,12 +670,16 @@ const Match = ({ onBack, activeMatchId }) => {
       homeManager: {
         uid: currentUser.uid,
         name: managerProfile.managerName,
+        clubName: managerProfile.clubName || managerProfile.managerName,
+        managerName: managerProfile.managerName,
         squad: myStarting,
         ready: false
       },
       awayManager: {
         uid: opponent.uid,
         name: opponent.managerName,
+        clubName: opponent.clubName || opponent.managerName,
+        managerName: opponent.managerName,
         squad: opponentStarting,
         ready: false
       },
@@ -738,12 +742,16 @@ const Match = ({ onBack, activeMatchId }) => {
       homeManager: {
         uid: currentUser.uid,
         name: managerProfile.managerName,
+        clubName: managerProfile.clubName || managerProfile.managerName,
+        managerName: managerProfile.managerName,
         squad: myStarting,
         ready: true
       },
       awayManager: {
         uid: 'ai_alkawaya_pro',
         name: 'Alkawaya Pro',
+        clubName: 'Alkawaya Pro FC',
+        managerName: 'AI Coach',
         squad: aiSquad,
         ready: true
       },
@@ -3015,31 +3023,33 @@ const Match = ({ onBack, activeMatchId }) => {
         possessionTeam = isHomeGK ? 0 : 1;
       }
 
-      // Determine attack phase - build up, attacking, or defending
-      const attackPhase = Math.floor(time / 3) % 3; // 0: buildup, 1: attacking, 2: defending
+      // Determine attack phase - smoother progression through pitch zones
+      const attackProgress = (time % 15) / 15; // 15 second attack cycle (0.0 to 1.0)
 
-      // Select ball carrier based on attack phase
+      // Select ball carrier based on attack progression
       let attackingPlayers, ballCarrier;
 
-      if (attackPhase === 0) {
-        // Build-up phase: midfielders and defenders with ball
+      if (attackProgress < 0.35) {
+        // Build-up phase (0-35%): Start from back, midfielders and defenders
         attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB'].includes(p.position))
-          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB'].includes(p.position));
-      } else if (attackPhase === 1) {
-        // Attacking phase: forwards and attacking midfielders
+          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position))
+          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+      } else if (attackProgress < 0.70) {
+        // Middle phase (35-70%): Midfield play
         attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position))
-          : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position))
+          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position));
       } else {
-        // Defensive phase: all outfield players
+        // Final third (70-100%): Attacking players only
         attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => p.position !== 'GK')
-          : awayPlayers.filter(p => p.position !== 'GK');
+          ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))
+          : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
       }
 
+      // Use consistent index based on attack progress to avoid sudden jumps
+      const carrierIndex = Math.floor(attackProgress * attackingPlayers.length);
       ballCarrier = attackingPlayers.length > 0
-        ? attackingPlayers[Math.floor((time * 11) % attackingPlayers.length)]
+        ? attackingPlayers[Math.min(carrierIndex, attackingPlayers.length - 1)]
         : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
 
       // Calculate ball position with smooth movement
@@ -3128,36 +3138,36 @@ const Match = ({ onBack, activeMatchId }) => {
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide - SMOOTHER movement
-                const attackingHorizontal = isGK ? 0.05 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
-                const attackingVertical = isGK ? 0.05 : (isDefender ? 0.4 : (isMidfielder ? 0.6 : 0.9));
+                // When attacking: push forward, spread wide - BALANCED movement
+                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.8 : 1.1));
+                const attackingVertical = isGK ? 0.1 : (isDefender ? 0.6 : (isMidfielder ? 0.9 : 1.3));
 
-                xMovement = Math.sin(time * 0.3 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.25 + idx * 0.3) * attackingVertical - (isDefender ? 0.5 : 1.2); // Push up
+                xMovement = Math.sin(time * 0.4 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.35 + idx * 0.3) * attackingVertical - (isDefender ? 0.5 : 1.5); // Push up
 
                 // Wide players move to flanks when attacking
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 0.6;
+                  xMovement -= 1.0;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 0.6;
+                  xMovement += 1.0;
                 }
               } else {
-                // When defending: drop back, compact shape - SMOOTHER movement
-                const defendingHorizontal = isGK ? 0.08 : (isDefender ? 0.2 : (isMidfielder ? 0.3 : 0.4));
-                const defendingVertical = isGK ? 0.05 : (isDefender ? 0.15 : (isMidfielder ? 0.3 : 0.4));
+                // When defending: drop back, compact shape - BALANCED movement
+                const defendingHorizontal = isGK ? 0.1 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
+                const defendingVertical = isGK ? 0.08 : (isDefender ? 0.25 : (isMidfielder? 0.5 : 0.7));
 
-                xMovement = Math.sin(time * 0.25 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.2 + idx * 0.3) * defendingVertical + (isAttacker ? 0.8 : 0); // Drop back
+                xMovement = Math.sin(time * 0.35 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.3 + idx * 0.3) * defendingVertical + (isAttacker ? 1.2 : 0); // Drop back
 
                 // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.2;
-                else if (player.baseX > 65) xMovement -= 0.2;
+                if (player.baseX < 35) xMovement += 0.3;
+                else if (player.baseX > 65) xMovement -= 0.3;
               }
 
-              // Player with ball moves slightly more actively
+              // Player with ball moves more actively
               if (hasBall) {
-                xMovement *= 1.2;
-                yMovement *= 1.2;
+                xMovement *= 1.3;
+                yMovement *= 1.3;
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
@@ -3195,36 +3205,36 @@ const Match = ({ onBack, activeMatchId }) => {
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide - SMOOTHER movement
-                const attackingHorizontal = isGK ? 0.05 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
-                const attackingVertical = isGK ? 0.05 : (isDefender ? 0.4 : (isMidfielder ? 0.6 : 0.9));
+                // When attacking: push forward, spread wide - BALANCED movement
+                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.8 : 1.1));
+                const attackingVertical = isGK ? 0.1 : (isDefender ? 0.6 : (isMidfielder ? 0.9 : 1.3));
 
-                xMovement = Math.sin(time * 0.3 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.25 + idx * 0.3) * attackingVertical + (isDefender ? 0.5 : 1.2); // Push down (inverted)
+                xMovement = Math.sin(time * 0.4 + idx * 0.5) * attackingHorizontal;
+                yMovement = Math.cos(time * 0.35 + idx * 0.3) * attackingVertical + (isDefender ? 0.5 : 1.5); // Push down (inverted)
 
                 // Wide players move to flanks when attacking
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 0.6;
+                  xMovement -= 1.0;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 0.6;
+                  xMovement += 1.0;
                 }
               } else {
-                // When defending: drop back, compact shape - SMOOTHER movement
-                const defendingHorizontal = isGK ? 0.08 : (isDefender ? 0.2 : (isMidfielder ? 0.3 : 0.4));
-                const defendingVertical = isGK ? 0.05 : (isDefender ? 0.15 : (isMidfielder ? 0.3 : 0.4));
+                // When defending: drop back, compact shape - BALANCED movement
+                const defendingHorizontal = isGK ? 0.1 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
+                const defendingVertical = isGK ? 0.08 : (isDefender ? 0.25 : (isMidfielder ? 0.5 : 0.7));
 
-                xMovement = Math.sin(time * 0.25 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.2 + idx * 0.3) * defendingVertical - (isAttacker ? 0.8 : 0); // Pull up (inverted)
+                xMovement = Math.sin(time * 0.35 + idx * 0.4) * defendingHorizontal;
+                yMovement = Math.cos(time * 0.3 + idx * 0.3) * defendingVertical - (isAttacker ? 1.2 : 0); // Pull up (inverted)
 
                 // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.2;
-                else if (player.baseX > 65) xMovement -= 0.2;
+                if (player.baseX < 35) xMovement += 0.3;
+                else if (player.baseX > 65) xMovement -= 0.3;
               }
 
-              // Player with ball moves slightly more actively
+              // Player with ball moves more actively
               if (hasBall) {
-                xMovement *= 1.2;
-                yMovement *= 1.2;
+                xMovement *= 1.3;
+                yMovement *= 1.3;
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
