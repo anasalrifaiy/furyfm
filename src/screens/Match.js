@@ -409,7 +409,8 @@ const Match = ({ onBack, activeMatchId }) => {
         }
 
         // Check for new goals and show celebration + shot animation (only if it's a new event)
-        if (matchData.events && matchData.events.length > 0) {
+        // SKIP for practice matches - they handle celebrations locally
+        if (!matchData.isPractice && matchData.events && matchData.events.length > 0) {
           const latestEvent = matchData.events[0];
           if (latestEvent.includes('⚽ GOAL!') && latestEvent !== lastCelebratedEventRef.current) {
             // Extract scorer name from event
@@ -1346,15 +1347,7 @@ const Match = ({ onBack, activeMatchId }) => {
       showAlert('Practice Match Complete', rewardMessage);
     }
 
-    // Clear practice match from localStorage after completion
-    if (typeof window !== 'undefined' && window.localStorage) {
-      setTimeout(() => {
-        localStorage.removeItem('practiceMatch');
-        localStorage.removeItem('practiceMatchState');
-        localStorage.removeItem('activeMatchId');
-        console.log('Practice match localStorage cleared');
-      }, 2000); // Delay to allow user to see the results first
-    }
+    // Note: localStorage cleanup is handled when user clicks back from finished screen
   };
 
   const simulateMatch = async (matchData) => {
@@ -4426,6 +4419,15 @@ const Match = ({ onBack, activeMatchId }) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
+            // Clear practice match from localStorage if it's a practice match
+            if (currentMatch?.isPractice) {
+              if (typeof window !== 'undefined' && window.localStorage) {
+                localStorage.removeItem('practiceMatch');
+                localStorage.removeItem('practiceMatchState');
+                localStorage.removeItem('activeMatchId');
+                console.log('Practice match cleared from localStorage on back');
+              }
+            }
             setMatchState('select');
             setCurrentMatch(null);
             onBack();
