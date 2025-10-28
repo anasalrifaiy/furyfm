@@ -979,7 +979,7 @@ const Match = ({ onBack, activeMatchId }) => {
       const eventRoll = Math.random();
 
       if (eventRoll < 0.04) {
-        // GOAL EVENT (4% chance)
+        // GOAL EVENT (4% chance) - VISUAL SEQUENCE: Shot → Goal announcement
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
@@ -1015,37 +1015,20 @@ const Match = ({ onBack, activeMatchId }) => {
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
         }
 
-        if (isHomeGoal) {
-          localHomeScore++;
-          setHomeScore(localHomeScore);
-        } else {
-          localAwayScore++;
-          setAwayScore(localAwayScore);
-        }
-
+        const scorerName = scorer.name;
         const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
         const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
-        localEvents = [eventText, ...localEvents];
+
+        // STEP 1: Update ball holder to shooter BEFORE shot
+        localBallHolder = { playerId: scorer.id, playerName: scorer.name, team: isHomeGoal ? 'home' : 'away' };
+        setBallHolder(localBallHolder);
+
+        // STEP 2: Show "Player shoots!" event immediately
+        const shootEvent = `${matchMinute}' ⚽ ${scorer.name} shoots!`;
+        localEvents = [shootEvent, ...localEvents];
         setEvents(localEvents);
 
-        // Track goalscorer for XP
-        if (!localGoalscorers[scorer.id]) {
-          localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
-        }
-        localGoalscorers[scorer.id].goals++;
-
-        // After goal, reset to kickoff
-        localBallPossession = isHomeGoal ? 'away' : 'home';
-        localBallHolder = null;
-        setBallPossession(localBallPossession);
-        setBallHolder(null);
-
-        // Trigger visual goal celebration
-        const scorerName = scorer.name;
-        setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
-
-        // Trigger shot animation
+        // STEP 3: Trigger shot animation FIRST
         const shooterX = 40 + Math.random() * 20;
         const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
         const goalX = 50;
@@ -1059,8 +1042,38 @@ const Match = ({ onBack, activeMatchId }) => {
           startTime: Date.now()
         });
 
-        // Show goal moment overlay after shot
+        // STEP 4: AFTER shot animation completes (800ms), announce GOAL!
         setTimeout(() => {
+          // Update score
+          if (isHomeGoal) {
+            localHomeScore++;
+            setHomeScore(localHomeScore);
+          } else {
+            localAwayScore++;
+            setAwayScore(localAwayScore);
+          }
+
+          // Add GOAL! event
+          const eventText = `${matchMinute}' ⚽⚽ GOAAAAL! ${scorerName} (${scorer.overall}) with a ${goalType}!`;
+          localEvents = [eventText, ...localEvents];
+          setEvents(localEvents);
+
+          // Track goalscorer for XP
+          if (!localGoalscorers[scorer.id]) {
+            localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+          }
+          localGoalscorers[scorer.id].goals++;
+
+          // After goal, reset to kickoff
+          localBallPossession = isHomeGoal ? 'away' : 'home';
+          localBallHolder = null;
+          setBallPossession(localBallPossession);
+          setBallHolder(null);
+
+          // Show celebration
+          setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+
+          // Show goal moment overlay
           setGoalMoment({
             show: true,
             scorer: scorerName,
@@ -1068,12 +1081,12 @@ const Match = ({ onBack, activeMatchId }) => {
             startTime: Date.now()
           });
           setTimeout(() => setGoalMoment(null), 2500);
-        }, 800);
 
-        // Auto-hide celebration
-        setTimeout(() => setGoalCelebration(null), 3000);
+          // Auto-hide celebration
+          setTimeout(() => setGoalCelebration(null), 3000);
 
-        console.log('GOAL!', eventText);
+          console.log('GOAL!', eventText);
+        }, 800); // Wait for shot to reach goal
       } else if (eventRoll < 0.10) {
         // SHOT/SAVE EVENT (6% chance)
         const teamRoll = Math.random();
@@ -1507,7 +1520,7 @@ const Match = ({ onBack, activeMatchId }) => {
         const substitutedPlayers = latestData.substitutedPlayers || [];
 
         if (eventRoll < 0.04) {
-          // GOAL EVENT (4% chance) - Enhanced realistic goal scoring logic
+          // GOAL EVENT (4% chance) - VISUAL SEQUENCE: Shot → Goal announcement
           const teamRoll = Math.random();
           const isHomeGoal = teamRoll < homeChance;
           const team = isHomeGoal ? match.homeManager : match.awayManager;
@@ -1528,42 +1541,44 @@ const Match = ({ onBack, activeMatchId }) => {
 
           // Weighted scoring based on realistic probabilities and player quality
           if (scorerRoll < 0.60 && attackers.length > 0) {
-            // 60% chance for strikers/wingers - pick best attacker with some randomness
             const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
             weightedAttackers.sort((a, b) => b.weight - a.weight);
             scorer = weightedAttackers[0].player;
           } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
-            // 20% chance for attacking/central midfielders
             const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
             weightedMids.sort((a, b) => b.weight - a.weight);
             scorer = weightedMids[0].player;
           } else if (scorerRoll < 0.90 && wideMids.length > 0) {
-            // 10% chance for wide midfielders/wingbacks
             scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
           } else if (scorerRoll < 0.96 && defenders.length > 0) {
-            // 6% chance for defenders (set pieces)
-            // Pick tallest/best defender for headers
             const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
             scorer = sortedDefenders[0];
           } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
-            // 3% chance for defensive midfielders (long shots)
             scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
           } else {
-            // 1% rare case - any outfield player (excluding GK)
             const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
             scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
           }
 
+          const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
+          const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+
+          // STEP 1: Show "shoots!" event immediately
+          const shootEvent = `${matchMinute}' ⚽ ${scorer.name} shoots!`;
+          await update(matchRef, {
+            events: [shootEvent, ...(latestData.events || [])],
+            ballHolder: { playerId: scorer.id, playerName: scorer.name, team: isHomeGoal ? 'home' : 'away' }
+          });
+
+          // STEP 2: Wait for shot animation (800ms), then announce GOAL!
+          await new Promise(resolve => setTimeout(resolve, 800));
+
+          // STEP 3: Update score and add GOAL! event
           const newScore = isHomeGoal
             ? { homeScore: (latestData.homeScore || 0) + 1 }
             : { awayScore: (latestData.awayScore || 0) + 1 };
 
-          await update(matchRef, newScore);
-
-          // Enhanced goal event text with more variety
-          const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
-          const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
-          const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
+          const eventText = `${matchMinute}' ⚽⚽ GOAAAAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
 
           // Track goalscorer for XP rewards
           const goalscorers = latestData.goalscorers || {};
@@ -1572,12 +1587,14 @@ const Match = ({ onBack, activeMatchId }) => {
           }
           goalscorers[scorer.id].goals++;
 
-          // Get current events and prepend new one
-          const newEvents = [eventText, ...(latestData.events || [])];
+          // Get current events and prepend GOAL event
+          const currentEvents = (await get(matchRef)).val().events || [];
+          const newEvents = [eventText, ...currentEvents];
 
           // After goal, reset to kickoff - conceding team gets possession
           const kickoffTeam = isHomeGoal ? 'away' : 'home';
           await update(matchRef, {
+            ...newScore,
             events: newEvents,
             goalscorers,
             ballPossession: kickoffTeam,
@@ -1908,7 +1925,7 @@ const Match = ({ onBack, activeMatchId }) => {
       const eventRoll = Math.random();
 
       if (eventRoll < 0.04) {
-        // GOAL EVENT
+        // GOAL EVENT - VISUAL SEQUENCE: Shot → Goal announcement
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
@@ -1941,33 +1958,20 @@ const Match = ({ onBack, activeMatchId }) => {
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
         }
 
-        if (isHomeGoal) {
-          localHomeScore++;
-          setHomeScore(localHomeScore);
-        } else {
-          localAwayScore++;
-          setAwayScore(localAwayScore);
-        }
-
+        const scorerName = scorer.name;
         const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
         const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
-        localEvents = [eventText, ...localEvents];
+
+        // STEP 1: Ball to shooter
+        localBallHolder = { playerId: scorer.id, playerName: scorer.name, team: isHomeGoal ? 'home' : 'away' };
+        setBallHolder(localBallHolder);
+
+        // STEP 2: Show shoot event immediately
+        const shootEvent = `${matchMinute}' ⚽ ${scorer.name} shoots!`;
+        localEvents = [shootEvent, ...localEvents];
         setEvents(localEvents);
 
-        if (!localGoalscorers[scorer.id]) {
-          localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
-        }
-        localGoalscorers[scorer.id].goals++;
-
-        localBallPossession = isHomeGoal ? 'away' : 'home';
-        localBallHolder = null;
-        setBallPossession(localBallPossession);
-        setBallHolder(null);
-
-        const scorerName = scorer.name;
-        setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
-
+        // STEP 3: Trigger shot animation
         const shooterX = 40 + Math.random() * 20;
         const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
         const goalX = 50;
@@ -1981,7 +1985,32 @@ const Match = ({ onBack, activeMatchId }) => {
           startTime: Date.now()
         });
 
+        // STEP 4: AFTER shot completes, announce GOAL!
         setTimeout(() => {
+          if (isHomeGoal) {
+            localHomeScore++;
+            setHomeScore(localHomeScore);
+          } else {
+            localAwayScore++;
+            setAwayScore(localAwayScore);
+          }
+
+          const eventText = `${matchMinute}' ⚽⚽ GOAAAAL! ${scorerName} (${scorer.overall}) with a ${goalType}!`;
+          localEvents = [eventText, ...localEvents];
+          setEvents(localEvents);
+
+          if (!localGoalscorers[scorer.id]) {
+            localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
+          }
+          localGoalscorers[scorer.id].goals++;
+
+          localBallPossession = isHomeGoal ? 'away' : 'home';
+          localBallHolder = null;
+          setBallPossession(localBallPossession);
+          setBallHolder(null);
+
+          setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
+
           setGoalMoment({
             show: true,
             scorer: scorerName,
@@ -1989,10 +2018,10 @@ const Match = ({ onBack, activeMatchId }) => {
             startTime: Date.now()
           });
           setTimeout(() => setGoalMoment(null), 2500);
-        }, 800);
 
-        setTimeout(() => setGoalCelebration(null), 3000);
-        console.log('GOAL!', eventText);
+          setTimeout(() => setGoalCelebration(null), 3000);
+          console.log('GOAL!', eventText);
+        }, 800); // Wait for shot to reach goal
       } else if (eventRoll < 0.10) {
         // SHOT/SAVE EVENT
         const teamRoll = Math.random();
