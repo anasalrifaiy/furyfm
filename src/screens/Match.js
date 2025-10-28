@@ -36,7 +36,6 @@ const Match = ({ onBack, activeMatchId }) => {
   const [passAnimation, setPassAnimation] = useState(null); // { fromPlayer, toPlayer, startTime }
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
-  const prevBallPosRef = useRef({ x: 50, y: 50 }); // Track previous ball position for smooth interpolation
 
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
@@ -3641,27 +3640,14 @@ const Match = ({ onBack, activeMatchId }) => {
           : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
       }
 
-      // Calculate ball position with SMOOTH movement and transitions
-      const ballMovementSpeed = 2.5;
-      const ballPhaseOffset = Math.sin(time * ballMovementSpeed) * 2; // Reduced jitter
-      const ballVerticalOffset = Math.cos(time * ballMovementSpeed * 1.3) * 1.5; // Reduced jitter
-
-      // Target ball position (at the ball carrier)
-      const targetBallX = possessionTeam === 0
-        ? ballCarrier.baseX + ballPhaseOffset
-        : 100 - ballCarrier.baseX - ballPhaseOffset;
-      const targetBallY = possessionTeam === 0
-        ? ballCarrier.baseY + ballVerticalOffset
-        : 100 - ballCarrier.baseY + ballVerticalOffset;
-
-      // Smooth interpolation towards target position (ease-out effect)
-      // Using the ref defined at component top level
-      const smoothingFactor = 0.15; // Higher = faster transition (0.1-0.3 recommended)
-      const ballX = prevBallPosRef.current.x + (targetBallX - prevBallPosRef.current.x) * smoothingFactor;
-      const ballY = prevBallPosRef.current.y + (targetBallY - prevBallPosRef.current.y) * smoothingFactor;
-
-      // Update previous position for next frame
-      prevBallPosRef.current = { x: ballX, y: ballY };
+      // Ball position - STICK to the ball carrier (no floating)
+      // CSS transitions handle the smooth movement between players
+      const ballX = possessionTeam === 0
+        ? ballCarrier.baseX
+        : 100 - ballCarrier.baseX;
+      const ballY = possessionTeam === 0
+        ? ballCarrier.baseY
+        : 100 - ballCarrier.baseY;
 
       return (
         <View style={styles.pitchContainer}>
@@ -5937,7 +5923,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     transform: [{ translateX: -16 }, { translateY: -16 }],
     borderWidth: 2,
-    transition: 'left 0.5s ease-out, top 0.5s ease-out', // Smooth player movement
+    transition: 'left 0.3s ease-out, top 0.3s ease-out', // Smooth player movement, synced with ball
   },
   playerDotHome: {
     backgroundColor: '#667eea',
@@ -5974,7 +5960,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -8 }, { translateY: -8 }],
     zIndex: 1000,
     boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.2)',
-    transition: 'left 0.3s ease-out, top 0.3s ease-out', // Smooth CSS transitions
+    transition: 'left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)', // Smooth, natural transitions
   },
   shotBall: {
     position: 'absolute',
