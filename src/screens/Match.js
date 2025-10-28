@@ -974,26 +974,41 @@ const Match = ({ onBack, activeMatchId }) => {
       const totalStrength = adjustedHomeStrength + adjustedAwayStrength;
       const homeChance = (adjustedHomeStrength / totalStrength) * 0.55 + 0.05;
 
-      // Goal chance
-      const goalRoll = Math.random();
-      if (goalRoll < 0.04) {
+      // Enhanced match events with all new mechanics
+      const eventRoll = Math.random();
+
+      if (eventRoll < 0.04) {
+        // GOAL EVENT (4% chance)
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
+        const opposingTeam = isHomeGoal ? currentMatch.awayManager : currentMatch.homeManager;
 
-        // Realistic goal scoring - weight by position
+        // Enhanced realistic goal scoring - weight by position AND overall rating
         const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+        const attackingMids = team.squad.filter(p => ['CAM', 'CM'].includes(p.position));
+        const wideMids = team.squad.filter(p => ['LM', 'RM', 'LWB', 'RWB'].includes(p.position));
+        const defensiveMids = team.squad.filter(p => ['CDM'].includes(p.position));
+        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB'].includes(p.position));
 
         let scorer;
         const scorerRoll = Math.random();
-        if (scorerRoll < 0.70 && attackers.length > 0) {
-          scorer = attackers[Math.floor(Math.random() * attackers.length)];
-        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
-          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
-        } else if (defenders.length > 0) {
-          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+
+        if (scorerRoll < 0.60 && attackers.length > 0) {
+          const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedAttackers.sort((a, b) => b.weight - a.weight);
+          scorer = weightedAttackers[0].player;
+        } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+          const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedMids.sort((a, b) => b.weight - a.weight);
+          scorer = weightedMids[0].player;
+        } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+          scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
+        } else if (scorerRoll < 0.96 && defenders.length > 0) {
+          const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
+          scorer = sortedDefenders[0];
+        } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+          scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
         } else {
           const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
@@ -1007,7 +1022,9 @@ const Match = ({ onBack, activeMatchId }) => {
           setAwayScore(localAwayScore);
         }
 
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
+        const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
         localEvents = [eventText, ...localEvents];
         setEvents(localEvents);
 
@@ -1016,6 +1033,12 @@ const Match = ({ onBack, activeMatchId }) => {
           localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
         }
         localGoalscorers[scorer.id].goals++;
+
+        // After goal, reset to kickoff
+        localBallPossession = isHomeGoal ? 'away' : 'home';
+        localBallHolder = null;
+        setBallPossession(localBallPossession);
+        setBallHolder(null);
 
         // Trigger visual goal celebration
         const scorerName = scorer.name;
@@ -1050,6 +1073,155 @@ const Match = ({ onBack, activeMatchId }) => {
         setTimeout(() => setGoalCelebration(null), 3000);
 
         console.log('GOAL!', eventText);
+      } else if (eventRoll < 0.10) {
+        // SHOT/SAVE EVENT (6% chance)
+        const teamRoll = Math.random();
+        const isHomeShot = teamRoll < 0.5;
+        const attackingTeam = isHomeShot ? currentMatch.homeManager : currentMatch.awayManager;
+        const defendingTeam = isHomeShot ? currentMatch.awayManager : currentMatch.homeManager;
+
+        // Prefer ball holder for shooting
+        let shooter;
+        if (localBallHolder && localBallHolder.team === (isHomeShot ? 'home' : 'away')) {
+          const ballHolderPlayer = attackingTeam.squad.find(p => p.id === localBallHolder.playerId);
+          if (ballHolderPlayer && ['ST', 'LW', 'RW', 'CAM'].includes(ballHolderPlayer.position)) {
+            shooter = ballHolderPlayer;
+          }
+        }
+
+        if (!shooter) {
+          const shooters = attackingTeam.squad.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+          if (shooters.length > 0) {
+            const strikers = shooters.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+            if (strikers.length > 0 && Math.random() < 0.7) {
+              shooter = strikers[Math.floor(Math.random() * strikers.length)];
+            } else {
+              shooter = shooters[Math.floor(Math.random() * shooters.length)];
+            }
+          }
+        }
+
+        if (shooter) {
+          const gk = defendingTeam.squad.find(p => p.position === 'GK');
+          const shotAccuracy = 0.65 + (shooter.overall / 100) * 0.25;
+          const shotOnTarget = Math.random() < shotAccuracy;
+
+          if (!shotOnTarget) {
+            const missTypes = ['shoots wide', 'blasts over the bar', 'misses the target'];
+            const missType = missTypes[Math.floor(Math.random() * missTypes.length)];
+            const eventText = `${matchMinute}' 📍 ${shooter.name} ${missType}!`;
+            localEvents = [eventText, ...localEvents];
+            setEvents(localEvents);
+          } else if (gk) {
+            const baseSaveChance = 0.60;
+            const gkBonus = (gk.overall - 75) / 100;
+            const shooterPenalty = (shooter.overall - 75) / 100;
+            const saveChance = Math.max(0.30, Math.min(0.85, baseSaveChance + gkBonus - shooterPenalty));
+            const isSaved = Math.random() < saveChance;
+
+            if (isSaved) {
+              const saveTypes = ['makes a brilliant save', 'denies with a diving save', 'pulls off a great save', 'catches confidently'];
+              const saveType = saveTypes[Math.floor(Math.random() * saveTypes.length)];
+              const eventText = `${matchMinute}' 🧤 ${gk.name} ${saveType}! ${shooter.name} denied.`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            } else {
+              const closeCallTypes = ['shot saved at the near post', 'tips it over the bar', 'makes a fingertip save'];
+              const closeCall = closeCallTypes[Math.floor(Math.random() * closeCallTypes.length)];
+              const eventText = `${matchMinute}' 😰 Close call! ${gk.name} ${closeCall}! ${shooter.name} almost scored!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            }
+          } else {
+            const eventText = `${matchMinute}' 🛡️ ${shooter.name}'s shot is blocked by the defense!`;
+            localEvents = [eventText, ...localEvents];
+            setEvents(localEvents);
+          }
+        }
+      } else if (eventRoll < 0.15) {
+        // DEFENSIVE EVENT (5% chance)
+        const isHome = localBallPossession === 'away';
+        const defendingTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+        const attackingTeam = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+        const defendingTeamName = isHome ? 'home' : 'away';
+
+        const defenders = defendingTeam.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM'].includes(p.position));
+
+        if (defenders.length > 0) {
+          const defender = defenders[Math.floor(Math.random() * defenders.length)];
+          const tackleSuccess = 0.55 + (defender.overall / 100) * 0.25;
+          const isSuccessful = Math.random() < tackleSuccess;
+
+          if (isSuccessful) {
+            const tackleTypes = ['wins the ball with a strong tackle', 'intercepts brilliantly', 'makes a crucial tackle', 'reads the play perfectly'];
+            const tackleType = tackleTypes[Math.floor(Math.random() * tackleTypes.length)];
+            const eventText = `${matchMinute}' 🛡️ ${defender.name} ${tackleType}!`;
+            localEvents = [eventText, ...localEvents];
+            setEvents(localEvents);
+
+            localBallPossession = defendingTeamName;
+            localBallHolder = { playerId: defender.id, playerName: defender.name, team: defendingTeamName };
+            setBallPossession(localBallPossession);
+            setBallHolder(localBallHolder);
+          } else {
+            const attacker = attackingTeam.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))[0];
+            if (attacker) {
+              const eventText = `${matchMinute}' 💨 ${attacker.name} evades ${defender.name}'s challenge!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            }
+          }
+        }
+      } else if (eventRoll < 0.23) {
+        // PASS EVENT (8% chance)
+        const teamRoll = Math.random();
+        const isHome = teamRoll < 0.5;
+        const team = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+        const teamName = isHome ? 'home' : 'away';
+
+        const passers = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+
+        if (passers.length > 0) {
+          const passer = passers[Math.floor(Math.random() * passers.length)];
+          const receivers = team.squad.filter(p => p.id !== passer.id && p.position !== 'GK');
+
+          if (receivers.length > 0) {
+            const attackers = receivers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+            const mids = receivers.filter(p => ['CAM', 'CM', 'LM', 'RM'].includes(p.position));
+
+            let receiver;
+            const receiverRoll = Math.random();
+            if (receiverRoll < 0.50 && attackers.length > 0) {
+              receiver = attackers[Math.floor(Math.random() * attackers.length)];
+            } else if (receiverRoll < 0.85 && mids.length > 0) {
+              receiver = mids[Math.floor(Math.random() * mids.length)];
+            } else {
+              receiver = receivers[Math.floor(Math.random() * receivers.length)];
+            }
+
+            const passAccuracy = 0.75 + (passer.overall / 100) * 0.20;
+            const passSuccess = Math.random() < passAccuracy;
+
+            if (passSuccess) {
+              localBallPossession = teamName;
+              localBallHolder = { playerId: receiver.id, playerName: receiver.name, team: teamName };
+              setBallPossession(localBallPossession);
+              setBallHolder(localBallHolder);
+
+              const eventText = `${matchMinute}' ⚡ ${passer.name} → ${receiver.name} - excellent pass forward!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            } else {
+              const eventText = `${matchMinute}' ❌ ${passer.name}'s pass is intercepted!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+              localBallPossession = isHome ? 'away' : 'home';
+              localBallHolder = null;
+              setBallPossession(localBallPossession);
+              setBallHolder(null);
+            }
+          }
+        }
       }
 
       // Half time at 60 seconds (45 match minutes)
@@ -1172,6 +1344,16 @@ const Match = ({ onBack, activeMatchId }) => {
       }
 
       showAlert('Practice Match Complete', rewardMessage);
+    }
+
+    // Clear practice match from localStorage after completion
+    if (typeof window !== 'undefined' && window.localStorage) {
+      setTimeout(() => {
+        localStorage.removeItem('practiceMatch');
+        localStorage.removeItem('practiceMatchState');
+        localStorage.removeItem('activeMatchId');
+        console.log('Practice match localStorage cleared');
+      }, 2000); // Delay to allow user to see the results first
     }
   };
 
@@ -1720,6 +1902,8 @@ const Match = ({ onBack, activeMatchId }) => {
     let localAwayScore = currentMatch.awayScore || 0;
     let localEvents = currentMatch.events || [];
     let localGoalscorers = currentMatch.goalscorers || {};
+    let localBallPossession = currentMatch.ballPossession || 'away'; // Away team starts second half
+    let localBallHolder = null;
 
     const interval = setInterval(() => {
       currentSecond++;
@@ -1727,26 +1911,38 @@ const Match = ({ onBack, activeMatchId }) => {
 
       setMinute(matchMinute);
 
-      // Goal chance
-      const goalRoll = Math.random();
-      if (goalRoll < 0.04) {
+      // Enhanced match events with all new mechanics
+      const eventRoll = Math.random();
+
+      if (eventRoll < 0.04) {
+        // GOAL EVENT
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
 
-        // Realistic goal scoring - weight by position
         const attackers = team.squad.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-        const midfielders = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM'].includes(p.position));
-        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+        const attackingMids = team.squad.filter(p => ['CAM', 'CM'].includes(p.position));
+        const wideMids = team.squad.filter(p => ['LM', 'RM', 'LWB', 'RWB'].includes(p.position));
+        const defensiveMids = team.squad.filter(p => ['CDM'].includes(p.position));
+        const defenders = team.squad.filter(p => ['CB', 'LB', 'RB'].includes(p.position));
 
         let scorer;
         const scorerRoll = Math.random();
-        if (scorerRoll < 0.70 && attackers.length > 0) {
-          scorer = attackers[Math.floor(Math.random() * attackers.length)];
-        } else if (scorerRoll < 0.95 && midfielders.length > 0) {
-          scorer = midfielders[Math.floor(Math.random() * midfielders.length)];
-        } else if (defenders.length > 0) {
-          scorer = defenders[Math.floor(Math.random() * defenders.length)];
+        if (scorerRoll < 0.60 && attackers.length > 0) {
+          const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedAttackers.sort((a, b) => b.weight - a.weight);
+          scorer = weightedAttackers[0].player;
+        } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+          const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
+          weightedMids.sort((a, b) => b.weight - a.weight);
+          scorer = weightedMids[0].player;
+        } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+          scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
+        } else if (scorerRoll < 0.96 && defenders.length > 0) {
+          const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
+          scorer = sortedDefenders[0];
+        } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+          scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
         } else {
           const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
@@ -1760,21 +1956,25 @@ const Match = ({ onBack, activeMatchId }) => {
           setAwayScore(localAwayScore);
         }
 
-        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) scores for ${team.name}!`;
+        const goalTypes = ['powerful strike', 'clinical finish', 'stunning goal', 'brilliant header', 'precision shot', 'unstoppable effort'];
+        const goalType = goalTypes[Math.floor(Math.random() * goalTypes.length)];
+        const eventText = `${matchMinute}' ⚽ GOAL! ${scorer.name} (${scorer.overall}) with a ${goalType}!`;
         localEvents = [eventText, ...localEvents];
         setEvents(localEvents);
 
-        // Track goalscorer for XP
         if (!localGoalscorers[scorer.id]) {
           localGoalscorers[scorer.id] = { playerId: scorer.id, managerId: team.uid, goals: 0 };
         }
         localGoalscorers[scorer.id].goals++;
 
-        // Trigger visual goal celebration
+        localBallPossession = isHomeGoal ? 'away' : 'home';
+        localBallHolder = null;
+        setBallPossession(localBallPossession);
+        setBallHolder(null);
+
         const scorerName = scorer.name;
         setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
 
-        // Trigger shot animation
         const shooterX = 40 + Math.random() * 20;
         const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
         const goalX = 50;
@@ -1788,7 +1988,6 @@ const Match = ({ onBack, activeMatchId }) => {
           startTime: Date.now()
         });
 
-        // Show goal moment overlay after shot
         setTimeout(() => {
           setGoalMoment({
             show: true,
@@ -1799,10 +1998,152 @@ const Match = ({ onBack, activeMatchId }) => {
           setTimeout(() => setGoalMoment(null), 2500);
         }, 800);
 
-        // Auto-hide celebration
         setTimeout(() => setGoalCelebration(null), 3000);
-
         console.log('GOAL!', eventText);
+      } else if (eventRoll < 0.10) {
+        // SHOT/SAVE EVENT
+        const teamRoll = Math.random();
+        const isHomeShot = teamRoll < 0.5;
+        const attackingTeam = isHomeShot ? currentMatch.homeManager : currentMatch.awayManager;
+        const defendingTeam = isHomeShot ? currentMatch.awayManager : currentMatch.homeManager;
+
+        let shooter;
+        if (localBallHolder && localBallHolder.team === (isHomeShot ? 'home' : 'away')) {
+          const ballHolderPlayer = attackingTeam.squad.find(p => p.id === localBallHolder.playerId);
+          if (ballHolderPlayer && ['ST', 'LW', 'RW', 'CAM'].includes(ballHolderPlayer.position)) {
+            shooter = ballHolderPlayer;
+          }
+        }
+
+        if (!shooter) {
+          const shooters = attackingTeam.squad.filter(p => ['ST', 'LW', 'RW', 'CAM', 'CM'].includes(p.position));
+          if (shooters.length > 0) {
+            const strikers = shooters.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+            if (strikers.length > 0 && Math.random() < 0.7) {
+              shooter = strikers[Math.floor(Math.random() * strikers.length)];
+            } else {
+              shooter = shooters[Math.floor(Math.random() * shooters.length)];
+            }
+          }
+        }
+
+        if (shooter) {
+          const gk = defendingTeam.squad.find(p => p.position === 'GK');
+          const shotAccuracy = 0.65 + (shooter.overall / 100) * 0.25;
+          const shotOnTarget = Math.random() < shotAccuracy;
+
+          if (!shotOnTarget) {
+            const missTypes = ['shoots wide', 'blasts over the bar', 'misses the target'];
+            const missType = missTypes[Math.floor(Math.random() * missTypes.length)];
+            const eventText = `${matchMinute}' 📍 ${shooter.name} ${missType}!`;
+            localEvents = [eventText, ...localEvents];
+            setEvents(localEvents);
+          } else if (gk) {
+            const baseSaveChance = 0.60;
+            const gkBonus = (gk.overall - 75) / 100;
+            const shooterPenalty = (shooter.overall - 75) / 100;
+            const saveChance = Math.max(0.30, Math.min(0.85, baseSaveChance + gkBonus - shooterPenalty));
+            const isSaved = Math.random() < saveChance;
+
+            if (isSaved) {
+              const saveTypes = ['makes a brilliant save', 'denies with a diving save', 'pulls off a great save', 'catches confidently'];
+              const saveType = saveTypes[Math.floor(Math.random() * saveTypes.length)];
+              const eventText = `${matchMinute}' 🧤 ${gk.name} ${saveType}! ${shooter.name} denied.`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            } else {
+              const closeCallTypes = ['shot saved at the near post', 'tips it over the bar', 'makes a fingertip save'];
+              const closeCall = closeCallTypes[Math.floor(Math.random() * closeCallTypes.length)];
+              const eventText = `${matchMinute}' 😰 Close call! ${gk.name} ${closeCall}! ${shooter.name} almost scored!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            }
+          }
+        }
+      } else if (eventRoll < 0.15) {
+        // DEFENSIVE EVENT
+        const isHome = localBallPossession === 'away';
+        const defendingTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+        const attackingTeam = isHome ? currentMatch.awayManager : currentMatch.homeManager;
+        const defendingTeamName = isHome ? 'home' : 'away';
+
+        const defenders = defendingTeam.squad.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB', 'CDM'].includes(p.position));
+
+        if (defenders.length > 0) {
+          const defender = defenders[Math.floor(Math.random() * defenders.length)];
+          const tackleSuccess = 0.55 + (defender.overall / 100) * 0.25;
+          const isSuccessful = Math.random() < tackleSuccess;
+
+          if (isSuccessful) {
+            const tackleTypes = ['wins the ball with a strong tackle', 'intercepts brilliantly', 'makes a crucial tackle', 'reads the play perfectly'];
+            const tackleType = tackleTypes[Math.floor(Math.random() * tackleTypes.length)];
+            const eventText = `${matchMinute}' 🛡️ ${defender.name} ${tackleType}!`;
+            localEvents = [eventText, ...localEvents];
+            setEvents(localEvents);
+
+            localBallPossession = defendingTeamName;
+            localBallHolder = { playerId: defender.id, playerName: defender.name, team: defendingTeamName };
+            setBallPossession(localBallPossession);
+            setBallHolder(localBallHolder);
+          } else {
+            const attacker = attackingTeam.squad.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))[0];
+            if (attacker) {
+              const eventText = `${matchMinute}' 💨 ${attacker.name} evades ${defender.name}'s challenge!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            }
+          }
+        }
+      } else if (eventRoll < 0.23) {
+        // PASS EVENT
+        const teamRoll = Math.random();
+        const isHome = teamRoll < 0.5;
+        const team = isHome ? currentMatch.homeManager : currentMatch.awayManager;
+        const teamName = isHome ? 'home' : 'away';
+
+        const passers = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+
+        if (passers.length > 0) {
+          const passer = passers[Math.floor(Math.random() * passers.length)];
+          const receivers = team.squad.filter(p => p.id !== passer.id && p.position !== 'GK');
+
+          if (receivers.length > 0) {
+            const attackers = receivers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
+            const mids = receivers.filter(p => ['CAM', 'CM', 'LM', 'RM'].includes(p.position));
+
+            let receiver;
+            const receiverRoll = Math.random();
+            if (receiverRoll < 0.50 && attackers.length > 0) {
+              receiver = attackers[Math.floor(Math.random() * attackers.length)];
+            } else if (receiverRoll < 0.85 && mids.length > 0) {
+              receiver = mids[Math.floor(Math.random() * mids.length)];
+            } else {
+              receiver = receivers[Math.floor(Math.random() * receivers.length)];
+            }
+
+            const passAccuracy = 0.75 + (passer.overall / 100) * 0.20;
+            const passSuccess = Math.random() < passAccuracy;
+
+            if (passSuccess) {
+              localBallPossession = teamName;
+              localBallHolder = { playerId: receiver.id, playerName: receiver.name, team: teamName };
+              setBallPossession(localBallPossession);
+              setBallHolder(localBallHolder);
+
+              const eventText = `${matchMinute}' ⚡ ${passer.name} → ${receiver.name} - excellent pass forward!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+            } else {
+              const eventText = `${matchMinute}' ❌ ${passer.name}'s pass is intercepted!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+              localBallPossession = isHome ? 'away' : 'home';
+              localBallHolder = null;
+              setBallPossession(localBallPossession);
+              setBallHolder(null);
+            }
+          }
+        }
       }
 
       // Full time at 120 seconds (90 match minutes)
