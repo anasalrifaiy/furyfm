@@ -36,6 +36,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [passAnimation, setPassAnimation] = useState(null); // { fromPlayer, toPlayer, startTime }
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
+  const prevBallPosRef = useRef({ x: 50, y: 50 }); // Track previous ball position for smooth interpolation
 
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
@@ -3653,10 +3654,8 @@ const Match = ({ onBack, activeMatchId }) => {
         ? ballCarrier.baseY + ballVerticalOffset
         : 100 - ballCarrier.baseY + ballVerticalOffset;
 
-      // Store previous ball position in component state (using refs to avoid re-renders)
-      const prevBallPosRef = useRef({ x: targetBallX, y: targetBallY });
-
       // Smooth interpolation towards target position (ease-out effect)
+      // Using the ref defined at component top level
       const smoothingFactor = 0.15; // Higher = faster transition (0.1-0.3 recommended)
       const ballX = prevBallPosRef.current.x + (targetBallX - prevBallPosRef.current.x) * smoothingFactor;
       const ballY = prevBallPosRef.current.y + (targetBallY - prevBallPosRef.current.y) * smoothingFactor;
