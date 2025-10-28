@@ -3596,46 +3596,73 @@ const Match = ({ onBack, activeMatchId }) => {
         possessionTeam = isHomeGK ? 0 : 1;
       }
 
-      // Determine attack phase - smoother progression through pitch zones
-      const attackProgress = (time % 15) / 15; // 15 second attack cycle (0.0 to 1.0)
+      // Select ball carrier - Use ACTUAL ball holder from match simulation if available
+      let ballCarrier;
 
-      // Select ball carrier based on attack progression
-      let attackingPlayers, ballCarrier;
+      // Check if we have actual ball holder data from the match simulation
+      if (currentMatch.ballHolder && currentMatch.ballHolder.playerId) {
+        // Find the player with the ball from either team
+        ballCarrier = homePlayers.find(p => p.id === currentMatch.ballHolder.playerId) ||
+                      awayPlayers.find(p => p.id === currentMatch.ballHolder.playerId);
 
-      if (attackProgress < 0.35) {
-        // Build-up phase (0-35%): Start from back, midfielders and defenders
-        attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position))
-          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
-      } else if (attackProgress < 0.70) {
-        // Middle phase (35-70%): Midfield play
-        attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position))
-          : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position));
-      } else {
-        // Final third (70-100%): Attacking players only
-        attackingPlayers = possessionTeam === 0
-          ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))
-          : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        // Update possession team based on ball holder
+        if (ballCarrier) {
+          possessionTeam = currentMatch.ballHolder.team === 'home' ? 0 : 1;
+        }
       }
 
-      // Use consistent index based on attack progress to avoid sudden jumps
-      const carrierIndex = Math.floor(attackProgress * attackingPlayers.length);
-      ballCarrier = attackingPlayers.length > 0
-        ? attackingPlayers[Math.min(carrierIndex, attackingPlayers.length - 1)]
-        : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
+      // Fallback to time-based calculation if no ball holder data
+      if (!ballCarrier) {
+        const attackProgress = (time % 15) / 15; // 15 second attack cycle (0.0 to 1.0)
+        let attackingPlayers;
 
-      // Calculate ball position with smooth movement
-      const ballMovementSpeed = 2.5; // Smoother ball movement
-      const ballPhaseOffset = Math.sin(time * ballMovementSpeed) * 3;
-      const ballVerticalOffset = Math.cos(time * ballMovementSpeed * 1.3) * 2;
+        if (attackProgress < 0.35) {
+          // Build-up phase (0-35%): Start from back, midfielders and defenders
+          attackingPlayers = possessionTeam === 0
+            ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position))
+            : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+        } else if (attackProgress < 0.70) {
+          // Middle phase (35-70%): Midfield play
+          attackingPlayers = possessionTeam === 0
+            ? homePlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position))
+            : awayPlayers.filter(p => ['CM', 'CDM', 'CAM', 'LM', 'RM', 'LW', 'RW'].includes(p.position));
+        } else {
+          // Final third (70-100%): Attacking players only
+          attackingPlayers = possessionTeam === 0
+            ? homePlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position))
+            : awayPlayers.filter(p => ['ST', 'LW', 'RW', 'CAM'].includes(p.position));
+        }
 
-      const ballX = possessionTeam === 0
+        // Use consistent index based on attack progress to avoid sudden jumps
+        const carrierIndex = Math.floor(attackProgress * attackingPlayers.length);
+        ballCarrier = attackingPlayers.length > 0
+          ? attackingPlayers[Math.min(carrierIndex, attackingPlayers.length - 1)]
+          : (possessionTeam === 0 ? homePlayers[0] : awayPlayers[0]);
+      }
+
+      // Calculate ball position with SMOOTH movement and transitions
+      const ballMovementSpeed = 2.5;
+      const ballPhaseOffset = Math.sin(time * ballMovementSpeed) * 2; // Reduced jitter
+      const ballVerticalOffset = Math.cos(time * ballMovementSpeed * 1.3) * 1.5; // Reduced jitter
+
+      // Target ball position (at the ball carrier)
+      const targetBallX = possessionTeam === 0
         ? ballCarrier.baseX + ballPhaseOffset
         : 100 - ballCarrier.baseX - ballPhaseOffset;
-      const ballY = possessionTeam === 0
+      const targetBallY = possessionTeam === 0
         ? ballCarrier.baseY + ballVerticalOffset
         : 100 - ballCarrier.baseY + ballVerticalOffset;
+
+      // Store previous ball position in component state (using refs to avoid re-renders)
+      const prevBallPosRef = useRef({ x: targetBallX, y: targetBallY });
+
+      // Smooth interpolation towards target position (ease-out effect)
+      const smoothingFactor = 0.15; // Higher = faster transition (0.1-0.3 recommended)
+      const ballX = prevBallPosRef.current.x + (targetBallX - prevBallPosRef.current.x) * smoothingFactor;
+      const ballY = prevBallPosRef.current.y + (targetBallY - prevBallPosRef.current.y) * smoothingFactor;
+
+      // Update previous position for next frame
+      prevBallPosRef.current = { x: ballX, y: ballY };
 
       return (
         <View style={styles.pitchContainer}>
@@ -5911,6 +5938,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     transform: [{ translateX: -16 }, { translateY: -16 }],
     borderWidth: 2,
+    transition: 'left 0.5s ease-out, top 0.5s ease-out', // Smooth player movement
   },
   playerDotHome: {
     backgroundColor: '#667eea',
@@ -5924,6 +5952,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFD700',
     transform: [{ translateX: -16 }, { translateY: -16 }, { scale: 1.2 }],
+    transition: 'border-width 0.2s ease-in-out, transform 0.2s ease-in-out', // Smooth border animation
   },
   playerDotText: {
     fontSize: 9,
@@ -5946,6 +5975,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -8 }, { translateY: -8 }],
     zIndex: 1000,
     boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.2)',
+    transition: 'left 0.3s ease-out, top 0.3s ease-out', // Smooth CSS transitions
   },
   shotBall: {
     position: 'absolute',
