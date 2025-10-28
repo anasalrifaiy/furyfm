@@ -1028,21 +1028,40 @@ const Match = ({ onBack, activeMatchId }) => {
         localEvents = [shootEvent, ...localEvents];
         setEvents(localEvents);
 
-        // STEP 3: Trigger shot animation FIRST
-        const shooterX = 40 + Math.random() * 20;
-        const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
+        // STEP 3: Trigger shot animation from realistic shooter position
+        // Calculate approximate position based on scorer's role
+        let shooterX = 50; // Center by default
+        let shooterY = isHomeGoal ? 70 : 30; // Attacking third
+
+        // Adjust position based on player position
+        if (scorer.position === 'ST') {
+          shooterX = 50; // Center striker
+          shooterY = isHomeGoal ? 25 : 75;
+        } else if (scorer.position === 'LW') {
+          shooterX = 30; // Left wing
+          shooterY = isHomeGoal ? 30 : 70;
+        } else if (scorer.position === 'RW') {
+          shooterX = 70; // Right wing
+          shooterY = isHomeGoal ? 30 : 70;
+        } else if (['CAM', 'CM'].includes(scorer.position)) {
+          shooterX = 50; // Central
+          shooterY = isHomeGoal ? 45 : 55;
+        }
+
+        const shooterPosition = { x: shooterX, y: shooterY };
+
         const goalX = 50;
         const goalY = isHomeGoal ? 2 : 98;
 
         setShotAnimation({
-          fromX: shooterX,
-          fromY: shooterY,
-          toX: goalX + (Math.random() - 0.5) * 10,
+          fromX: shooterPosition.x,
+          fromY: shooterPosition.y,
+          toX: goalX + (Math.random() - 0.5) * 8,
           toY: goalY,
           startTime: Date.now()
         });
 
-        // STEP 4: AFTER shot animation completes (800ms), announce GOAL!
+        // STEP 4: AFTER shot animation completes (1200ms), announce GOAL!
         setTimeout(() => {
           // Update score
           if (isHomeGoal) {
@@ -1086,7 +1105,7 @@ const Match = ({ onBack, activeMatchId }) => {
           setTimeout(() => setGoalCelebration(null), 3000);
 
           console.log('GOAL!', eventText);
-        }, 800); // Wait for shot to reach goal
+        }, 1200); // Wait for shot to reach goal (1200ms)
       } else if (eventRoll < 0.10) {
         // SHOT/SAVE EVENT (6% chance)
         const teamRoll = Math.random();
@@ -1570,8 +1589,8 @@ const Match = ({ onBack, activeMatchId }) => {
             ballHolder: { playerId: scorer.id, playerName: scorer.name, team: isHomeGoal ? 'home' : 'away' }
           });
 
-          // STEP 2: Wait for shot animation (800ms), then announce GOAL!
-          await new Promise(resolve => setTimeout(resolve, 800));
+          // STEP 2: Wait for shot animation (1200ms), then announce GOAL!
+          await new Promise(resolve => setTimeout(resolve, 1200));
 
           // STEP 3: Update score and add GOAL! event
           const newScore = isHomeGoal
@@ -1971,21 +1990,39 @@ const Match = ({ onBack, activeMatchId }) => {
         localEvents = [shootEvent, ...localEvents];
         setEvents(localEvents);
 
-        // STEP 3: Trigger shot animation
-        const shooterX = 40 + Math.random() * 20;
-        const shooterY = isHomeGoal ? 25 + Math.random() * 15 : 60 + Math.random() * 15;
+        // STEP 3: Trigger shot animation from realistic shooter position
+        let shooterX = 50;
+        let shooterY = isHomeGoal ? 70 : 30;
+
+        // Position based on scorer's role
+        if (scorer.position === 'ST') {
+          shooterX = 50;
+          shooterY = isHomeGoal ? 25 : 75;
+        } else if (scorer.position === 'LW') {
+          shooterX = 30;
+          shooterY = isHomeGoal ? 30 : 70;
+        } else if (scorer.position === 'RW') {
+          shooterX = 70;
+          shooterY = isHomeGoal ? 30 : 70;
+        } else if (['CAM', 'CM'].includes(scorer.position)) {
+          shooterX = 50;
+          shooterY = isHomeGoal ? 45 : 55;
+        }
+
+        const shooterPosition = { x: shooterX, y: shooterY };
+
         const goalX = 50;
         const goalY = isHomeGoal ? 2 : 98;
 
         setShotAnimation({
-          fromX: shooterX,
-          fromY: shooterY,
-          toX: goalX + (Math.random() - 0.5) * 10,
+          fromX: shooterPosition.x,
+          fromY: shooterPosition.y,
+          toX: goalX + (Math.random() - 0.5) * 8,
           toY: goalY,
           startTime: Date.now()
         });
 
-        // STEP 4: AFTER shot completes, announce GOAL!
+        // STEP 4: AFTER shot completes (1200ms), announce GOAL!
         setTimeout(() => {
           if (isHomeGoal) {
             localHomeScore++;
@@ -2021,7 +2058,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
           setTimeout(() => setGoalCelebration(null), 3000);
           console.log('GOAL!', eventText);
-        }, 800); // Wait for shot to reach goal
+        }, 1200); // Wait for shot to reach goal (1200ms)
       } else if (eventRoll < 0.10) {
         // SHOT/SAVE EVENT
         const teamRoll = Math.random();
@@ -3700,13 +3737,15 @@ const Match = ({ onBack, activeMatchId }) => {
             <View style={styles.penaltyAreaTop} />
             <View style={styles.penaltyAreaBottom} />
 
-            {/* Ball with dynamic position */}
-            <View style={[styles.ball, { left: `${ballX}%`, top: `${ballY}%` }]} />
+            {/* Ball with dynamic position - HIDE during shot animation */}
+            {!shotAnimation && (
+              <View style={[styles.ball, { left: `${ballX}%`, top: `${ballY}%` }]} />
+            )}
 
-            {/* Shot trajectory animation */}
+            {/* Shot trajectory animation - This becomes the ONLY ball during shot */}
             {shotAnimation && (() => {
               const elapsed = Date.now() - shotAnimation.startTime;
-              const duration = 800; // 800ms shot duration
+              const duration = 1200; // 1200ms shot duration (longer to see it reach goal)
               const progress = Math.min(elapsed / duration, 1);
 
               if (progress >= 1) {
