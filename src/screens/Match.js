@@ -1354,26 +1354,71 @@ const Match = ({ onBack, activeMatchId }) => {
       const currentClubXP = managerData.clubFacilitiesXP || 0;
       const newClubXP = currentClubXP + clubFacilitiesXP;
 
-      // Update manager profile with new squad and club XP
+      // Award money and victory XP for winning
+      let moneyEarned = 0;
+      let victoryXP = 0;
+      let finalSquad = updatedSquad;
+
+      if (playerWon) {
+        const stadiumLevel = managerData.facilities?.stadium || 0;
+
+        // Base match winnings: $2M guaranteed
+        const baseWinnings = 2000000;
+
+        // Stadium bonus revenue
+        const stadiumBonuses = [
+          0,          // No stadium (level 0) - only base
+          2000000,    // Level 1: +$2M bonus = $4M total
+          5000000,    // Level 2: +$5M bonus = $7M total
+          10000000,   // Level 3: +$10M bonus = $12M total
+          20000000    // Level 4: +$20M bonus = $22M total
+        ];
+
+        const stadiumBonus = stadiumBonuses[stadiumLevel] || 0;
+        moneyEarned = baseWinnings + stadiumBonus;
+
+        // Award victory XP to all players (100 XP each)
+        victoryXP = 100;
+        finalSquad = finalSquad.map(player => ({
+          ...player,
+          xp: (player.xp || 0) + victoryXP
+        }));
+      }
+
+      const newBudget = (managerData.budget || 0) + moneyEarned;
+
+      // Update manager profile with new squad, club XP, and budget
       await update(managerRef, {
-        squad: updatedSquad,
-        clubFacilitiesXP: newClubXP
+        squad: finalSquad,
+        clubFacilitiesXP: newClubXP,
+        budget: newBudget
       });
 
-      console.log(`Practice match rewards - Player XP: ${totalPlayerXP}, Club Facilities XP: ${clubFacilitiesXP}`);
+      console.log(`Practice match rewards - Player XP: ${totalPlayerXP}, Victory XP: ${victoryXP * finalSquad.length}, Club Facilities XP: ${clubFacilitiesXP}, Money: $${moneyEarned}`);
 
       // Show detailed results
       let rewardMessage = '';
       if (totalPlayerXP > 0) {
         rewardMessage += `⚽ Goalscorers earned ${totalPlayerXP} XP for training!\n`;
       }
+      if (playerWon && victoryXP > 0) {
+        rewardMessage += `⭐ All players gained +${victoryXP} XP (WIN)!\n`;
+      }
       if (clubFacilitiesXP > 0) {
         rewardMessage += `🏗️ Club earned ${clubFacilitiesXP} Facilities XP ${playerWon ? '(WIN)' : '(DRAW)'}!\n`;
       }
+      if (moneyEarned > 0) {
+        const stadiumLevel = managerData.facilities?.stadium || 0;
+        rewardMessage += `\n💰 Match Winnings: $${(2000000 / 1000000).toFixed(1)}M\n`;
+        if (stadiumLevel > 0) {
+          rewardMessage += `🏟️ Stadium Bonus (Lv.${stadiumLevel}): +$${((moneyEarned - 2000000) / 1000000).toFixed(1)}M\n`;
+        }
+        rewardMessage += `💵 Total Earned: $${(moneyEarned / 1000000).toFixed(1)}M`;
+      }
       if (!rewardMessage) {
-        rewardMessage = 'No XP earned this match. Try scoring goals and winning!';
-      } else {
-        rewardMessage += '\n💡 Use Facilities XP to upgrade your club infrastructure!';
+        rewardMessage = 'No rewards earned. Try scoring goals and winning!';
+      } else if (moneyEarned === 0) {
+        rewardMessage += '\n💡 Win matches to earn money and more XP!';
       }
 
       showAlert('Practice Match Complete', rewardMessage);
@@ -2685,12 +2730,14 @@ const Match = ({ onBack, activeMatchId }) => {
       read: false
     });
 
-    // Award XP to goalscorers (50 XP per goal)
+    // Award XP to goalscorers (50 XP per goal, 100 XP for Pro League)
     const goalscorers = matchData.goalscorers || {};
+    const isProLeague = matchData.isProLeague || false;
     for (const scorerId in goalscorers) {
       const scorerData = goalscorers[scorerId];
       const managerId = scorerData.managerId;
-      const xpEarned = scorerData.goals * 50;
+      const xpPerGoal = isProLeague ? 100 : 50;  // Double XP for Pro League
+      const xpEarned = scorerData.goals * xpPerGoal;
 
       const managerRef = ref(database, `managers/${managerId}`);
       const managerSnapshot = await get(managerRef);
@@ -2745,18 +2792,23 @@ const Match = ({ onBack, activeMatchId }) => {
         ];
 
         const stadiumBonus = stadiumBonuses[stadiumLevel] || 0;
-        const totalReward = baseWinnings + stadiumBonus;
+        let totalReward = baseWinnings + stadiumBonus;
+
+        // Pro League matches give DOUBLE rewards
+        const rewardMultiplier = matchData.isProLeague ? 2 : 1;
+        totalReward = totalReward * rewardMultiplier;
 
         // Award money
         const newBudget = (winnerData.budget || 0) + totalReward;
 
-        // Award bonus XP to all players in winning squad (100 XP each)
+        // Award bonus XP to all players in winning squad (100 XP each, 200 XP for Pro League)
         // IMPORTANT: Use the full manager squad from Firebase, not the match squad (which is only 11 players)
         const fullWinningSquad = winnerData.squad || [];
+        const victoryXP = matchData.isProLeague ? 200 : 100;  // Double XP for Pro League
 
         const updatedWinningSquad = fullWinningSquad.map(player => ({
           ...player,
-          xp: (player.xp || 0) + 100
+          xp: (player.xp || 0) + victoryXP
         }));
 
         await update(winnerRef, {
@@ -2765,13 +2817,22 @@ const Match = ({ onBack, activeMatchId }) => {
         });
 
         // Send detailed reward notification
-        let rewardMessage = `🏆 Victory!\n\n`;
-        rewardMessage += `💰 Base Match Winnings: $${(baseWinnings / 1000000).toFixed(1)}M\n`;
-        if (stadiumLevel > 0) {
-          rewardMessage += `🏟️ Stadium Bonus (Lv.${stadiumLevel}): +$${(stadiumBonus / 1000000).toFixed(1)}M\n`;
+        let rewardMessage = matchData.isProLeague ? `🏆🏆 Pro League Victory!\n\n` : `🏆 Victory!\n\n`;
+        if (matchData.isProLeague) {
+          rewardMessage += `🔥 Pro League Bonus: DOUBLE REWARDS!\n\n`;
         }
-        rewardMessage += `\n💵 Total Earned: $${(totalReward / 1000000).toFixed(1)}M\n`;
-        rewardMessage += `⭐ All players gained +100 XP!`;
+        const actualBaseWinnings = matchData.isProLeague ? baseWinnings * 2 : baseWinnings;
+        const actualStadiumBonus = matchData.isProLeague ? stadiumBonus * 2 : stadiumBonus;
+        rewardMessage += `💰 Base Match Winnings: ${(actualBaseWinnings / 1000000).toFixed(1)}M`;
+        if (matchData.isProLeague) rewardMessage += ` (x2)`;
+        rewardMessage += `\n`;
+        if (stadiumLevel > 0) {
+          rewardMessage += `🏟️ Stadium Bonus (Lv.${stadiumLevel}): +${(actualStadiumBonus / 1000000).toFixed(1)}M`;
+          if (matchData.isProLeague) rewardMessage += ` (x2)`;
+          rewardMessage += `\n`;
+        }
+        rewardMessage += `\n💵 Total Earned: ${(totalReward / 1000000).toFixed(1)}M\n`;
+        rewardMessage += `⭐ All players gained +${victoryXP} XP!`;
 
         if (stadiumLevel === 0) {
           rewardMessage += `\n\n💡 Tip: Build a stadium to earn more!`;
