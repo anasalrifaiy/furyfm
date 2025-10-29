@@ -1377,17 +1377,47 @@ const Match = ({ onBack, activeMatchId }) => {
           const receivers = team.squad.filter(p => p.id !== passer.id && p.position !== 'GK');
 
           if (receivers.length > 0) {
+            // Make passes more logical based on passer's position
             const attackers = receivers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
             const mids = receivers.filter(p => ['CAM', 'CM', 'LM', 'RM'].includes(p.position));
+            const defenders = receivers.filter(p => ['CB', 'LB', 'RB', 'CDM'].includes(p.position));
 
             let receiver;
             const receiverRoll = Math.random();
-            if (receiverRoll < 0.50 && attackers.length > 0) {
-              receiver = attackers[Math.floor(Math.random() * attackers.length)];
-            } else if (receiverRoll < 0.85 && mids.length > 0) {
-              receiver = mids[Math.floor(Math.random() * mids.length)];
+
+            // Progressive passing based on passer position
+            if (['ST', 'LW', 'RW'].includes(passer.position)) {
+              // Attackers: prefer other attackers or attacking mids (no sudden passes to defense)
+              if (receiverRoll < 0.40 && attackers.length > 0) {
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
+              } else if (mids.length > 0) {
+                receiver = mids[Math.floor(Math.random() * mids.length)];
+              } else {
+                receiver = attackers.length > 0 ? attackers[0] : receivers[0];
+              }
+            } else if (['CAM', 'CM', 'LM', 'RM'].includes(passer.position)) {
+              // Midfielders: can pass forward to attackers or sideways/back to other mids
+              if (receiverRoll < 0.45 && attackers.length > 0) {
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
+              } else if (receiverRoll < 0.85 && mids.length > 0) {
+                receiver = mids[Math.floor(Math.random() * mids.length)];
+              } else if (defenders.length > 0) {
+                receiver = defenders[Math.floor(Math.random() * defenders.length)];
+              } else {
+                receiver = receivers[Math.floor(Math.random() * receivers.length)];
+              }
             } else {
-              receiver = receivers[Math.floor(Math.random() * receivers.length)];
+              // Defenders: prefer passing to midfielders or other defenders (build from back)
+              if (receiverRoll < 0.50 && mids.length > 0) {
+                receiver = mids[Math.floor(Math.random() * mids.length)];
+              } else if (receiverRoll < 0.85 && defenders.length > 0) {
+                receiver = defenders[Math.floor(Math.random() * defenders.length)];
+              } else if (attackers.length > 0) {
+                // Occasional long ball forward
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
+              } else {
+                receiver = receivers[Math.floor(Math.random() * receivers.length)];
+              }
             }
 
             const passAccuracy = 0.75 + (passer.overall / 100) * 0.20;
