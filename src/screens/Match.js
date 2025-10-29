@@ -4105,9 +4105,10 @@ const Match = ({ onBack, activeMatchId }) => {
 
       // Check if we have actual ball holder data from the match simulation
       if (currentMatch.ballHolder && currentMatch.ballHolder.playerId) {
-        // Find the player with the ball from either team
-        ballCarrier = homePlayers.find(p => p.id === currentMatch.ballHolder.playerId) ||
-                      awayPlayers.find(p => p.id === currentMatch.ballHolder.playerId);
+        // Find the player with the ball from the CORRECT team (check team first!)
+        ballCarrier = currentMatch.ballHolder.team === 'home'
+          ? homePlayers.find(p => p.id === currentMatch.ballHolder.playerId)
+          : awayPlayers.find(p => p.id === currentMatch.ballHolder.playerId);
 
         // Update possession team based on ball holder
         if (ballCarrier) {
