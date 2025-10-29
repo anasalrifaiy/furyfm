@@ -1288,12 +1288,13 @@ const Match = ({ onBack, activeMatchId }) => {
               localEvents = [shootEvent, ...localEvents];
               setEvents(localEvents);
 
-              // Trigger shot animation
+              // Trigger shot animation - ball goes toward corner where GK saves it
+              const saveDirection = Math.random() < 0.5 ? -1 : 1; // Left or right
               setShotAnimation({
                 fromX: shooterX,
                 fromY: shooterY,
-                toX: goalX + (Math.random() - 0.5) * 12,
-                toY: goalY,
+                toX: goalX + saveDirection * (15 + Math.random() * 10), // To the side
+                toY: goalY + (Math.random() - 0.5) * 4, // Slight variation in height
                 startTime: Date.now(),
                 isSave: true  // Mark as save so we can show it differently
               });
@@ -1964,8 +1965,8 @@ const Match = ({ onBack, activeMatchId }) => {
                   shotAnimation: {
                     fromX: shooterX,
                     fromY: shooterY,
-                    toX: goalX + (Math.random() - 0.5) * 12,
-                    toY: goalY,
+                    toX: goalX + (Math.random() < 0.5 ? -1 : 1) * (15 + Math.random() * 10),
+                    toY: goalY + (Math.random() - 0.5) * 4,
                     startTime: Date.now(),
                     isSave: true
                   }
@@ -1989,8 +1990,8 @@ const Match = ({ onBack, activeMatchId }) => {
                   shotAnimation: {
                     fromX: shooterX,
                     fromY: shooterY,
-                    toX: goalX + (Math.random() - 0.5) * 15,
-                    toY: goalY + (Math.random() < 0.5 ? -3 : 3),
+                    toX: goalX + (Math.random() - 0.5) * 18,
+                    toY: goalY + (Math.random() < 0.5 ? -5 : -2), // Over the bar or just wide
                     startTime: Date.now(),
                     isSave: true
                   }
@@ -4105,14 +4106,32 @@ const Match = ({ onBack, activeMatchId }) => {
 
       // Check if we have actual ball holder data from the match simulation
       if (currentMatch.ballHolder && currentMatch.ballHolder.playerId) {
+        // Debug logging
+        if (currentMatch.ballHolder.team === 'away') {
+          console.log('[AWAY BALL]', {
+            ballHolderTeam: currentMatch.ballHolder.team,
+            ballHolderId: currentMatch.ballHolder.playerId,
+            ballHolderName: currentMatch.ballHolder.playerName,
+            awayPlayerIds: awayPlayers.map(p => ({ id: p.id, name: p.name }))
+          });
+        }
+
         // Find the player with the ball from the CORRECT team (check team first!)
         ballCarrier = currentMatch.ballHolder.team === 'home'
           ? homePlayers.find(p => p.id === currentMatch.ballHolder.playerId)
           : awayPlayers.find(p => p.id === currentMatch.ballHolder.playerId);
 
+        // Debug: check if ballCarrier was found
+        if (currentMatch.ballHolder.team === 'away') {
+          console.log('[AWAY CARRIER]', ballCarrier ? `Found: ${ballCarrier.name}` : 'NOT FOUND!');
+        }
+
         // Update possession team based on ball holder
         if (ballCarrier) {
           possessionTeam = currentMatch.ballHolder.team === 'home' ? 0 : 1;
+          if (currentMatch.ballHolder.team === 'away') {
+            console.log('[POSSESSION]', `possessionTeam set to: ${possessionTeam} (should be 1 for away)`);
+          }
         }
       }
 
@@ -4331,6 +4350,18 @@ const Match = ({ onBack, activeMatchId }) => {
               // Determine if this team is attacking or defending
               const isAttacking = possessionTeam === 1;
               const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
+
+              // Debug away team highlighting
+              if (idx === 0 && possessionTeam === 1 && ballCarrier) {
+                console.log('[AWAY TEAM CHECK]', {
+                  ballCarrierId: ballCarrier.id,
+                  ballCarrierName: ballCarrier.name,
+                  currentPlayerId: player.id,
+                  currentPlayerName: player.name,
+                  hasBall: hasBall,
+                  possessionTeam: possessionTeam
+                });
+              }
 
               // Realistic dynamic movement based on attacking/defending
               let xMovement, yMovement;
