@@ -4224,42 +4224,81 @@ const Match = ({ onBack, activeMatchId }) => {
 
               // Determine if this team is attacking or defending
               const isAttacking = possessionTeam === 0;
-              const hasBall = ballCarrier && ballCarrier.id === player.id;
+              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 0;
 
-              // Dynamic movement based on attacking/defending state
+              // Realistic dynamic movement based on attacking/defending
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide - BALANCED movement
-                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.8 : 1.1));
-                const attackingVertical = isGK ? 0.1 : (isDefender ? 0.6 : (isMidfielder ? 0.9 : 1.3));
+                // ATTACKING: Move toward goal, support ball carrier, create space
+                const attackIntensity = isGK ? 0.2 : (isDefender ? 1.5 : (isMidfielder ? 2.5 : 3.5));
 
-                xMovement = Math.sin(time * 0.4 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.35 + idx * 0.3) * attackingVertical - (isDefender ? 0.5 : 1.5); // Push up
+                // Base forward movement toward opponent goal
+                yMovement = -attackIntensity;
 
-                // Wide players move to flanks when attacking
+                // Lateral movement - create width
+                const lateralOscillation = Math.sin(time * 0.5 + idx * 0.6);
+                xMovement = lateralOscillation * (isDefender ? 1.5 : 2.5);
+
+                // Wide players push to flanks
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 1.0;
+                  xMovement -= 2.5;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 1.0;
+                  xMovement += 2.5;
+                }
+
+                // Move toward ball carrier for support (if not the carrier)
+                if (!hasBall && ballCarrier) {
+                  const ballX = ballCarrier.baseX;
+                  const ballY = ballCarrier.baseY;
+                  const distanceToBall = Math.sqrt(Math.pow(player.baseX - ballX, 2) + Math.pow(player.baseY - ballY, 2));
+
+                  if (distanceToBall > 20 && distanceToBall < 40) {
+                    xMovement += (ballX - player.baseX) * 0.08;
+                    yMovement += (ballY - player.baseY) * 0.08;
+                  }
                 }
               } else {
-                // When defending: drop back, compact shape - BALANCED movement
-                const defendingHorizontal = isGK ? 0.1 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
-                const defendingVertical = isGK ? 0.08 : (isDefender ? 0.25 : (isMidfielder? 0.5 : 0.7));
+                // DEFENDING: Mark opponents, press ball, maintain shape
+                const pressIntensity = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.5 : 1.2));
 
-                xMovement = Math.sin(time * 0.35 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.3 + idx * 0.3) * defendingVertical + (isAttacker ? 1.2 : 0); // Drop back
+                // Drop back toward own goal
+                yMovement = pressIntensity;
 
-                // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.3;
-                else if (player.baseX > 65) xMovement -= 0.3;
+                // Track nearest opponent for marking
+                const nearestOpponent = awayPlayers.reduce((nearest, opponent) => {
+                  const dist = Math.sqrt(
+                    Math.pow(player.baseX - (100 - opponent.baseX), 2) +
+                    Math.pow(player.baseY - (100 - opponent.baseY), 2)
+                  );
+                  return (!nearest || dist < nearest.distance) ? { player: opponent, distance: dist } : nearest;
+                }, null);
+
+                if (nearestOpponent && nearestOpponent.distance < 25) {
+                  // Mark the nearby opponent
+                  const oppX = 100 - nearestOpponent.player.baseX;
+                  const oppY = 100 - nearestOpponent.player.baseY;
+                  xMovement = (oppX - player.baseX) * 0.15;
+                  yMovement = (oppY - player.baseY) * 0.15;
+
+                  // Press toward ball carrier more aggressively
+                  if (ballCarrier && ballCarrier.id === nearestOpponent.player.id) {
+                    xMovement *= 1.8;
+                    yMovement *= 1.8;
+                  }
+                } else {
+                  // Maintain defensive shape
+                  xMovement = Math.sin(time * 0.3 + idx * 0.4) * 0.8;
+                  // Compact - move toward center
+                  if (player.baseX < 35) xMovement += 0.5;
+                  else if (player.baseX > 65) xMovement -= 0.5;
+                }
               }
 
-              // Player with ball moves more actively
+              // Ball carrier dribbles forward
               if (hasBall) {
-                xMovement *= 1.3;
-                yMovement *= 1.3;
+                yMovement -= 1.5; // Dribble toward goal
+                xMovement += Math.sin(time * 1.2) * 0.8; // Slight dribbling weave
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
@@ -4291,42 +4330,81 @@ const Match = ({ onBack, activeMatchId }) => {
 
               // Determine if this team is attacking or defending
               const isAttacking = possessionTeam === 1;
-              const hasBall = ballCarrier && ballCarrier.id === player.id;
+              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
 
-              // Dynamic movement based on attacking/defending state
+              // Realistic dynamic movement based on attacking/defending
               let xMovement, yMovement;
 
               if (isAttacking) {
-                // When attacking: push forward, spread wide - BALANCED movement
-                const attackingHorizontal = isGK ? 0.1 : (isDefender ? 0.5 : (isMidfielder ? 0.8 : 1.1));
-                const attackingVertical = isGK ? 0.1 : (isDefender ? 0.6 : (isMidfielder ? 0.9 : 1.3));
+                // ATTACKING: Move toward goal, support ball carrier, create space
+                const attackIntensity = isGK ? 0.2 : (isDefender ? 1.5 : (isMidfielder ? 2.5 : 3.5));
 
-                xMovement = Math.sin(time * 0.4 + idx * 0.5) * attackingHorizontal;
-                yMovement = Math.cos(time * 0.35 + idx * 0.3) * attackingVertical + (isDefender ? 0.5 : 1.5); // Push down (inverted)
+                // Base forward movement toward opponent goal (down for away team)
+                yMovement = attackIntensity;
 
-                // Wide players move to flanks when attacking
+                // Lateral movement - create width
+                const lateralOscillation = Math.sin(time * 0.5 + idx * 0.6);
+                xMovement = lateralOscillation * (isDefender ? 1.5 : 2.5);
+
+                // Wide players push to flanks
                 if (['LW', 'LM', 'LB', 'LWB'].includes(player.position)) {
-                  xMovement -= 1.0;
+                  xMovement -= 2.5;
                 } else if (['RW', 'RM', 'RB', 'RWB'].includes(player.position)) {
-                  xMovement += 1.0;
+                  xMovement += 2.5;
+                }
+
+                // Move toward ball carrier for support (if not the carrier)
+                if (!hasBall && ballCarrier) {
+                  const ballX = ballCarrier.baseX;
+                  const ballY = ballCarrier.baseY;
+                  const distanceToBall = Math.sqrt(Math.pow(player.baseX - ballX, 2) + Math.pow(player.baseY - ballY, 2));
+
+                  if (distanceToBall > 20 && distanceToBall < 40) {
+                    xMovement += (ballX - player.baseX) * 0.08;
+                    yMovement += (ballY - player.baseY) * 0.08;
+                  }
                 }
               } else {
-                // When defending: drop back, compact shape - BALANCED movement
-                const defendingHorizontal = isGK ? 0.1 : (isDefender ? 0.3 : (isMidfielder ? 0.5 : 0.7));
-                const defendingVertical = isGK ? 0.08 : (isDefender ? 0.25 : (isMidfielder ? 0.5 : 0.7));
+                // DEFENDING: Mark opponents, press ball, maintain shape
+                const pressIntensity = isGK ? 0.1 : (isDefender ? 1.0 : (isMidfielder ? 1.5 : 1.2));
 
-                xMovement = Math.sin(time * 0.35 + idx * 0.4) * defendingHorizontal;
-                yMovement = Math.cos(time * 0.3 + idx * 0.3) * defendingVertical - (isAttacker ? 1.2 : 0); // Pull up (inverted)
+                // Drop back toward own goal (up for away team)
+                yMovement = -pressIntensity;
 
-                // Compact shape - pull towards center
-                if (player.baseX < 35) xMovement += 0.3;
-                else if (player.baseX > 65) xMovement -= 0.3;
+                // Track nearest opponent for marking
+                const nearestOpponent = homePlayers.reduce((nearest, opponent) => {
+                  const dist = Math.sqrt(
+                    Math.pow(player.baseX - opponent.baseX, 2) +
+                    Math.pow(player.baseY - opponent.baseY, 2)
+                  );
+                  return (!nearest || dist < nearest.distance) ? { player: opponent, distance: dist } : nearest;
+                }, null);
+
+                if (nearestOpponent && nearestOpponent.distance < 25) {
+                  // Mark the nearby opponent
+                  const oppX = nearestOpponent.player.baseX;
+                  const oppY = nearestOpponent.player.baseY;
+                  xMovement = (oppX - player.baseX) * 0.15;
+                  yMovement = (oppY - player.baseY) * 0.15;
+
+                  // Press toward ball carrier more aggressively
+                  if (ballCarrier && ballCarrier.id === nearestOpponent.player.id) {
+                    xMovement *= 1.8;
+                    yMovement *= 1.8;
+                  }
+                } else {
+                  // Maintain defensive shape
+                  xMovement = Math.sin(time * 0.3 + idx * 0.4) * 0.8;
+                  // Compact - move toward center
+                  if (player.baseX < 35) xMovement += 0.5;
+                  else if (player.baseX > 65) xMovement -= 0.5;
+                }
               }
 
-              // Player with ball moves more actively
+              // Ball carrier dribbles forward
               if (hasBall) {
-                xMovement *= 1.3;
-                yMovement *= 1.3;
+                yMovement += 1.5; // Dribble toward goal (down for away team)
+                xMovement += Math.sin(time * 1.2) * 0.8; // Slight dribbling weave
               }
 
               const x = Math.max(5, Math.min(95, player.baseX + xMovement));
