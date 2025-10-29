@@ -34,6 +34,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [ballPossession, setBallPossession] = useState('home'); // 'home' or 'away' - tracks which team has the ball
   const [ballHolder, setBallHolder] = useState(null); // Player currently holding the ball { player, team }
   const [passAnimation, setPassAnimation] = useState(null); // { fromPlayer, toPlayer, startTime }
+  const [matchRewards, setMatchRewards] = useState(null); // Store rewards for finish screen
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
 
@@ -1582,34 +1583,21 @@ const Match = ({ onBack, activeMatchId }) => {
         budget: newBudget
       });
 
-      console.log(`Practice match rewards - Player XP: ${totalPlayerXP}, Victory XP: ${victoryXP * finalSquad.length}, Club Facilities XP: ${clubFacilitiesXP}, Money: $${moneyEarned}`);
+      console.log(`Practice match rewards - Player XP: ${totalPlayerXP}, Victory XP: ${victoryXP * finalSquad.length}, Club Facilities XP: ${clubFacilitiesXP}, Money: ${moneyEarned}`);
 
-      // Show detailed results
-      let rewardMessage = '';
-      if (totalPlayerXP > 0) {
-        rewardMessage += `⚽ Goalscorers earned ${totalPlayerXP} XP for training!\n`;
-      }
-      if (playerWon && victoryXP > 0) {
-        rewardMessage += `⭐ All players gained +${victoryXP} XP (WIN)!\n`;
-      }
-      if (clubFacilitiesXP > 0) {
-        rewardMessage += `🏗️ Club earned ${clubFacilitiesXP} Facilities XP ${playerWon ? '(WIN)' : '(DRAW)'}!\n`;
-      }
-      if (moneyEarned > 0) {
-        const stadiumLevel = managerData.facilities?.stadium || 0;
-        rewardMessage += `\n💰 Match Winnings: $${(2000000 / 1000000).toFixed(1)}M\n`;
-        if (stadiumLevel > 0) {
-          rewardMessage += `🏟️ Stadium Bonus (Lv.${stadiumLevel}): +$${((moneyEarned - 2000000) / 1000000).toFixed(1)}M\n`;
-        }
-        rewardMessage += `💵 Total Earned: $${(moneyEarned / 1000000).toFixed(1)}M`;
-      }
-      if (!rewardMessage) {
-        rewardMessage = 'No rewards earned. Try scoring goals and winning!';
-      } else if (moneyEarned === 0) {
-        rewardMessage += '\n💡 Win matches to earn money and more XP!';
-      }
-
-      showAlert('Practice Match Complete', rewardMessage);
+      // Store rewards for finish screen display
+      const stadiumLevel = managerData.facilities?.stadium || 0;
+      setMatchRewards({
+        goalScorerXP: totalPlayerXP,
+        victoryXP: playerWon ? victoryXP : 0,
+        clubFacilitiesXP: clubFacilitiesXP,
+        money: moneyEarned,
+        stadiumLevel: stadiumLevel,
+        totalPlayers: finalSquad.length,
+        result: playerWon ? 'WIN' : (isDraw ? 'DRAW' : 'LOSS'),
+        isProLeague: false,
+        isPractice: true
+      });
     }
 
     // Note: localStorage cleanup is handled when user clicks back from finished screen
@@ -2736,6 +2724,96 @@ const Match = ({ onBack, activeMatchId }) => {
         // Add the match ID to matchData before passing to updateMatchStats
         await updateMatchStats({ ...matchData, id: currentMatch.id });
         console.log('Match stats processed successfully');
+
+        // Store rewards for current user's finish screen display
+        const currentUserId = currentUser.uid;
+        const isCurrentUserHome = currentUserId === matchData.homeManager.uid;
+        const finalHomeScore = matchData.homeScore || 0;
+        const finalAwayScore = matchData.awayScore || 0;
+        const isProLeague = matchData.isProLeague || false;
+
+        // Determine result for current user
+        let userWon = false;
+        let userDrew = false;
+        if (isCurrentUserHome) {
+          userWon = finalHomeScore > finalAwayScore;
+          userDrew = finalHomeScore === finalAwayScore;
+        } else {
+          userWon = finalAwayScore > finalHomeScore;
+          userDrew = finalAwayScore === finalHomeScore;
+        }
+
+        // Calculate goalscorer XP for current user's players
+        const goalscorers = matchData.goalscorers || {};
+        let totalGoalscorerXP = 0;
+        const xpPerGoal = isProLeague ? 100 : 50;
+        for (const scorerId in goalscorers) {
+          const scorerData = goalscorers[scorerId];
+          if (scorerData.managerId === currentUserId) {
+            totalGoalscorerXP += scorerData.goals * xpPerGoal;
+          }
+        }
+
+        // Calculate victory rewards if user won
+        let victoryXP = 0;
+        let moneyEarned = 0;
+        let clubFacilitiesXP = 0;
+
+        if (userWon) {
+          victoryXP = isProLeague ? 200 : 100; // XP per player
+
+          // Get stadium level for current user
+          const userManagerRef = ref(database, 'managers/' + currentUserId);
+          const userSnapshot = await get(userManagerRef);
+          if (userSnapshot.exists()) {
+            const userData = userSnapshot.val();
+            const stadiumLevel = userData.facilities?.stadium || 0;
+
+            // Calculate money earned
+            const baseWinnings = 2000000;
+            const stadiumBonuses = [0, 2000000, 5000000, 10000000, 20000000];
+            const stadiumBonus = stadiumBonuses[stadiumLevel] || 0;
+            moneyEarned = (baseWinnings + stadiumBonus) * (isProLeague ? 2 : 1);
+
+            // Club facilities XP (100 for win)
+            clubFacilitiesXP = isProLeague ? 200 : 100;
+          }
+        } else if (userDrew) {
+          // Draw rewards: 50 club facilities XP
+          clubFacilitiesXP = isProLeague ? 100 : 50;
+        }
+
+        // Get total number of players in user's squad
+        const userManagerRef = ref(database, 'managers/' + currentUserId);
+        const userSnapshot = await get(userManagerRef);
+        let totalPlayers = 0;
+        let stadiumLevel = 0;
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          totalPlayers = (userData.squad || []).length;
+          stadiumLevel = userData.facilities?.stadium || 0;
+        }
+
+        // Store rewards for display
+        setMatchRewards({
+          goalScorerXP: totalGoalscorerXP,
+          victoryXP: userWon ? victoryXP : 0,
+          clubFacilitiesXP: clubFacilitiesXP,
+          money: moneyEarned,
+          stadiumLevel: stadiumLevel,
+          totalPlayers: totalPlayers,
+          result: userWon ? 'WIN' : (userDrew ? 'DRAW' : 'LOSS'),
+          isProLeague: isProLeague,
+          isPractice: false
+        });
+
+        console.log('Stored rewards for current user:', {
+          goalScorerXP: totalGoalscorerXP,
+          victoryXP: victoryXP,
+          moneyEarned: moneyEarned,
+          clubFacilitiesXP: clubFacilitiesXP,
+          result: userWon ? 'WIN' : (userDrew ? 'DRAW' : 'LOSS')
+        });
       } else {
         console.log('Stats already processed, skipping');
       }
@@ -4908,6 +4986,74 @@ const Match = ({ onBack, activeMatchId }) => {
             </View>
           )}
 
+          {matchRewards && (
+            <View style={styles.rewardsCard}>
+              <Text style={styles.rewardsTitle}>
+                {matchRewards.isPractice ? '⚽ Practice Match Rewards' :
+                 matchRewards.isProLeague ? '🏆 Pro League Rewards' : '🤝 Match Rewards'}
+              </Text>
+
+              {matchRewards.result === 'WIN' && (
+                <View style={styles.rewardSection}>
+                  <Text style={styles.rewardSectionTitle}>🎉 Victory Rewards!</Text>
+                </View>
+              )}
+
+              {matchRewards.goalScorerXP > 0 && (
+                <View style={styles.rewardItem}>
+                  <Text style={styles.rewardLabel}>⚽ Goalscorer XP</Text>
+                  <Text style={styles.rewardValue}>+{matchRewards.goalScorerXP} XP</Text>
+                </View>
+              )}
+
+              {matchRewards.victoryXP > 0 && (
+                <View style={styles.rewardItem}>
+                  <Text style={styles.rewardLabel}>⭐ All Players (Victory)</Text>
+                  <Text style={styles.rewardValue}>+{matchRewards.victoryXP} XP each ({matchRewards.totalPlayers} players)</Text>
+                </View>
+              )}
+
+              {matchRewards.clubFacilitiesXP > 0 && (
+                <View style={styles.rewardItem}>
+                  <Text style={styles.rewardLabel}>🏗️ Club Facilities XP</Text>
+                  <Text style={styles.rewardValue}>+{matchRewards.clubFacilitiesXP} XP</Text>
+                </View>
+              )}
+
+              {matchRewards.money > 0 && (
+                <>
+                  <View style={styles.rewardDivider} />
+                  <View style={styles.rewardItem}>
+                    <Text style={styles.rewardLabel}>💰 Base Winnings</Text>
+                    <Text style={styles.rewardValue}>$2.0M</Text>
+                  </View>
+                  {matchRewards.stadiumLevel > 0 && (
+                    <View style={styles.rewardItem}>
+                      <Text style={styles.rewardLabel}>🏟️ Stadium Bonus (Lv.{matchRewards.stadiumLevel})</Text>
+                      <Text style={styles.rewardValue}>+${((matchRewards.money - 2000000) / 1000000).toFixed(1)}M</Text>
+                    </View>
+                  )}
+                  <View style={[styles.rewardItem, styles.rewardTotal]}>
+                    <Text style={styles.rewardTotalLabel}>💵 Total Money Earned</Text>
+                    <Text style={styles.rewardTotalValue}>${(matchRewards.money / 1000000).toFixed(1)}M</Text>
+                  </View>
+                </>
+              )}
+
+              {matchRewards.result === 'LOSS' && matchRewards.goalScorerXP === 0 && (
+                <View style={styles.rewardItem}>
+                  <Text style={styles.rewardNoReward}>Better luck next time! Win matches and score goals to earn rewards.</Text>
+                </View>
+              )}
+
+              {matchRewards.isProLeague && (
+                <View style={styles.proLeagueBadge}>
+                  <Text style={styles.proLeagueBadgeText}>🏆 PRO LEAGUE - DOUBLE REWARDS!</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.matchSummary}>
             <Text style={styles.summaryTitle}>Match Events</Text>
             {events.length === 0 ? (
@@ -5387,7 +5533,91 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontStyle: 'italic',
   },
-  matchSummary: {
+  rewardsCard: {
+    backgroundColor: '#1e2a3a',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#43e97b',
+  },
+  rewardsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  rewardSection: {
+    marginBottom: 10,
+  },
+  rewardSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#43e97b',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  rewardItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#151f2e',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  rewardLabel: {
+    fontSize: 15,
+    color: '#b0c4de',
+    flex: 1,
+  },
+  rewardValue: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#43e97b',
+  },
+  rewardDivider: {
+    height: 1,
+    backgroundColor: '#2c3e50',
+    marginVertical: 12,
+  },
+  rewardTotal: {
+    backgroundColor: '#2c3e50',
+    borderWidth: 1,
+    borderColor: '#43e97b',
+  },
+  rewardTotalLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    flex: 1,
+  },
+  rewardTotalValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#43e97b',
+  },
+  rewardNoReward: {
+    fontSize: 14,
+    color: '#f5576c',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  proLeagueBadge: {
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: '#ffd700',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  proLeagueBadgeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+    matchSummary: {
     backgroundColor: '#1a1f3a',
     borderRadius: 15,
     padding: 15,
