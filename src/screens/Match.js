@@ -1262,20 +1262,20 @@ const Match = ({ onBack, activeMatchId }) => {
             const goalY = isHomeGoal ? 5 : 95;
 
             let shooterX = 50;
-            let shooterY = isHomeShot ? 30 : 70;
+            let shooterY = isHomeShot ? 30 : 70; // Attacking third
 
             if (shooter.position === 'ST') {
               shooterX = 50;
-              shooterY = isHomeShot ? 25 : 75;
+              shooterY = isHomeShot ? 20 : 80; // Close to goal
             } else if (shooter.position === 'LW') {
-              shooterX = 30;
-              shooterY = isHomeShot ? 30 : 70;
+              shooterX = 25;
+              shooterY = isHomeShot ? 25 : 75;
             } else if (shooter.position === 'RW') {
-              shooterX = 70;
-              shooterY = isHomeShot ? 30 : 70;
+              shooterX = 75;
+              shooterY = isHomeShot ? 25 : 75;
             } else if (['CAM', 'CM'].includes(shooter.position)) {
               shooterX = 50;
-              shooterY = isHomeShot ? 45 : 55;
+              shooterY = isHomeShot ? 35 : 65; // Edge of box
             }
 
             // Update ball holder to shooter BEFORE shot animation
@@ -1792,23 +1792,29 @@ const Match = ({ onBack, activeMatchId }) => {
           let scorer;
           const scorerRoll = Math.random();
 
-          // Weighted scoring based on realistic probabilities and player quality
-          if (scorerRoll < 0.60 && attackers.length > 0) {
+          // Realistic goal distribution: 70% strikers, 20% attacking mids, 8% wide players, 2% others
+          if (scorerRoll < 0.70 && attackers.length > 0) {
+            // 70% - Strikers and wingers score most goals
             const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
             weightedAttackers.sort((a, b) => b.weight - a.weight);
             scorer = weightedAttackers[0].player;
-          } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+          } else if (scorerRoll < 0.90 && attackingMids.length > 0) {
+            // 20% - Attacking midfielders
             const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
             weightedMids.sort((a, b) => b.weight - a.weight);
             scorer = weightedMids[0].player;
-          } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+          } else if (scorerRoll < 0.98 && wideMids.length > 0) {
+            // 8% - Wide midfielders/wingbacks
             scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
-          } else if (scorerRoll < 0.96 && defenders.length > 0) {
+          } else if (scorerRoll < 0.99 && defenders.length > 0) {
+            // 1% - Defenders (set pieces/corners)
             const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
             scorer = sortedDefenders[0];
-          } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+          } else if (scorerRoll < 0.995 && defensiveMids.length > 0) {
+            // 0.5% - Defensive midfielders
             scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
           } else {
+            // Fallback to any outfield player
             const outfieldPlayers = availablePlayers.filter(p => p.position !== 'GK');
             scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
           }
@@ -2268,22 +2274,29 @@ const Match = ({ onBack, activeMatchId }) => {
 
         let scorer;
         const scorerRoll = Math.random();
-        if (scorerRoll < 0.60 && attackers.length > 0) {
+        // Realistic goal distribution: 70% strikers, 20% attacking mids, 8% wide players, 2% others
+        if (scorerRoll < 0.70 && attackers.length > 0) {
+          // 70% - Strikers and wingers score most goals
           const weightedAttackers = attackers.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
           weightedAttackers.sort((a, b) => b.weight - a.weight);
           scorer = weightedAttackers[0].player;
-        } else if (scorerRoll < 0.80 && attackingMids.length > 0) {
+        } else if (scorerRoll < 0.90 && attackingMids.length > 0) {
+          // 20% - Attacking midfielders
           const weightedMids = attackingMids.map(p => ({ player: p, weight: p.overall + Math.random() * 15 }));
           weightedMids.sort((a, b) => b.weight - a.weight);
           scorer = weightedMids[0].player;
-        } else if (scorerRoll < 0.90 && wideMids.length > 0) {
+        } else if (scorerRoll < 0.98 && wideMids.length > 0) {
+          // 8% - Wide midfielders/wingbacks
           scorer = wideMids[Math.floor(Math.random() * wideMids.length)];
-        } else if (scorerRoll < 0.96 && defenders.length > 0) {
+        } else if (scorerRoll < 0.99 && defenders.length > 0) {
+          // 1% - Defenders (set pieces/corners)
           const sortedDefenders = [...defenders].sort((a, b) => b.overall - a.overall);
           scorer = sortedDefenders[0];
-        } else if (scorerRoll < 0.99 && defensiveMids.length > 0) {
+        } else if (scorerRoll < 0.995 && defensiveMids.length > 0) {
+          // 0.5% - Defensive midfielders
           scorer = defensiveMids[Math.floor(Math.random() * defensiveMids.length)];
         } else {
+          // Fallback to any outfield player
           const outfieldPlayers = team.squad.filter(p => p.position !== 'GK');
           scorer = outfieldPlayers[Math.floor(Math.random() * outfieldPlayers.length)];
         }
@@ -2301,23 +2314,30 @@ const Match = ({ onBack, activeMatchId }) => {
         localEvents = [shootEvent, ...localEvents];
         setEvents(localEvents);
 
-        // STEP 3: Trigger shot animation from realistic shooter position
+        // STEP 3: Trigger shot animation from realistic shooter position in ATTACKING THIRD
         let shooterX = 50;
-        let shooterY = isHomeGoal ? 70 : 30;
+        let shooterY = isHomeGoal ? 30 : 70; // Default to attacking third
 
         // Position based on scorer's role
         if (scorer.position === 'ST') {
           shooterX = 50;
-          shooterY = isHomeGoal ? 25 : 75;
+          shooterY = isHomeGoal ? 20 : 80; // Close to goal
         } else if (scorer.position === 'LW') {
-          shooterX = 30;
-          shooterY = isHomeGoal ? 30 : 70;
+          shooterX = 25;
+          shooterY = isHomeGoal ? 25 : 75;
         } else if (scorer.position === 'RW') {
-          shooterX = 70;
-          shooterY = isHomeGoal ? 30 : 70;
+          shooterX = 75;
+          shooterY = isHomeGoal ? 25 : 75;
         } else if (['CAM', 'CM'].includes(scorer.position)) {
           shooterX = 50;
-          shooterY = isHomeGoal ? 45 : 55;
+          shooterY = isHomeGoal ? 35 : 65; // Edge of box
+        } else if (['LM', 'RM', 'LWB', 'RWB'].includes(scorer.position)) {
+          shooterX = scorer.position.startsWith('L') ? 20 : 80;
+          shooterY = isHomeGoal ? 30 : 70;
+        } else {
+          // Defenders/CDMs who scored - they must be in attacking third too!
+          shooterX = 50 + (Math.random() - 0.5) * 20;
+          shooterY = isHomeGoal ? 35 : 65;
         }
 
         const shooterPosition = { x: shooterX, y: shooterY };
