@@ -4133,7 +4133,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
               // Determine if this team is attacking or defending
               const isAttacking = possessionTeam === 0;
-              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 0;
+              const hasBall = ballCarrier && ballCarrier.id === player.id;
 
               // Dynamic movement based on attacking/defending state
               let xMovement, yMovement;
@@ -4200,7 +4200,7 @@ const Match = ({ onBack, activeMatchId }) => {
 
               // Determine if this team is attacking or defending
               const isAttacking = possessionTeam === 1;
-              const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
+              const hasBall = ballCarrier && ballCarrier.id === player.id;
 
               // Dynamic movement based on attacking/defending state
               let xMovement, yMovement;
