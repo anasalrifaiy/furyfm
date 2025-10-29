@@ -35,6 +35,7 @@ const Match = ({ onBack, activeMatchId }) => {
   const [ballHolder, setBallHolder] = useState(null); // Player currently holding the ball { player, team }
   const [passAnimation, setPassAnimation] = useState(null); // { fromPlayer, toPlayer, startTime }
   const [matchRewards, setMatchRewards] = useState(null); // Store rewards for finish screen
+  const [animationFrame, setAnimationFrame] = useState(0); // Animation frame for smooth player movement
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
 
@@ -575,6 +576,17 @@ const Match = ({ onBack, activeMatchId }) => {
       setPrematchFormation(myFormation);
     }
   }, [matchState, currentMatch, isHome]);
+
+  // Animation loop for smooth player movement - runs at 20 FPS during active match
+  useEffect(() => {
+    if (matchState === 'playing' && currentMatch) {
+      const animationInterval = setInterval(() => {
+        setAnimationFrame(prev => prev + 1);
+      }, 50); // Update every 50ms = 20 FPS for smooth movement
+
+      return () => clearInterval(animationInterval);
+    }
+  }, [matchState, currentMatch]);
 
   // Load all live matches for spectator mode
   useEffect(() => {
