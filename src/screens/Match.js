@@ -3167,9 +3167,14 @@ const Match = ({ onBack, activeMatchId }) => {
           xp: (player.xp || 0) + victoryXP
         }));
 
+        // Calculate club facilities XP (100 for friendly win, 200 for Pro League win)
+        const clubFacilitiesXP = matchData.isProLeague ? 200 : 100;
+        const currentClubXP = winnerData.clubFacilitiesXP || 0;
+
         await update(winnerRef, {
           budget: newBudget,
-          squad: updatedWinningSquad
+          squad: updatedWinningSquad,
+          clubFacilitiesXP: currentClubXP + clubFacilitiesXP
         });
 
         // Send detailed reward notification
@@ -3201,7 +3206,34 @@ const Match = ({ onBack, activeMatchId }) => {
           read: false
         });
 
-        console.log(`Awarded $${totalReward} to ${winnerName} (Base: $${baseWinnings}, Stadium Lv.${stadiumLevel} Bonus: $${stadiumBonus})`);
+        console.log(`Awarded ${totalReward} to ${winnerName} (Base: ${baseWinnings}, Stadium Lv.${stadiumLevel} Bonus: ${stadiumBonus})`);
+      }
+    } else if (finalHomeScore === finalAwayScore) {
+      // DRAW - award club facilities XP to both teams
+      const drawClubXP = matchData.isProLeague ? 100 : 50;
+
+      // Award to home manager
+      const homeRef = ref(database, `managers/${matchData.homeManager.uid}`);
+      const homeSnapshot = await get(homeRef);
+      if (homeSnapshot.exists()) {
+        const homeData = homeSnapshot.val();
+        const currentHomeClubXP = homeData.clubFacilitiesXP || 0;
+        await update(homeRef, {
+          clubFacilitiesXP: currentHomeClubXP + drawClubXP
+        });
+        console.log(`Awarded ${drawClubXP} club XP to ${matchData.homeManager.name} (draw)`);
+      }
+
+      // Award to away manager
+      const awayRef = ref(database, `managers/${matchData.awayManager.uid}`);
+      const awaySnapshot = await get(awayRef);
+      if (awaySnapshot.exists()) {
+        const awayData = awaySnapshot.val();
+        const currentAwayClubXP = awayData.clubFacilitiesXP || 0;
+        await update(awayRef, {
+          clubFacilitiesXP: currentAwayClubXP + drawClubXP
+        });
+        console.log(`Awarded ${drawClubXP} club XP to ${matchData.awayManager.name} (draw)`);
       }
     }
   };
