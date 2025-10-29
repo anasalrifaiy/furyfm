@@ -1184,12 +1184,58 @@ const Match = ({ onBack, activeMatchId }) => {
           const shotAccuracy = 0.65 + (shooter.overall / 100) * 0.25;
           const shotOnTarget = Math.random() < shotAccuracy;
 
+          // Calculate shooter and goal positions
+          const isHomeGoal = !isHomeShot;
+          const goalX = 50;
+          const goalY = isHomeGoal ? 5 : 95;
+
+          let shooterX = 50;
+          let shooterY = isHomeShot ? 30 : 70;
+
+          if (shooter.position === 'ST') {
+            shooterX = 50;
+            shooterY = isHomeShot ? 25 : 75;
+          } else if (shooter.position === 'LW') {
+            shooterX = 30;
+            shooterY = isHomeShot ? 30 : 70;
+          } else if (shooter.position === 'RW') {
+            shooterX = 70;
+            shooterY = isHomeShot ? 30 : 70;
+          } else if (['CAM', 'CM'].includes(shooter.position)) {
+            shooterX = 50;
+            shooterY = isHomeShot ? 45 : 55;
+          }
+
+          // Update ball holder to shooter BEFORE shot
+          localBallHolder = { playerId: shooter.id, playerName: shooter.name, team: isHomeShot ? 'home' : 'away' };
+          setBallHolder(localBallHolder);
+
           if (!shotOnTarget) {
-            const missTypes = ['shoots wide', 'blasts over the bar', 'misses the target'];
-            const missType = missTypes[Math.floor(Math.random() * missTypes.length)];
-            const eventText = `${matchMinute}' 📍 ${shooter.name} ${missType}!`;
-            localEvents = [eventText, ...localEvents];
+            // Show shoot event
+            const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+            localEvents = [shootEvent, ...localEvents];
             setEvents(localEvents);
+
+            // Trigger shot animation going wide/over
+            setShotAnimation({
+              fromX: shooterX,
+              fromY: shooterY,
+              toX: goalX + (Math.random() - 0.5) * 30,  // Much wider miss
+              toY: goalY + (Math.random() < 0.5 ? -8 : 8),  // Over or wide
+              startTime: Date.now(),
+              isSave: true
+            });
+
+            setTimeout(() => {
+              const missTypes = ['shoots wide', 'blasts over the bar', 'misses the target'];
+              const missType = missTypes[Math.floor(Math.random() * missTypes.length)];
+              const eventText = `${matchMinute}' 📍 ${shooter.name} ${missType}!`;
+              localEvents = [eventText, ...localEvents];
+              setEvents(localEvents);
+
+              localBallHolder = null;
+              setBallHolder(null);
+            }, 1200);
           } else if (gk) {
             const baseSaveChance = 0.60;
             const gkBonus = (gk.overall - 75) / 100;
@@ -1197,18 +1243,85 @@ const Match = ({ onBack, activeMatchId }) => {
             const saveChance = Math.max(0.30, Math.min(0.85, baseSaveChance + gkBonus - shooterPenalty));
             const isSaved = Math.random() < saveChance;
 
+            // Calculate shooter and goal positions for shot animation
+            const isHomeGoal = !isHomeShot;
+            const goalX = 50;
+            const goalY = isHomeGoal ? 5 : 95;
+
+            let shooterX = 50;
+            let shooterY = isHomeShot ? 30 : 70;
+
+            if (shooter.position === 'ST') {
+              shooterX = 50;
+              shooterY = isHomeShot ? 25 : 75;
+            } else if (shooter.position === 'LW') {
+              shooterX = 30;
+              shooterY = isHomeShot ? 30 : 70;
+            } else if (shooter.position === 'RW') {
+              shooterX = 70;
+              shooterY = isHomeShot ? 30 : 70;
+            } else if (['CAM', 'CM'].includes(shooter.position)) {
+              shooterX = 50;
+              shooterY = isHomeShot ? 45 : 55;
+            }
+
+            // Update ball holder to shooter BEFORE shot animation
+            localBallHolder = { playerId: shooter.id, playerName: shooter.name, team: isHomeShot ? 'home' : 'away' };
+            setBallHolder(localBallHolder);
+
             if (isSaved) {
-              const saveTypes = ['makes a brilliant save', 'denies with a diving save', 'pulls off a great save', 'catches confidently'];
-              const saveType = saveTypes[Math.floor(Math.random() * saveTypes.length)];
-              const eventText = `${matchMinute}' 🧤 ${gk.name} ${saveType}! ${shooter.name} denied.`;
-              localEvents = [eventText, ...localEvents];
+              // Show "shoots!" event first
+              const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+              localEvents = [shootEvent, ...localEvents];
               setEvents(localEvents);
+
+              // Trigger shot animation
+              setShotAnimation({
+                fromX: shooterX,
+                fromY: shooterY,
+                toX: goalX + (Math.random() - 0.5) * 12,
+                toY: goalY,
+                startTime: Date.now(),
+                isSave: true  // Mark as save so we can show it differently
+              });
+
+              // After shot completes, show save message
+              setTimeout(() => {
+                const saveTypes = ['makes a brilliant save', 'denies with a diving save', 'pulls off a great save', 'catches confidently'];
+                const saveType = saveTypes[Math.floor(Math.random() * saveTypes.length)];
+                const eventText = `${matchMinute}' 🧤 ${gk.name} ${saveType}! ${shooter.name} denied.`;
+                localEvents = [eventText, ...localEvents];
+                setEvents(localEvents);
+
+                // Clear ball holder after save
+                localBallHolder = null;
+                setBallHolder(null);
+              }, 1200);
             } else {
-              const closeCallTypes = ['shot saved at the near post', 'tips it over the bar', 'makes a fingertip save'];
-              const closeCall = closeCallTypes[Math.floor(Math.random() * closeCallTypes.length)];
-              const eventText = `${matchMinute}' 😰 Close call! ${gk.name} ${closeCall}! ${shooter.name} almost scored!`;
-              localEvents = [eventText, ...localEvents];
+              // Close call - shot animation but just misses
+              const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+              localEvents = [shootEvent, ...localEvents];
               setEvents(localEvents);
+
+              setShotAnimation({
+                fromX: shooterX,
+                fromY: shooterY,
+                toX: goalX + (Math.random() - 0.5) * 15,
+                toY: goalY + (Math.random() < 0.5 ? -3 : 3),  // Slightly off target
+                startTime: Date.now(),
+                isSave: true
+              });
+
+              setTimeout(() => {
+                const closeCallTypes = ['shot saved at the near post', 'tips it over the bar', 'makes a fingertip save'];
+                const closeCall = closeCallTypes[Math.floor(Math.random() * closeCallTypes.length)];
+                const eventText = `${matchMinute}' 😰 Close call! ${gk.name} ${closeCall}! ${shooter.name} almost scored!`;
+                localEvents = [eventText, ...localEvents];
+                setEvents(localEvents);
+
+                localBallHolder = null;
+                setBallHolder(null);
+              }, 1200);
             }
           } else {
             const eventText = `${matchMinute}' 🛡️ ${shooter.name}'s shot is blocked by the defense!`;
@@ -1754,13 +1867,53 @@ const Match = ({ onBack, activeMatchId }) => {
             const shotAccuracy = 0.65 + (shooter.overall / 100) * 0.25;
             const shotOnTarget = Math.random() < shotAccuracy;
 
+            // Calculate shot positions
+            const isHomeGoal = !isHomeShot;
+            const goalX = 50;
+            const goalY = isHomeGoal ? 5 : 95;
+
+            let shooterX = 50;
+            let shooterY = isHomeShot ? 30 : 70;
+
+            if (shooter.position === 'ST') {
+              shooterX = 50;
+              shooterY = isHomeShot ? 25 : 75;
+            } else if (shooter.position === 'LW') {
+              shooterX = 30;
+              shooterY = isHomeShot ? 30 : 70;
+            } else if (shooter.position === 'RW') {
+              shooterX = 70;
+              shooterY = isHomeShot ? 30 : 70;
+            } else if (['CAM', 'CM'].includes(shooter.position)) {
+              shooterX = 50;
+              shooterY = isHomeShot ? 45 : 55;
+            }
+
             if (!shotOnTarget) {
-              // Shot off target
+              // Shot off target - show animation
+              const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+              await update(matchRef, {
+                events: [shootEvent, ...(latestData.events || [])],
+                ballHolder: { playerId: shooter.id, playerName: shooter.name, team: isHomeShot ? 'home' : 'away' },
+                shotAnimation: {
+                  fromX: shooterX,
+                  fromY: shooterY,
+                  toX: goalX + (Math.random() - 0.5) * 30,
+                  toY: goalY + (Math.random() < 0.5 ? -8 : 8),
+                  startTime: Date.now(),
+                  isSave: true
+                }
+              });
+
+              await new Promise(resolve => setTimeout(resolve, 1200));
+
               const missTypes = ['shoots wide', 'blasts over the bar', 'misses the target'];
               const missType = missTypes[Math.floor(Math.random() * missTypes.length)];
               const eventText = `${matchMinute}' 📍 ${shooter.name} ${missType}!`;
-              const newEvents = [eventText, ...(latestData.events || [])];
-              await update(matchRef, { events: newEvents });
+              await update(matchRef, {
+                events: [eventText, ...(latestData.events || [])],
+                ballHolder: null
+              });
             } else if (gk) {
               // Shot on target - goalkeeper save attempt
               // GK save probability based on both shooter and GK ratings
@@ -1773,18 +1926,55 @@ const Match = ({ onBack, activeMatchId }) => {
               const isSaved = Math.random() < saveChance;
 
               if (isSaved) {
+                // Show shoot event + animation
+                const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+                await update(matchRef, {
+                  events: [shootEvent, ...(latestData.events || [])],
+                  ballHolder: { playerId: shooter.id, playerName: shooter.name, team: isHomeShot ? 'home' : 'away' },
+                  shotAnimation: {
+                    fromX: shooterX,
+                    fromY: shooterY,
+                    toX: goalX + (Math.random() - 0.5) * 12,
+                    toY: goalY,
+                    startTime: Date.now(),
+                    isSave: true
+                  }
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 1200));
+
                 const saveTypes = ['makes a brilliant save', 'denies with a diving save', 'pulls off a great save', 'catches confidently'];
                 const saveType = saveTypes[Math.floor(Math.random() * saveTypes.length)];
                 const eventText = `${matchMinute}' 🧤 ${gk.name} ${saveType}! ${shooter.name} denied.`;
-                const newEvents = [eventText, ...(latestData.events || [])];
-                await update(matchRef, { events: newEvents });
+                await update(matchRef, {
+                  events: [eventText, ...(latestData.events || [])],
+                  ballHolder: null
+                });
               } else {
-                // Shot beats GK but doesn't result in goal (hit post, cleared off line, etc.)
+                // Shot beats GK but doesn't result in goal - close call with animation
+                const shootEvent = `${matchMinute}' ⚽ ${shooter.name} shoots!`;
+                await update(matchRef, {
+                  events: [shootEvent, ...(latestData.events || [])],
+                  ballHolder: { playerId: shooter.id, playerName: shooter.name, team: isHomeShot ? 'home' : 'away' },
+                  shotAnimation: {
+                    fromX: shooterX,
+                    fromY: shooterY,
+                    toX: goalX + (Math.random() - 0.5) * 15,
+                    toY: goalY + (Math.random() < 0.5 ? -3 : 3),
+                    startTime: Date.now(),
+                    isSave: true
+                  }
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 1200));
+
                 const closeCallTypes = ['shot saved at the near post', 'tips it over the bar', 'makes a fingertip save'];
                 const closeCall = closeCallTypes[Math.floor(Math.random() * closeCallTypes.length)];
                 const eventText = `${matchMinute}' 😰 Close call! ${gk.name} ${closeCall}! ${shooter.name} almost scored!`;
-                const newEvents = [eventText, ...(latestData.events || [])];
-                await update(matchRef, { events: newEvents });
+                await update(matchRef, {
+                  events: [eventText, ...(latestData.events || [])],
+                  ballHolder: null
+                });
               }
             } else {
               // No GK - shot saved by defense or missed
