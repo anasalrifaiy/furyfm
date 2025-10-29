@@ -169,6 +169,51 @@ const Match = ({ onBack, activeMatchId }) => {
     return positionedPlayers.filter(p => p !== null);
   };
 
+  // Helper function to adjust player positions based on tactic
+  const adjustPositionsForTactic = (players, tactic, isHome) => {
+    if (!tactic || tactic === 'Balanced') return players;
+
+    return players.map(player => {
+      let adjustedY = player.baseY;
+
+      // Skip goalkeeper - they stay in position
+      if (player.position === 'GK') {
+        return player;
+      }
+
+      if (tactic === 'Attacking') {
+        // Move players forward (toward opponent goal)
+        // Defenders move up 8%, midfielders 10%, attackers 12%
+        if (['LB', 'CB', 'RB', 'LWB', 'RWB'].includes(player.position)) {
+          adjustedY = player.baseY - 8;  // Defenders push up
+        } else if (['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position)) {
+          adjustedY = player.baseY - 10; // Midfielders more aggressive
+        } else if (['ST', 'LW', 'RW'].includes(player.position)) {
+          adjustedY = player.baseY - 12; // Attackers press high
+        }
+      } else if (tactic === 'Defensive') {
+        // Move players back (toward own goal)
+        // Attackers drop 12%, midfielders 10%, defenders 5%
+        if (['ST', 'LW', 'RW'].includes(player.position)) {
+          adjustedY = player.baseY + 12; // Attackers drop deep
+        } else if (['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position)) {
+          adjustedY = player.baseY + 10; // Midfielders compact
+        } else if (['LB', 'CB', 'RB', 'LWB', 'RWB'].includes(player.position)) {
+          adjustedY = player.baseY + 5;  // Defenders sit deeper
+        }
+      }
+
+      // Ensure players stay within bounds (5% to 95%)
+      adjustedY = Math.max(5, Math.min(92, adjustedY));
+
+      return {
+        ...player,
+        baseY: adjustedY,
+        currentY: adjustedY
+      };
+    });
+  };
+
   useEffect(() => {
     if (managerProfile) {
       loadFriends();
@@ -3687,7 +3732,22 @@ const Match = ({ onBack, activeMatchId }) => {
 
     const changeTactic = async (newTactic) => {
       setSelectedTactic(newTactic);
-      if (!currentMatch.isPractice) {
+
+      if (currentMatch.isPractice) {
+        // For practice matches, update local state
+        const tacticField = isHome ? 'homeTactic' : 'awayTactic';
+        const updatedMatch = {
+          ...currentMatch,
+          [tacticField]: newTactic
+        };
+        setCurrentMatch(updatedMatch);
+
+        // Also update localStorage
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('practiceMatch', JSON.stringify(updatedMatch));
+        }
+      } else {
+        // For online matches, update Firebase
         const matchRef = ref(database, `matches/${currentMatch.id}`);
         const tacticField = isHome ? 'homeTactic' : 'awayTactic';
         await update(matchRef, { [tacticField]: newTactic });
@@ -3703,8 +3763,15 @@ const Match = ({ onBack, activeMatchId }) => {
     };
 
     const renderPitch = (homeSquad, awaySquad, homeFormation = '4-3-3', awayFormation = '4-3-3') => {
-      const homePlayers = getFormationPositions(homeFormation, homeSquad);
-      const awayPlayers = getFormationPositions(awayFormation, awaySquad);
+      // Get base positions from formation
+      let homePlayers = getFormationPositions(homeFormation, homeSquad);
+      let awayPlayers = getFormationPositions(awayFormation, awaySquad);
+
+      // Apply tactic-based position adjustments
+      const homeTactic = currentMatch.homeTactic || 'Balanced';
+      const awayTactic = currentMatch.awayTactic || 'Balanced';
+      homePlayers = adjustPositionsForTactic(homePlayers, homeTactic, true);
+      awayPlayers = adjustPositionsForTactic(awayPlayers, awayTactic, false);
 
       // Advanced time-based animation system for realistic movement
       const time = minute + (Date.now() % 1000) / 1000; // Sub-second precision
