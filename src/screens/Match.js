@@ -36,8 +36,11 @@ const Match = ({ onBack, activeMatchId }) => {
   const [passAnimation, setPassAnimation] = useState(null); // { fromPlayer, toPlayer, startTime }
   const [matchRewards, setMatchRewards] = useState(null); // Store rewards for finish screen
   const [animationFrame, setAnimationFrame] = useState(0); // Animation frame for smooth player movement
+  const [isKickoff, setIsKickoff] = useState(true); // Track if match is at kickoff position
+  const [kickoffTimer, setKickoffTimer] = useState(null); // Timer to clear kickoff state
   const previousMatchStateRef = useRef(matchState);
   const lastCelebratedEventRef = useRef(null); // Track last celebrated event to avoid duplicates
+  const lastGoalTimeRef = useRef(0); // Track when last goal was scored to prevent simultaneous goals
 
   // Helper function for formation positions
   const getFormationPositions = (formation, squad) => {
@@ -169,6 +172,47 @@ const Match = ({ onBack, activeMatchId }) => {
 
     // Return only non-null players
     return positionedPlayers.filter(p => p !== null);
+  };
+
+  // Helper function to get kickoff positions (players in their half)
+  const getKickoffPositions = (formation, squad, isHome) => {
+    const formationPositions = getFormationPositions(formation, squad);
+
+    // Reset all players to kickoff positions (in their own half)
+    return formationPositions.map(player => {
+      let kickoffY = player.baseY;
+
+      // Ensure all players (except strikers near center) are in their own half
+      if (isHome) {
+        // Home team: bottom half (y > 50)
+        if (player.position === 'GK') {
+          kickoffY = 95; // GK stays at goal
+        } else if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position)) {
+          kickoffY = 75; // Defenders in defensive third
+        } else if (['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position)) {
+          kickoffY = 60; // Midfielders just behind halfway line
+        } else if (['ST', 'LW', 'RW'].includes(player.position)) {
+          kickoffY = 52; // Strikers at center circle
+        }
+      } else {
+        // Away team: top half (y < 50)
+        if (player.position === 'GK') {
+          kickoffY = 5; // GK stays at goal
+        } else if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position)) {
+          kickoffY = 25; // Defenders in defensive third
+        } else if (['CDM', 'CM', 'CAM', 'LM', 'RM'].includes(player.position)) {
+          kickoffY = 40; // Midfielders just behind halfway line
+        } else if (['ST', 'LW', 'RW'].includes(player.position)) {
+          kickoffY = 48; // Strikers at center circle
+        }
+      }
+
+      return {
+        ...player,
+        baseY: kickoffY,
+        currentY: kickoffY
+      };
+    });
   };
 
   // Helper function to adjust player positions based on tactic
@@ -984,6 +1028,14 @@ const Match = ({ onBack, activeMatchId }) => {
   const simulatePracticeMatch = () => {
     console.log('Starting practice match simulation');
 
+    // Set kickoff state at match start
+    setIsKickoff(true);
+    if (kickoffTimer) clearTimeout(kickoffTimer);
+    const newTimer = setTimeout(() => {
+      setIsKickoff(false);
+    }, 3000); // Kickoff position for 3 seconds at start
+    setKickoffTimer(newTimer);
+
     let homeStrength = calculateTeamStrength(currentMatch.homeManager.squad);
     let awayStrength = calculateTeamStrength(currentMatch.awayManager.squad);
 
@@ -1038,6 +1090,13 @@ const Match = ({ onBack, activeMatchId }) => {
 
       if (eventRoll < 0.04) {
         // GOAL EVENT (4% chance) - VISUAL SEQUENCE: Shot → Goal announcement
+        // Prevent simultaneous/rapid goals - ensure at least 3 seconds between goals
+        const timeSinceLastGoal = (Date.now() - lastGoalTimeRef.current) / 1000;
+        if (timeSinceLastGoal < 3) {
+          // Skip this goal event - too soon after last goal
+          return;
+        }
+
         const teamRoll = Math.random();
         const isHomeGoal = teamRoll < homeChance;
         const team = isHomeGoal ? currentMatch.homeManager : currentMatch.awayManager;
@@ -1141,11 +1200,22 @@ const Match = ({ onBack, activeMatchId }) => {
           }
           localGoalscorers[scorer.id].goals++;
 
-          // After goal, reset to kickoff
+          // Update last goal time to prevent rapid succession goals
+          lastGoalTimeRef.current = Date.now();
+
+          // After goal, reset to kickoff position
           localBallPossession = isHomeGoal ? 'away' : 'home';
           localBallHolder = null;
           setBallPossession(localBallPossession);
           setBallHolder(null);
+
+          // Show kickoff positions for 3 seconds
+          setIsKickoff(true);
+          if (kickoffTimer) clearTimeout(kickoffTimer);
+          const newTimer = setTimeout(() => {
+            setIsKickoff(false);
+          }, 3000); // Players reset to kickoff for 3 seconds
+          setKickoffTimer(newTimer);
 
           // Show celebration
           setGoalCelebration({ scorer: scorerName, team: isHomeGoal ? 'home' : 'away' });
@@ -1384,50 +1454,107 @@ const Match = ({ onBack, activeMatchId }) => {
         const team = isHome ? currentMatch.homeManager : currentMatch.awayManager;
         const teamName = isHome ? 'home' : 'away';
 
-        const passers = team.squad.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+        // Include ALL outfield players as potential passers (not just mids/defenders)
+        const passers = team.squad.filter(p => p.position !== 'GK');
 
         if (passers.length > 0) {
           const passer = passers[Math.floor(Math.random() * passers.length)];
           const receivers = team.squad.filter(p => p.id !== passer.id && p.position !== 'GK');
 
           if (receivers.length > 0) {
-            // Make passes more logical based on passer's position
+            // Make passes more logical and realistic based on passer's position
             const attackers = receivers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-            const mids = receivers.filter(p => ['CAM', 'CM', 'LM', 'RM'].includes(p.position));
-            const defenders = receivers.filter(p => ['CB', 'LB', 'RB', 'CDM'].includes(p.position));
+            const attackingMids = receivers.filter(p => ['CAM'].includes(p.position));
+            const centralMids = receivers.filter(p => ['CM', 'CDM'].includes(p.position));
+            const wideMids = receivers.filter(p => ['LM', 'RM'].includes(p.position));
+            const defenders = receivers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
 
             let receiver;
             const receiverRoll = Math.random();
 
-            // Progressive passing based on passer position
+            // Realistic progressive passing based on passer position
             if (['ST', 'LW', 'RW'].includes(passer.position)) {
-              // Attackers: prefer other attackers or attacking mids (no sudden passes to defense)
-              if (receiverRoll < 0.40 && attackers.length > 0) {
+              // Attackers: NEVER pass back to defenders (unrealistic!)
+              // Prefer: other attackers (50%), attacking mids (40%), central mids (10%)
+              if (receiverRoll < 0.50 && attackers.length > 0) {
                 receiver = attackers[Math.floor(Math.random() * attackers.length)];
-              } else if (mids.length > 0) {
-                receiver = mids[Math.floor(Math.random() * mids.length)];
+              } else if (receiverRoll < 0.90 && attackingMids.length > 0) {
+                receiver = attackingMids[Math.floor(Math.random() * attackingMids.length)];
+              } else if (centralMids.length > 0) {
+                receiver = centralMids[Math.floor(Math.random() * centralMids.length)];
+              } else if (attackers.length > 0) {
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
               } else {
-                receiver = attackers.length > 0 ? attackers[0] : receivers[0];
+                // Fallback to any available receiver if no mids/attackers
+                receiver = receivers[Math.floor(Math.random() * receivers.length)];
               }
-            } else if (['CAM', 'CM', 'LM', 'RM'].includes(passer.position)) {
-              // Midfielders: can pass forward to attackers or sideways/back to other mids
-              if (receiverRoll < 0.45 && attackers.length > 0) {
+            } else if (['CAM'].includes(passer.position)) {
+              // Attacking Midfielders: mostly forward passes
+              // Prefer: attackers (60%), other mids (30%), defenders (10% back pass)
+              if (receiverRoll < 0.60 && attackers.length > 0) {
                 receiver = attackers[Math.floor(Math.random() * attackers.length)];
-              } else if (receiverRoll < 0.85 && mids.length > 0) {
-                receiver = mids[Math.floor(Math.random() * mids.length)];
+              } else if (receiverRoll < 0.90 && (centralMids.length > 0 || wideMids.length > 0)) {
+                const availableMids = [...centralMids, ...wideMids];
+                receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
               } else if (defenders.length > 0) {
                 receiver = defenders[Math.floor(Math.random() * defenders.length)];
               } else {
                 receiver = receivers[Math.floor(Math.random() * receivers.length)];
               }
+            } else if (['CM', 'LM', 'RM'].includes(passer.position)) {
+              // Central/Wide Midfielders: balanced passing
+              // Prefer: forward to attackers (40%), sideways to mids (35%), back to defenders (25%)
+              if (receiverRoll < 0.40 && attackers.length > 0) {
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
+              } else if (receiverRoll < 0.75) {
+                const availableMids = [...attackingMids, ...centralMids, ...wideMids];
+                if (availableMids.length > 0) {
+                  receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
+              } else if (defenders.length > 0) {
+                receiver = defenders[Math.floor(Math.random() * defenders.length)];
+              } else {
+                receiver = receivers[Math.floor(Math.random() * receivers.length)];
+              }
+            } else if (['CDM'].includes(passer.position)) {
+              // Defensive Midfielders: build-up play
+              // Prefer: mids (50%), defenders (30%), long ball to attackers (20%)
+              if (receiverRoll < 0.50) {
+                const availableMids = [...attackingMids, ...centralMids, ...wideMids];
+                if (availableMids.length > 0) {
+                  receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
+              } else if (receiverRoll < 0.80 && defenders.length > 0) {
+                receiver = defenders[Math.floor(Math.random() * defenders.length)];
+              } else if (attackers.length > 0) {
+                receiver = attackers[Math.floor(Math.random() * attackers.length)];
+              } else {
+                receiver = receivers[Math.floor(Math.random() * receivers.length)];
+              }
             } else {
-              // Defenders: prefer passing to midfielders or other defenders (build from back)
-              if (receiverRoll < 0.50 && mids.length > 0) {
-                receiver = mids[Math.floor(Math.random() * mids.length)];
+              // Defenders: build from the back
+              // Prefer: mids (60%), other defenders (25%), long ball forward (15%)
+              if (receiverRoll < 0.60) {
+                const availableMids = [...centralMids, ...wideMids, ...attackingMids];
+                if (availableMids.length > 0) {
+                  receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
               } else if (receiverRoll < 0.85 && defenders.length > 0) {
                 receiver = defenders[Math.floor(Math.random() * defenders.length)];
               } else if (attackers.length > 0) {
-                // Occasional long ball forward
+                // Occasional long ball over the top
                 receiver = attackers[Math.floor(Math.random() * attackers.length)];
               } else {
                 receiver = receivers[Math.floor(Math.random() * receivers.length)];
@@ -1774,6 +1901,15 @@ const Match = ({ onBack, activeMatchId }) => {
 
         if (eventRoll < 0.04) {
           // GOAL EVENT (4% chance) - VISUAL SEQUENCE: Shot → Goal announcement
+          // Prevent simultaneous/rapid goals - check if a goal was scored recently
+          const lastGoalTimestamp = latestData.lastGoalTimestamp || 0;
+          const timeSinceLastGoal = (Date.now() - lastGoalTimestamp) / 1000;
+          if (timeSinceLastGoal < 3) {
+            // Skip this goal event - too soon after last goal
+            console.log('Prevented rapid succession goal - too soon after last goal');
+            return;
+          }
+
           const teamRoll = Math.random();
           const isHomeGoal = teamRoll < homeChance;
           const team = isHomeGoal ? match.homeManager : match.awayManager;
@@ -1857,7 +1993,8 @@ const Match = ({ onBack, activeMatchId }) => {
             events: newEvents,
             goalscorers,
             ballPossession: kickoffTeam,
-            ballHolder: null
+            ballHolder: null,
+            lastGoalTimestamp: Date.now() // Track goal time to prevent rapid succession goals
           });
 
           console.log('GOAL!', eventText);
@@ -2078,7 +2215,8 @@ const Match = ({ onBack, activeMatchId }) => {
           const teamName = isHome ? 'home' : 'away';
 
           const availablePlayers = team.squad.filter(p => !substitutedPlayers.includes(p.id));
-          const passers = availablePlayers.filter(p => ['CAM', 'CM', 'CDM', 'LM', 'RM', 'CB', 'LB', 'RB'].includes(p.position));
+          // Include ALL outfield players as potential passers (not just mids/defenders)
+          const passers = availablePlayers.filter(p => p.position !== 'GK');
 
           if (passers.length > 0) {
             const passer = passers[Math.floor(Math.random() * passers.length)];
@@ -2089,18 +2227,97 @@ const Match = ({ onBack, activeMatchId }) => {
             );
 
             if (receivers.length > 0) {
-              // Weight receiver selection by position (prefer attackers)
+              // Make passes more logical and realistic based on passer's position
               const attackers = receivers.filter(p => ['ST', 'LW', 'RW'].includes(p.position));
-              const mids = receivers.filter(p => ['CAM', 'CM', 'LM', 'RM'].includes(p.position));
+              const attackingMids = receivers.filter(p => ['CAM'].includes(p.position));
+              const centralMids = receivers.filter(p => ['CM', 'CDM'].includes(p.position));
+              const wideMids = receivers.filter(p => ['LM', 'RM'].includes(p.position));
+              const defenders = receivers.filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
 
               let receiver;
               const receiverRoll = Math.random();
-              if (receiverRoll < 0.50 && attackers.length > 0) {
-                receiver = attackers[Math.floor(Math.random() * attackers.length)];
-              } else if (receiverRoll < 0.85 && mids.length > 0) {
-                receiver = mids[Math.floor(Math.random() * mids.length)];
+
+              // Realistic progressive passing based on passer position
+              if (['ST', 'LW', 'RW'].includes(passer.position)) {
+                // Attackers: NEVER pass back to defenders (unrealistic!)
+                // Prefer: other attackers (50%), attacking mids (40%), central mids (10%)
+                if (receiverRoll < 0.50 && attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else if (receiverRoll < 0.90 && attackingMids.length > 0) {
+                  receiver = attackingMids[Math.floor(Math.random() * attackingMids.length)];
+                } else if (centralMids.length > 0) {
+                  receiver = centralMids[Math.floor(Math.random() * centralMids.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
+              } else if (['CAM'].includes(passer.position)) {
+                // Attacking Midfielders: mostly forward passes
+                if (receiverRoll < 0.60 && attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else if (receiverRoll < 0.90 && (centralMids.length > 0 || wideMids.length > 0)) {
+                  const availableMids = [...centralMids, ...wideMids];
+                  receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                } else if (defenders.length > 0) {
+                  receiver = defenders[Math.floor(Math.random() * defenders.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
+              } else if (['CM', 'LM', 'RM'].includes(passer.position)) {
+                // Central/Wide Midfielders: balanced passing
+                if (receiverRoll < 0.40 && attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else if (receiverRoll < 0.75) {
+                  const availableMids = [...attackingMids, ...centralMids, ...wideMids];
+                  if (availableMids.length > 0) {
+                    receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                  } else if (attackers.length > 0) {
+                    receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                  } else {
+                    receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                  }
+                } else if (defenders.length > 0) {
+                  receiver = defenders[Math.floor(Math.random() * defenders.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
+              } else if (['CDM'].includes(passer.position)) {
+                // Defensive Midfielders: build-up play
+                if (receiverRoll < 0.50) {
+                  const availableMids = [...attackingMids, ...centralMids, ...wideMids];
+                  if (availableMids.length > 0) {
+                    receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                  } else if (attackers.length > 0) {
+                    receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                  } else {
+                    receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                  }
+                } else if (receiverRoll < 0.80 && defenders.length > 0) {
+                  receiver = defenders[Math.floor(Math.random() * defenders.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
               } else {
-                receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                // Defenders: build from the back
+                if (receiverRoll < 0.60) {
+                  const availableMids = [...centralMids, ...wideMids, ...attackingMids];
+                  if (availableMids.length > 0) {
+                    receiver = availableMids[Math.floor(Math.random() * availableMids.length)];
+                  } else if (attackers.length > 0) {
+                    receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                  } else {
+                    receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                  }
+                } else if (receiverRoll < 0.85 && defenders.length > 0) {
+                  receiver = defenders[Math.floor(Math.random() * defenders.length)];
+                } else if (attackers.length > 0) {
+                  receiver = attackers[Math.floor(Math.random() * attackers.length)];
+                } else {
+                  receiver = receivers[Math.floor(Math.random() * receivers.length)];
+                }
               }
 
               // Calculate pass success based on passer's overall rating
@@ -4126,15 +4343,24 @@ const Match = ({ onBack, activeMatchId }) => {
     };
 
     const renderPitch = (homeSquad, awaySquad, homeFormation = '4-3-3', awayFormation = '4-3-3') => {
-      // Get base positions from formation
-      let homePlayers = getFormationPositions(homeFormation, homeSquad);
-      let awayPlayers = getFormationPositions(awayFormation, awaySquad);
+      // Get base positions from formation OR kickoff positions
+      let homePlayers, awayPlayers;
 
-      // Apply tactic-based position adjustments
-      const homeTactic = currentMatch.homeTactic || 'Balanced';
-      const awayTactic = currentMatch.awayTactic || 'Balanced';
-      homePlayers = adjustPositionsForTactic(homePlayers, homeTactic, true);
-      awayPlayers = adjustPositionsForTactic(awayPlayers, awayTactic, false);
+      if (isKickoff) {
+        // Use kickoff positions - all players in their own half
+        homePlayers = getKickoffPositions(homeFormation, homeSquad, true);
+        awayPlayers = getKickoffPositions(awayFormation, awaySquad, false);
+      } else {
+        // Normal play - use formation positions with tactic adjustments
+        homePlayers = getFormationPositions(homeFormation, homeSquad);
+        awayPlayers = getFormationPositions(awayFormation, awaySquad);
+
+        // Apply tactic-based position adjustments
+        const homeTactic = currentMatch.homeTactic || 'Balanced';
+        const awayTactic = currentMatch.awayTactic || 'Balanced';
+        homePlayers = adjustPositionsForTactic(homePlayers, homeTactic, true);
+        awayPlayers = adjustPositionsForTactic(awayPlayers, awayTactic, false);
+      }
 
       // Advanced time-based animation system for realistic movement
       const time = minute + (Date.now() % 1000) / 1000; // Sub-second precision
@@ -4312,10 +4538,10 @@ const Match = ({ onBack, activeMatchId }) => {
               const isAttacking = possessionTeam === 0;
               const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 0;
 
-              // Smooth purposeful movement - no oscillation
+              // Smooth purposeful movement - no oscillation (but no movement during kickoff)
               let xMovement = 0, yMovement = 0;
 
-              if (isAttacking) {
+              if (!isKickoff && isAttacking) {
                 // ATTACKING: Push forward steadily
                 if (!isGK) {
                   yMovement = isDefender ? -0.8 : (isMidfielder ? -1.2 : -1.8);
@@ -4327,7 +4553,7 @@ const Match = ({ onBack, activeMatchId }) => {
                     xMovement = player.baseX < 75 ? 0.3 : 0;
                   }
                 }
-              } else {
+              } else if (!isKickoff) {
                 // DEFENDING: Track and mark opponents
                 if (isGK) {
                   yMovement = 0.2; // GK stays near goal
@@ -4358,8 +4584,8 @@ const Match = ({ onBack, activeMatchId }) => {
                 }
               }
 
-              // Ball carrier moves with purpose
-              if (hasBall) {
+              // Ball carrier moves with purpose (not during kickoff)
+              if (!isKickoff && hasBall) {
                 yMovement -= 1.0; // Drive forward
               }
 
@@ -4394,22 +4620,10 @@ const Match = ({ onBack, activeMatchId }) => {
               const isAttacking = possessionTeam === 1;
               const hasBall = ballCarrier && ballCarrier.id === player.id && possessionTeam === 1;
 
-              // Debug away team highlighting
-              if (idx === 0 && possessionTeam === 1 && ballCarrier) {
-                console.log('[AWAY TEAM CHECK]', {
-                  ballCarrierId: ballCarrier.id,
-                  ballCarrierName: ballCarrier.name,
-                  currentPlayerId: player.id,
-                  currentPlayerName: player.name,
-                  hasBall: hasBall,
-                  possessionTeam: possessionTeam
-                });
-              }
-
-              // Smooth purposeful movement - no oscillation
+              // Smooth purposeful movement - no oscillation (but no movement during kickoff)
               let xMovement = 0, yMovement = 0;
 
-              if (isAttacking) {
+              if (!isKickoff && isAttacking) {
                 // ATTACKING: Push forward steadily (down for away)
                 if (!isGK) {
                   yMovement = isDefender ? 0.8 : (isMidfielder ? 1.2 : 1.8);
@@ -4421,7 +4635,7 @@ const Match = ({ onBack, activeMatchId }) => {
                     xMovement = player.baseX < 75 ? 0.3 : 0;
                   }
                 }
-              } else {
+              } else if (!isKickoff) {
                 // DEFENDING: Track and mark opponents
                 if (isGK) {
                   yMovement = -0.2; // GK stays near goal
@@ -4452,8 +4666,8 @@ const Match = ({ onBack, activeMatchId }) => {
                 }
               }
 
-              // Ball carrier moves with purpose
-              if (hasBall) {
+              // Ball carrier moves with purpose (not during kickoff)
+              if (!isKickoff && hasBall) {
                 yMovement += 1.0; // Drive forward (down for away)
               }
 
