@@ -9,7 +9,13 @@
     "dev": "webpack serve --mode development --open",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["football", "manager", "game", "soccer", "sports"],
+  "keywords": [
+    "football",
+    "manager",
+    "game",
+    "soccer",
+    "sports"
+  ],
   "author": "Anas Alrifaiy",
   "license": "ISC",
   "description": "Advanced Football Manager game built with React Native Web and Firebase",
@@ -17,6 +23,7 @@
     "firebase": "^12.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-icons": "^5.5.0",
     "react-native": "^0.81.4",
     "react-native-web": "^0.21.1"
   },

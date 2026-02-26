@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
+import { FiBell, FiUser, FiX, FiChevronRight, FiAlertTriangle, FiZap } from 'react-icons/fi';
+import { GiSoccerBall } from 'react-icons/gi';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import Login from './components/Auth/Login';
@@ -321,7 +323,12 @@ const MainApp = () => {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.headerContent}>
-        <Text style={styles.logo}>🔥 {t('appTitle')}</Text>
+        <View style={styles.logoRow}>
+          <View style={styles.logoIconBadge}>
+            <FiZap size={18} color="#ffffff" />
+          </View>
+          <Text style={styles.logo}>{t('appTitle')}</Text>
+        </View>
         <Text style={styles.subtitle}>{t('appSubtitle')}</Text>
       </View>
       <View style={styles.topButtons}>
@@ -337,7 +344,7 @@ const MainApp = () => {
           style={styles.notificationButton}
           onPress={() => setCurrentScreen('notifications')}
         >
-          <Text style={styles.notificationIcon}>🔔</Text>
+          <FiBell size={20} color="#ffffff" />
           {unreadNotifications > 0 && (
             <View style={styles.notificationBadgeTop}>
               <Text style={styles.badgeTextTop}>{unreadNotifications}</Text>
@@ -351,7 +358,7 @@ const MainApp = () => {
             setCurrentScreen('profile');
           }}
         >
-          <Text style={styles.profileIcon}>👤</Text>
+          <FiUser size={20} color="#ffffff" />
         </TouchableOpacity>
       </View>
       <View style={styles.statsBar}>
@@ -408,7 +415,10 @@ const MainApp = () => {
         {activeMatch && (
           <View style={styles.clearMatchesButtonContainer}>
             <TouchableOpacity style={styles.clearMatchesButton} onPress={handleClearAllPendingMatches}>
-              <Text style={styles.clearMatchesButtonText}>⚠️ Clear All Pending Matches</Text>
+              <View style={styles.clearMatchesButtonInner}>
+                <FiAlertTriangle size={15} color="#ffffff" />
+                <Text style={styles.clearMatchesButtonText}> Clear All Pending Matches</Text>
+              </View>
             </TouchableOpacity>
           </View>
         )}
@@ -508,7 +518,9 @@ const MainApp = () => {
           }}
         >
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerIcon}>⚽</Text>
+            <View style={styles.bannerIconWrap}>
+              <GiSoccerBall size={28} color="#ffffff" />
+            </View>
             <View style={styles.bannerInfo}>
               <Text style={styles.bannerTitle}>
                 {activeMatch.state === 'waiting' ? 'Match Challenge Pending' :
@@ -531,9 +543,11 @@ const MainApp = () => {
                 style={styles.cancelButton}
                 onPress={handleCancelPendingMatch}
               >
-                <Text style={styles.cancelButtonText}>✕</Text>
+                <FiX size={16} color="#ffffff" />
               </TouchableOpacity>
-              <Text style={styles.bannerArrow}>→</Text>
+              <View style={styles.bannerArrow}>
+                <FiChevronRight size={22} color="#7c6ff7" />
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -599,8 +613,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     position: 'relative',
   },
-  notificationIcon: {
-    fontSize: 20,
+  bannerIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(124, 111, 247, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
   },
   notificationBadgeTop: {
     position: 'absolute',
@@ -628,10 +648,30 @@ const styles = StyleSheet.create({
   profileIcon: {
     fontSize: 20,
   },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 2,
+  },
+  logoIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   logo: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
+    letterSpacing: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 4,
@@ -836,7 +876,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   bannerIcon: {
-    fontSize: 30,
     marginRight: 15,
   },
   bannerInfo: {
@@ -859,9 +898,9 @@ const styles = StyleSheet.create({
     color: '#667eea',
   },
   bannerArrow: {
-    fontSize: 24,
-    color: '#667eea',
     marginLeft: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bannerButtons: {
     flexDirection: 'row',
@@ -881,6 +920,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     lineHeight: 20,
+  },
+  clearMatchesButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
