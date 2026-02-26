@@ -1,31 +1,65 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { FiTarget, FiAward, FiClock } from 'react-icons/fi';
+import { GiSoccerBall } from 'react-icons/gi';
+
+const MATCH_ITEMS = [
+  {
+    id: 'match',
+    Icon: FiTarget,
+    title: 'Friendly Match',
+    desc: 'Challenge friends for fun!',
+    gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    glow: '#fa709a',
+  },
+  {
+    id: 'proleague',
+    Icon: FiAward,
+    title: 'Pro League',
+    desc: 'Compete for points and glory!',
+    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    glow: '#43e97b',
+  },
+  {
+    id: 'matchHistory',
+    Icon: FiClock,
+    title: 'Match History',
+    desc: 'View your past matches',
+    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    glow: '#4facfe',
+  },
+];
+
+const MenuCard = ({ id, Icon, title, desc, gradient, glow, onPress }) => (
+  <TouchableOpacity
+    style={[styles.menuCard, { background: gradient, shadowColor: glow }]}
+    onPress={() => onPress(id)}
+    activeOpacity={0.82}
+  >
+    <View style={styles.iconCircle}>
+      <Icon size={28} color="#ffffff" />
+    </View>
+    <Text style={styles.menuTitle}>{title}</Text>
+    <Text style={styles.menuDesc}>{desc}</Text>
+  </TouchableOpacity>
+);
 
 const MatchTab = ({ onNavigate }) => {
-  const matchItems = [
-    { id: 'match', icon: '🤝', title: 'Friendly Match', desc: 'Challenge friends for fun!', gradient: 'success' },
-    { id: 'proleague', icon: '🏆', title: 'Pro League', desc: 'Compete for points and glory!', gradient: 'warning' },
-    { id: 'matchHistory', icon: '📊', title: 'Match History', desc: 'View your past matches', gradient: 'accent' },
-  ];
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>⚽ Matches</Text>
-        <Text style={styles.headerSubtitle}>Play and compete against others</Text>
+        <View style={styles.headerIconBadge}>
+          <GiSoccerBall size={20} color="#43e97b" />
+        </View>
+        <View>
+          <Text style={styles.headerTitle}>Matches</Text>
+          <Text style={styles.headerSubtitle}>Play and compete against others</Text>
+        </View>
       </View>
 
       <View style={styles.menuGrid}>
-        {matchItems.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[styles.menuCard, styles[`${item.gradient}Card`]]}
-            onPress={() => onNavigate(item.id)}
-          >
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuTitle}>{item.title}</Text>
-            <Text style={styles.menuDesc}>{item.desc}</Text>
-          </TouchableOpacity>
+        {MATCH_ITEMS.map((item) => (
+          <MenuCard key={item.id} {...item} onPress={onNavigate} />
         ))}
       </View>
     </ScrollView>
@@ -38,17 +72,30 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 24,
+  },
+  headerIconBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: 'rgba(67, 233, 123, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(67, 233, 123, 0.2)',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginBottom: 5,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.55)',
+    marginTop: 2,
   },
   menuGrid: {
     flexDirection: 'row',
@@ -62,27 +109,24 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 15,
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
   },
-  successCard: {
-    background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  },
-  warningCard: {
-    background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  },
-  accentCard: {
-    background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  },
-  menuIcon: {
-    fontSize: 30,
-    marginBottom: 10,
+  iconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   menuTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 5,
@@ -90,8 +134,9 @@ const styles = StyleSheet.create({
   },
   menuDesc: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
+    lineHeight: 17,
   },
 });
 
