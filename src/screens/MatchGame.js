@@ -27,7 +27,9 @@ export default function MatchGame({
   const dbWriteRef = useRef(null);
   const dbUnsubRef = useRef(null);
   const remoteInputRef = useRef(null);
-  const lastScoreRef = useRef({ home: 0, away: 0 });
+  const onMatchEndRef = useRef(onMatchEnd);
+
+  useEffect(() => { onMatchEndRef.current = onMatchEnd; }, [onMatchEnd]);
 
   const [score, setScore] = useState({ home: 0, away: 0 });
   const [gameMinute, setGameMinute] = useState(0);
@@ -44,7 +46,6 @@ export default function MatchGame({
     gameRef.current = game;
 
     game.onGoal = (hs, as) => {
-      lastScoreRef.current = { home: hs, away: as };
       setScore({ home: hs, away: as });
     };
     game.onTick = (min) => setGameMinute(min);
@@ -96,8 +97,7 @@ export default function MatchGame({
         game.render(ctx);
 
         if (game.finished) {
-          const s = lastScoreRef.current;
-          onMatchEnd && onMatchEnd(s.home, s.away);
+          onMatchEndRef.current && onMatchEndRef.current(game.homeScore, game.awayScore);
           return;
         }
         rafRef.current = requestAnimationFrame(loop);
@@ -137,8 +137,7 @@ export default function MatchGame({
         game.render(ctx);
 
         if (game.finished) {
-          const s = lastScoreRef.current;
-          onMatchEnd && onMatchEnd(s.home, s.away);
+          onMatchEndRef.current && onMatchEndRef.current(game.homeScore, game.awayScore);
           return;
         }
         rafRef.current = requestAnimationFrame(loop);
@@ -150,7 +149,7 @@ export default function MatchGame({
         if (snap.exists()) game.applyRemoteState(snap.val());
         if (snap.val()?.finished) {
           const v = snap.val();
-          onMatchEnd && onMatchEnd(v.homeScore || 0, v.awayScore || 0);
+          onMatchEndRef.current && onMatchEndRef.current(v.homeScore || 0, v.awayScore || 0);
         }
       });
 

@@ -480,20 +480,11 @@ const Match = ({ onBack, activeMatchId }) => {
         });
 
         if (matchData.state === 'playing' && (previousState === 'ready' || previousState === 'prematch' || previousState === 'select' || previousState === 'waiting') && isHome) {
-          console.log('Match state changed to playing - starting simulation');
-          simulateMatch();
+          console.log('Match state changed to playing - MatchGame handles simulation');
+          // MatchGame (Canvas game) is now the simulation engine for all matches
         }
 
-        // Detect second half start - check for secondHalfStarted flag
-        if (matchData.state === 'playing' && matchData.secondHalfStarted && isHome && !matchData.secondHalfSimulationStarted) {
-          console.log('Second half starting - resuming simulation');
-          console.log('Match data:', matchData);
-          // Mark that second half simulation has started to avoid duplicate calls
-          const matchRef = ref(database, `matches/${currentMatch.id}`);
-          await update(matchRef, { secondHalfSimulationStarted: true });
-          console.log('Second half simulation flag set, starting simulation');
-          simulateSecondHalf();
-        }
+        // Second half is now part of the continuous Canvas game — no simulation needed
 
         // Check if match is finished
         if (matchData.state === 'finished' && matchState !== 'finished') {
@@ -983,8 +974,7 @@ const Match = ({ onBack, activeMatchId }) => {
       setCurrentMatch(updatedMatch);
       setMatchState('playing');
       savePracticeMatchToStorage(updatedMatch, 'playing');
-      // Start simulation immediately for practice match
-      simulatePracticeMatch();
+      // MatchGame handles the interactive Canvas game — no background simulation needed
       return;
     }
 
@@ -3898,8 +3888,7 @@ const Match = ({ onBack, activeMatchId }) => {
           events: []
         });
         setMatchState('playing');
-        // Start practice match simulation
-        simulatePracticeMatch();
+        // MatchGame handles the interactive Canvas game — no background simulation needed
         }
       } catch (error) {
         console.error('Error in confirmPrematch:', error);
