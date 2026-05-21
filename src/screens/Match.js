@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { database } from '../firebase';
 import { ref, get, update, push, set, onValue, off } from 'firebase/database';
 import { showAlert } from '../utils/alert';
+import MatchGame from './MatchGame';
 
 const Match = ({ onBack, activeMatchId }) => {
   const { currentUser, managerProfile, updateManagerProfile } = useAuth();
@@ -4306,6 +4307,42 @@ const Match = ({ onBack, activeMatchId }) => {
       );
     }
 
+    // ── Interactive Canvas game (replaces CSS simulation for all matches) ──
+    {
+      const homeSquad = currentMatch.homeManager.squad || [];
+      const awaySquad = currentMatch.awayManager.squad || [];
+      const homeForm = currentMatch.homeManager.formation || prematchFormation || '4-3-3';
+      const awayForm = currentMatch.awayManager.formation || '4-3-3';
+
+      return (
+        <MatchGame
+          homeSquad={isHome ? homeSquad : awaySquad}
+          awaySquad={isHome ? awaySquad : homeSquad}
+          homeFormation={isHome ? homeForm : awayForm}
+          awayFormation={isHome ? awayForm : homeForm}
+          isHost={isHome}
+          matchId={currentMatch.isPractice ? null : currentMatch.id}
+          isPractice={!!currentMatch.isPractice}
+          homeClubName={currentMatch.homeManager.clubName || currentMatch.homeManager.managerName || 'Home'}
+          awayClubName={currentMatch.awayManager.clubName || currentMatch.awayManager.managerName || 'Away'}
+          onMatchEnd={async (hs, as) => {
+            setHomeScore(hs);
+            setAwayScore(as);
+            if (currentMatch.isPractice) {
+              await finishPracticeMatch(hs, as, [], {});
+            } else {
+              const matchRef = ref(database, `matches/${currentMatch.id}`);
+              await update(matchRef, { homeScore: hs, awayScore: as });
+              await finishMatch();
+            }
+          }}
+          onBack={onBack}
+        />
+      );
+    }
+
+    // Dead code below — kept so the original CSS simulation compiles cleanly.
+    // It is only reached if the block above is removed.
     const myTeam = isHome ? currentMatch.homeManager : currentMatch.awayManager;
     const mySquad = myTeam.squad;
     const myTactic = isHome ? (currentMatch.homeTactic || 'Balanced') : (currentMatch.awayTactic || 'Balanced');
