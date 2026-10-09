@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FootballGame } from '../game/FootballGame';
 import { database } from '../firebase';
-import { ref, set, onValue, off } from 'firebase/database';
+import { ref, set, onValue } from 'firebase/database';
 
 const PITCH_W = FootballGame.PITCH_W;
 const PITCH_H = FootballGame.PITCH_H;
@@ -70,11 +70,16 @@ export default function MatchGame({
     // Keyboard listeners
     const onKeyDown = (e) => {
       keysRef.current[e.key] = true;
-      if (e.key === ' ' || e.key === 'Spacebar') {
+      if (e.repeat) return;
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'j' || e.key === 'J') {
         e.preventDefault();
-        keysRef.current['_spaceDown'] = true;
+        keysRef.current['_passDown'] = true;
       }
-      if (e.key === 'Tab') {
+      if (e.key === 'f' || e.key === 'F' || e.key === 'k' || e.key === 'K' || e.key === 'Enter') {
+        e.preventDefault();
+        keysRef.current['_shootDown'] = true;
+      }
+      if (e.key === 'Tab' || e.key === 'e' || e.key === 'E') {
         e.preventDefault();
         keysRef.current['_tabDown'] = true;
       }
@@ -87,7 +92,7 @@ export default function MatchGame({
 
     // ── Host: game loop + Firebase write ────────────────────────────────────
     if (isHost || isPractice) {
-      let frameNum = 0;
+      let writeFinalState = null;
       const loop = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -97,17 +102,18 @@ export default function MatchGame({
         game.render(ctx);
 
         if (game.finished) {
+          if (writeFinalState) writeFinalState();
           onMatchEndRef.current && onMatchEndRef.current(game.homeScore, game.awayScore);
           return;
         }
         rafRef.current = requestAnimationFrame(loop);
-        frameNum++;
       };
       rafRef.current = requestAnimationFrame(loop);
 
       // Write state to Firebase every ~50ms (online only)
       if (!isPractice && matchId) {
         const gameStateRef = ref(database, `liveGame/${matchId}/gameState`);
+        writeFinalState = () => set(gameStateRef, game.getSerializableState()).catch(() => {});
         dbWriteRef.current = setInterval(() => {
           if (game.finished) return;
           set(gameStateRef, game.getSerializableState()).catch(() => {});
@@ -115,10 +121,9 @@ export default function MatchGame({
 
         // Read away player input
         const awayInputRef = ref(database, `liveGame/${matchId}/awayInput`);
-        const unsub = onValue(awayInputRef, (snap) => {
+        dbUnsubRef.current = onValue(awayInputRef, (snap) => {
           if (snap.exists()) remoteInputRef.current = snap.val();
         });
-        dbUnsubRef.current = () => off(awayInputRef, 'value', unsub);
       }
     }
 
@@ -147,10 +152,6 @@ export default function MatchGame({
       // Receive host state
       const unsub = onValue(gameStateRef, (snap) => {
         if (snap.exists()) game.applyRemoteState(snap.val());
-        if (snap.val()?.finished) {
-          const v = snap.val();
-          onMatchEndRef.current && onMatchEndRef.current(v.homeScore || 0, v.awayScore || 0);
-        }
       });
 
       // Send own input every 50ms
@@ -159,7 +160,7 @@ export default function MatchGame({
         if (input) set(awayInputRef, input).catch(() => {});
       }, 50);
 
-      dbUnsubRef.current = () => off(gameStateRef, 'value', unsub);
+      dbUnsubRef.current = unsub;
     }
 
     // Hide controls hint after 6 seconds
@@ -216,12 +217,8 @@ export default function MatchGame({
   }, []);
 
   const handleSwitchBtn = useCallback(() => {
-    if (isHost || isPractice) {
-      gameRef.current?.switchControl();
-    } else {
-      gameRef.current?.switchAwayControl();
-    }
-  }, [isHost, isPractice]);
+    gameRef.current?.triggerSwitch();
+  }, []);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -293,7 +290,7 @@ export default function MatchGame({
 
         {showControls ? (
           <Text style={styles.controlsHint}>
-            WASD/Arrows = Move  ·  Space = Shoot/Pass  ·  Tab = Switch
+            WASD/Arrows = Move  ·  Shift = Sprint  ·  Space = Pass  ·  F = Shoot  ·  Tab/E = Switch
           </Text>
         ) : null}
 
