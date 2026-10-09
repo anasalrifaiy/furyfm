@@ -144,7 +144,11 @@ export class FootballGame {
     this.homeClub = 'Home'; this.awayClub = 'Away';
     this.onGoal = null; this.onTick = null; this.onSwitch = null;
     this._pendingAction = null; // 'shoot' | 'pass'
-    this._awayPendingAction = null;
+    this._awayActionSequence = 0;
+    this._awayPendingActions = [];
+    this._lastAcknowledgedAwayActionSequence = 0;
+    this._lastRemoteActionSequence = 0;
+    this._pendingRemoteAction = null;
   }
 
   // ── Setup ──────────────────────────────────────────────────────────────────
@@ -158,14 +162,13 @@ export class FootballGame {
     this.home = this._spawn(homeSquad, homeFm || '4-3-3', 'home');
     this.away = this._spawn(awaySquad, awayFm || '4-3-3', 'away');
 
-    // User controls best home attacker (host) or best away attacker (away client)
+    // The host controls home while the away client controls away.
     if (!this.isAwayClient) {
       this.userPlayer = this._bestAttacker(this.home);
       this.userPlayer.isUser = true;
-    } else {
-      this.awayUserPlayer = this._bestAttacker(this.away);
-      this.awayUserPlayer.isUser = true;
     }
+    this.awayUserPlayer = this._bestAttacker(this.away);
+    this.awayUserPlayer.isUser = true;
 
     this._kickoff('home');
     if (this.onSwitch && this.userPlayer) this.onSwitch(this.userPlayer.name);
@@ -295,29 +298,87 @@ export class FootballGame {
     if (keys['ArrowUp']    || keys['w'] || keys['W'] || jy < -0.2) dy -= 1;
     if (keys['ArrowDown']  || keys['s'] || keys['S'] || jy >  0.2) dy += 1;
     if (dx || dy) p.moveTo(p.x + dx * 50, p.y + dy * 50, keys['Shift'] ? 1.4 : 1);
-    if (keys['_spaceDown']) { keys['_spaceDown'] = false; if (p.hasBall) this._act(p); }
+    if (keys['_spaceDown']) {
+      keys['_spaceDown'] = false;
+      if (p.hasBall) this._queueAwayAction(this._actionFor(p));
+    }
     if (keys['_tabDown'])   { keys['_tabDown']   = false; this.switchAwayUser(); }
-    if (this._awayPendingAction) { if (p.hasBall) { if (this._awayPendingAction === 'shoot') this._shoot(p); else this._pass(p); } this._awayPendingAction = null; }
+    const pendingAction = this._awayPendingActions[0];
+    if (pendingAction && p.hasBall && !pendingAction.locallyApplied) {
+      if (pendingAction.action === 'shoot') this._shoot(p);
+      else if (pendingAction.action === 'pass') this._pass(p);
+      pendingAction.locallyApplied = true;
+    }
   }
 
   _applyRemote(awayPlayer, inp) {
     if (!inp) return;
+    const selectedPlayer = this.away[inp.playerIndex];
+    if (selectedPlayer && selectedPlayer !== awayPlayer) {
+      awayPlayer.isUser = false;
+      selectedPlayer.isUser = true;
+      this.awayUserPlayer = awayPlayer = selectedPlayer;
+    }
     awayPlayer.x += (inp.x - awayPlayer.x) * 0.35;
     awayPlayer.y += (inp.y - awayPlayer.y) * 0.35;
     if (inp.fx !== undefined) { awayPlayer.fx = inp.fx; awayPlayer.fy = inp.fy; }
-    if (inp.action === 'shoot' && awayPlayer.hasBall) this._shoot(awayPlayer);
-    else if (inp.action === 'pass' && awayPlayer.hasBall) this._pass(awayPlayer);
+    if (inp.action && inp.actionSequence > this._lastRemoteActionSequence) {
+      this._lastRemoteActionSequence = inp.actionSequence;
+      this._pendingRemoteAction = {
+        action: inp.action,
+        sequence: inp.actionSequence,
+        expiresFrame: this.frame + 120,
+      };
+    }
+    if (this._pendingRemoteAction) {
+      const { action, sequence, expiresFrame } = this._pendingRemoteAction;
+      if (awayPlayer.hasBall) {
+        if (action === 'shoot') this._shoot(awayPlayer);
+        else if (action === 'pass') this._pass(awayPlayer);
+        this._lastAcknowledgedAwayActionSequence = sequence;
+        this._pendingRemoteAction = null;
+      } else if (this.frame >= expiresFrame) {
+        this._lastAcknowledgedAwayActionSequence = sequence;
+        this._pendingRemoteAction = null;
+      }
+    }
+  }
+
+  _actionFor(p) {
+    const goalY = p.team === 'home' ? 0 : PITCH_H;
+    const distGoal = d(p.x, p.y, PITCH_W / 2, goalY);
+    return distGoal < 220 ? 'shoot' : 'pass';
   }
 
   _act(p) {
-    const goalY = p.team === 'home' ? 0 : PITCH_H;
-    const distGoal = d(p.x, p.y, PITCH_W / 2, goalY);
-    if (distGoal < 220) this._shoot(p); else this._pass(p);
+    if (this._actionFor(p) === 'shoot') this._shoot(p);
+    else this._pass(p);
+  }
+
+  _queueAwayAction(action) {
+    this._awayActionSequence++;
+    this._awayPendingActions.push({
+      action,
+      sequence: this._awayActionSequence,
+      locallyApplied: false,
+    });
   }
 
   // Public trigger methods for touch buttons
-  triggerShoot() { if (this.isAwayClient) this._awayPendingAction = 'shoot'; else this._pendingAction = 'shoot'; }
-  triggerPass()  { if (this.isAwayClient) this._awayPendingAction = 'pass';  else this._pendingAction = 'pass'; }
+  triggerShoot() {
+    if (this.isAwayClient) {
+      if (this.awayUserPlayer?.hasBall) this._queueAwayAction('shoot');
+    } else {
+      this._pendingAction = 'shoot';
+    }
+  }
+  triggerPass() {
+    if (this.isAwayClient) {
+      if (this.awayUserPlayer?.hasBall) this._queueAwayAction('pass');
+    } else {
+      this._pendingAction = 'pass';
+    }
+  }
 
   // ── Switch control ─────────────────────────────────────────────────────────
 
@@ -566,6 +627,12 @@ export class FootballGame {
 
   applyRemoteState(state) {
     if (!state) return;
+    if (state.awayActionAck !== undefined) {
+      this._lastAcknowledgedAwayActionSequence = state.awayActionAck;
+      this._awayPendingActions = this._awayPendingActions.filter(
+        action => action.sequence > state.awayActionAck
+      );
+    }
     const lerp = 0.45;
     if (state.homePlayers) state.homePlayers.forEach((s, i) => {
       const p = this.home[i]; if (!p || p.isUser) return;
@@ -574,10 +641,12 @@ export class FootballGame {
       if (s.fx !== undefined) { p.fx = s.fx; p.fy = s.fy; }
     });
     if (state.awayPlayers) state.awayPlayers.forEach((s, i) => {
-      const p = this.away[i]; if (!p || p.isUser) return;
-      p.x += (s.x - p.x) * lerp; p.y += (s.y - p.y) * lerp;
+      const p = this.away[i]; if (!p) return;
+      if (!p.isUser) {
+        p.x += (s.x - p.x) * lerp; p.y += (s.y - p.y) * lerp;
+        if (s.fx !== undefined) { p.fx = s.fx; p.fy = s.fy; }
+      }
       p.hasBall = !!s.hasBall;
-      if (s.fx !== undefined) { p.fx = s.fx; p.fy = s.fy; }
     });
     if (state.ball && !this.ball.owner) {
       this.ball.x += (state.ball.x - this.ball.x) * lerp;
@@ -602,12 +671,22 @@ export class FootballGame {
       homeScore: this.homeScore, awayScore: this.awayScore,
       minute: Math.floor((this.frame / this.totalFrames) * 90),
       finished: this.finished,
+      awayActionAck: this._lastAcknowledgedAwayActionSequence,
     };
   }
 
   getAwayClientInput() {
     const p = this.awayUserPlayer; if (!p) return null;
-    return { x: p.x, y: p.y, fx: p.fx, fy: p.fy, action: null };
+    const pendingAction = this._awayPendingActions[0];
+    return {
+      x: p.x,
+      y: p.y,
+      fx: p.fx,
+      fy: p.fy,
+      playerIndex: p.idx,
+      action: pendingAction?.action || null,
+      actionSequence: pendingAction?.sequence || 0,
+    };
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────

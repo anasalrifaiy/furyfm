@@ -49,7 +49,7 @@ export default function MatchGame({
       setScore({ home: hs, away: as });
     };
     game.onTick = (min) => setGameMinute(min);
-    game.onControlSwitch = (name) => setControlledName(name);
+    game.onSwitch = (name) => setControlledName(name);
 
     game.start(
       homeSquad,
