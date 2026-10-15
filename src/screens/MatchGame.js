@@ -38,6 +38,11 @@ export default function MatchGame({
 
   // Virtual joystick state
   const joystickRef = useRef({ active: false, baseX: 0, baseY: 0, touchId: null });
+  const rootRef = useRef(null);
+  const joyZoneRef = useRef(null);
+  const joyBaseRef = useRef(null);
+  const joyKnobRef = useRef(null);
+  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   // ── Init game ────────────────────────────────────────────────────────────
 
@@ -178,34 +183,78 @@ export default function MatchGame({
 
   // ── Touch controls ───────────────────────────────────────────────────────
 
-  const handleJoystickStart = useCallback((e) => {
-    e.preventDefault();
-    const touch = e.changedTouches[0];
-    joystickRef.current = {
-      active: true,
-      baseX: touch.clientX,
-      baseY: touch.clientY,
-      touchId: touch.identifier,
+  // Floating joystick: touch anywhere in the left zone. Native non-passive listeners are
+  // required so preventDefault actually stops the page from scrolling.
+  useEffect(() => {
+    const zone = joyZoneRef.current;
+    const root = rootRef.current;
+    if (!zone || !root) return undefined;
+    const R = 55;
+    const prevBody = document.body.style.cssText;
+    const prevHtml = document.documentElement.style.cssText;
+    document.body.style.cssText += ';overflow:hidden;overscroll-behavior:none;touch-action:none;';
+    document.documentElement.style.cssText += ';overflow:hidden;overscroll-behavior:none;';
+
+    const show = (on, bx, by, kx, ky) => {
+      const base = joyBaseRef.current, knob = joyKnobRef.current;
+      if (!base || !knob) return;
+      base.style.display = on ? 'block' : 'none';
+      if (on) {
+        base.style.left = (bx - R) + 'px'; base.style.top = (by - R) + 'px';
+        knob.style.left = (R - 24 + kx) + 'px'; knob.style.top = (R - 24 + ky) + 'px';
+      }
     };
-  }, []);
+    const reset = () => {
+      joystickRef.current.active = false;
+      keysRef.current.joystickX = 0;
+      keysRef.current.joystickY = 0;
+      show(false);
+    };
+    const onStart = (e) => {
+      e.preventDefault();
+      if (joystickRef.current.active) return;
+      const t = e.changedTouches[0];
+      const rect = zone.getBoundingClientRect();
+      joystickRef.current = { active: true, baseX: t.clientX, baseY: t.clientY, touchId: t.identifier };
+      show(true, t.clientX - rect.left, t.clientY - rect.top, 0, 0);
+    };
+    const onMove = (e) => {
+      e.preventDefault();
+      const j = joystickRef.current;
+      if (!j.active) return;
+      const t = Array.from(e.changedTouches).find(x => x.identifier === j.touchId);
+      if (!t) return;
+      let dx = t.clientX - j.baseX, dy = t.clientY - j.baseY;
+      const len = Math.hypot(dx, dy);
+      if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+      const dead = len < 8;
+      keysRef.current.joystickX = dead ? 0 : dx / R;
+      keysRef.current.joystickY = dead ? 0 : dy / R;
+      const rect = zone.getBoundingClientRect();
+      show(true, j.baseX - rect.left, j.baseY - rect.top, dx, dy);
+    };
+    const onEnd = (e) => {
+      e.preventDefault();
+      const j = joystickRef.current;
+      if (Array.from(e.changedTouches).some(x => x.identifier === j.touchId)) reset();
+    };
+    const block = (e) => { if (e.cancelable) e.preventDefault(); };
 
-  const handleJoystickMove = useCallback((e) => {
-    e.preventDefault();
-    const j = joystickRef.current;
-    if (!j.active) return;
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === j.touchId);
-    if (!touch) return;
-    const dx = (touch.clientX - j.baseX) / 40;
-    const dy = (touch.clientY - j.baseY) / 40;
-    keysRef.current.joystickX = Math.max(-1, Math.min(1, dx));
-    keysRef.current.joystickY = Math.max(-1, Math.min(1, dy));
-  }, []);
-
-  const handleJoystickEnd = useCallback((e) => {
-    e.preventDefault();
-    joystickRef.current.active = false;
-    keysRef.current.joystickX = 0;
-    keysRef.current.joystickY = 0;
+    zone.addEventListener('touchstart', onStart, { passive: false });
+    zone.addEventListener('touchmove', onMove, { passive: false });
+    zone.addEventListener('touchend', onEnd, { passive: false });
+    zone.addEventListener('touchcancel', onEnd, { passive: false });
+    root.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      zone.removeEventListener('touchstart', onStart);
+      zone.removeEventListener('touchmove', onMove);
+      zone.removeEventListener('touchend', onEnd);
+      zone.removeEventListener('touchcancel', onEnd);
+      root.removeEventListener('touchmove', block);
+      document.body.style.cssText = prevBody;
+      document.documentElement.style.cssText = prevHtml;
+      reset();
+    };
   }, []);
 
   const handleShootBtn = useCallback(() => {
@@ -223,7 +272,7 @@ export default function MatchGame({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.root}>
+    <View ref={rootRef} style={styles.root}>
 
       {/* Score / minute HUD */}
       <View style={styles.hud}>
@@ -245,22 +294,17 @@ export default function MatchGame({
           ref={canvasRef}
           width={PITCH_W}
           height={PITCH_H}
-          style={{ display: 'block', width: '100%', height: 'auto' }}
+          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain', touchAction: 'none' }}
         />
 
         {/* Touch controls overlay */}
         <View style={styles.touchLayer} pointerEvents="box-none">
-          {/* Virtual joystick */}
-          <View
-            style={styles.joystickArea}
-            onTouchStart={handleJoystickStart}
-            onTouchMove={handleJoystickMove}
-            onTouchEnd={handleJoystickEnd}
-            onTouchCancel={handleJoystickEnd}
-          >
-            <View style={styles.joystickBase}>
-              <View style={styles.joystickKnob} />
+          {/* Floating joystick: the whole left half of the screen */}
+          <View ref={joyZoneRef} style={styles.joystickZone}>
+            <View ref={joyBaseRef} pointerEvents="none" style={styles.joystickBase}>
+              <View ref={joyKnobRef} style={styles.joystickKnob} />
             </View>
+            {isTouch ? <Text pointerEvents="none" style={styles.joyHint}>Drag to move</Text> : null}
           </View>
 
           {/* Action buttons */}
@@ -288,7 +332,7 @@ export default function MatchGame({
           </View>
         ) : null}
 
-        {showControls ? (
+        {showControls && !isTouch ? (
           <Text style={styles.controlsHint}>
             WASD/Arrows = Move  ·  Shift = Sprint  ·  Space = Pass  ·  F = Shoot  ·  Tab/E = Switch
           </Text>
@@ -306,14 +350,21 @@ export default function MatchGame({
 
 const styles = StyleSheet.create({
   root: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 9999,
     flex: 1,
     backgroundColor: '#0a0e1a',
     alignItems: 'center',
     justifyContent: 'center',
+    touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
   },
   hud: {
     width: '100%',
-    maxWidth: PITCH_W,
+    maxWidth: 640,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -370,9 +421,10 @@ const styles = StyleSheet.create({
   },
   canvasWrap: {
     position: 'relative',
-    width: PITCH_W,
-    maxWidth: '100%',
-    aspectRatio: PITCH_W / PITCH_H,
+    width: '100%',
+    maxWidth: 640,
+    flex: 1,
+    minHeight: 0,
   },
   touchLayer: {
     position: 'absolute',
@@ -380,36 +432,44 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    padding: 16,
   },
-  joystickArea: {
-    width: 110,
-    height: 110,
-    justifyContent: 'center',
-    alignItems: 'center',
+  joystickZone: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: '55%',
+  },
+  joyHint: {
+    position: 'absolute',
+    left: 16,
+    bottom: 12,
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
   },
   joystickBase: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    display: 'none',
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   joystickKnob: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.45)',
   },
   actionButtons: {
+    position: 'absolute',
+    right: 14,
+    bottom: 24,
     alignItems: 'flex-end',
-    gap: 10,
+    gap: 14,
   },
   passBtn: {
     width: 64,
@@ -440,9 +500,8 @@ const styles = StyleSheet.create({
   },
   switchBtn: {
     position: 'absolute',
-    bottom: 14,
-    left: '50%',
-    transform: [{ translateX: -40 }],
+    top: 10,
+    right: 12,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
@@ -457,7 +516,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     width: '100%',
-    maxWidth: PITCH_W,
+    maxWidth: 640,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
