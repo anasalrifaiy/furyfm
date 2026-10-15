@@ -378,7 +378,7 @@ export class FootballGame {
 
     const team = p.team;
     const teamHasBall = this.ball.owner && this.ball.owner.team === team;
-    if (inp.sw || (inp.pass && !teamHasBall && !p.hasBall)) {
+    if (inp.sw) {
       const near = this._nearestToBall(team);
       const cur = team === 'home' ? this.userPlayer : this.awayUserPlayer;
       if (near && near !== cur) this._setUser(team, near);
@@ -390,6 +390,8 @@ export class FootballGame {
       }
       return;
     }
+
+    if (inp.pass && !p.hasBall && !teamHasBall) this._humanTackle(p);
 
     if (inp.shoot) p.bufShoot = 10;
     else if (inp.pass) p.bufPass = 10;
@@ -730,11 +732,37 @@ export class FootballGame {
 
   // ── Contests ───────────────────────────────────────────────────────────────
 
+  // Human tackle / interception: a button press when close enough to the carrier or the ball.
+  _humanTackle(p) {
+    if (p.tackleCd > 0) return;
+    p.tackleCd = 45;
+    const b = this.ball;
+    const c = b.owner;
+    if (c && c.team !== p.team) {
+      if (c.role === 'GK') return;
+      if (dist(p.x, p.y, c.x, c.y) > PLAYER_R * 2 + 12) return;
+      const ratio = p.overall / c.overall;
+      // Approaching from the front or side is easier than chasing from behind
+      const front = (p.x - c.x) * c.fx + (p.y - c.y) * c.fy > 0 ? 1 : 0.6;
+      if (Math.random() < clamp(0.42 * ratio * ratio * front, 0.1, 0.8)) {
+        const dx = p.x - c.x, dy = p.y - c.y, dd = Math.hypot(dx, dy) || 1;
+        c.hasBall = false; c.noCapture = 40;
+        b.owner = null; b.lastTeam = p.team; b.receiver = null; b.shot = false;
+        b.vx = (dx / dd) * 2.5; b.vy = (dy / dd) * 2.5;
+        this._give(p);
+      }
+    } else if (!c && dist(p.x, p.y, b.x, b.y) < PLAYER_R + BALL_R + 16 && b.speed() < 14 && !b.shot) {
+      p.noCapture = 0;
+      this._give(p); // well-timed press cuts out a pass or loose ball
+    }
+  }
+
   _tackles() {
     const c = this.ball.owner;
     if (!c || c.role === 'GK') return;
     const opps = c.team === 'home' ? this.away : this.home;
     for (const o of opps) {
+      if (this._isHuman(o)) continue; // human defenders must press the button
       if (o.tackleCd > 0 || o.noCapture > 0) continue;
       if (dist(o.x, o.y, c.x, c.y) > PLAYER_R * 2 + 3) continue;
       o.tackleCd = 20;
@@ -764,7 +792,7 @@ export class FootballGame {
       const reach = PLAYER_R + BALL_R + (p.role === 'GK' ? 9 : 3);
       const dd = dist(p.x, p.y, b.x, b.y);
       if (dd > reach) continue;
-
+      if (this._isHuman(p) && b.lastTeam !== p.team && speed > 3) continue; // must press to cut out a pass
       if (p.role === 'GK' && speed > 6.5 && b.shot && b.lastTeam !== p.team) continue; // handled by the dive
       if (p.role === 'GK' && speed > 6.5 && b.lastTeam === p.team) continue;
       if (p.role !== 'GK' && speed > FAST_BALL) {

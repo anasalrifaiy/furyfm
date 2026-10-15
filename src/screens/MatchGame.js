@@ -347,17 +347,16 @@ export default function MatchGame({
 
           {/* Action buttons */}
           <View style={styles.actionButtons}>
+            <View ref={switchBtnRef} style={styles.switchBtn}>
+              <Text style={styles.btnText}>SWITCH</Text>
+            </View>
             <View ref={passBtnRef} style={styles.passBtn}>
               <Text style={styles.btnText}>PASS</Text>
+              <Text style={styles.btnSub}>/TACKLE</Text>
             </View>
             <View ref={shootBtnRef} style={styles.shootBtn}>
               <Text style={styles.btnText}>SHOOT</Text>
             </View>
-          </View>
-
-          {/* Switch player button */}
-          <View ref={switchBtnRef} style={styles.switchBtn}>
-            <Text style={styles.switchBtnText}>⇄ SWITCH</Text>
           </View>
         </View>
       </View>
@@ -372,7 +371,7 @@ export default function MatchGame({
 
         {showControls && !isTouch ? (
           <Text style={styles.controlsHint}>
-            WASD/Arrows = Move  ·  Shift = Sprint  ·  Space = Pass  ·  F = Shoot  ·  Tab/E = Switch
+            WASD/Arrows = Move  ·  Shift = Sprint  ·  Space = Pass/Tackle  ·  F = Shoot  ·  Tab/E = Switch
           </Text>
         ) : null}
 
@@ -536,16 +535,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
+  btnSub: {
+    color: '#ffffff',
+    fontSize: 8,
+    opacity: 0.85,
+  },
   switchBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(120,120,140,0.75)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   switchBtnText: {
     color: '#e2e8f0',
