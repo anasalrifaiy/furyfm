@@ -87,6 +87,8 @@ class Ball {
       const reach = PLAYER_R + BALL_R - 1;
       this.x += (o.x + o.fx * reach - this.x) * 0.55;
       this.y += (o.y + o.fy * reach - this.y) * 0.55;
+      this.x = Math.max(BALL_R, Math.min(PITCH_W - BALL_R, this.x));
+      this.y = Math.max(BALL_R, Math.min(PITCH_H - BALL_R, this.y));
       this.vx = 0; this.vy = 0;
       return;
     }
@@ -318,14 +320,16 @@ export class FootballGame {
       }
     }
     // Soft separation so players don't stack on top of each other
-    const min = PLAYER_R * 1.7;
+    const baseMin = PLAYER_R * 1.7;
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
         const a = all[i], b = all[j];
+        const gkPair = a.role === 'GK' || b.role === 'GK';
+        const min = gkPair && a.team !== b.team ? PLAYER_R * 3 : baseMin;
         const dx = b.x - a.x, dy = b.y - a.y;
         const dd = Math.hypot(dx, dy);
         if (dd < min && dd > 0.01) {
-          const push = ((min - dd) / dd) * 0.25;
+          const push = ((min - dd) / dd) * (gkPair ? 0.5 : 0.25);
           a.x -= dx * push; a.y -= dy * push;
           b.x += dx * push; b.y += dy * push;
         }
@@ -478,31 +482,76 @@ export class FootballGame {
         .sort((a, b) => dist(a.x, a.y, ball.x, ball.y) - dist(b.x, b.y, ball.x, ball.y));
 
       if (ownerTeam && ownerTeam !== team) {
-        if (this.kickGrace <= 0) field.slice(0, 3).forEach((p, i) => chasers.set(p, i === 0 ? 1 : 0.95));
+        if (this.kickGrace <= 0) field.slice(0, 2).forEach((p, i) => chasers.set(p, i === 0 ? 1 : 0.9));
       } else if (!ownerTeam) {
         const recv = ball.receiver;
         if (recv && recv.team === team) { if (!this._isHuman(recv)) chasers.set(recv, 1); }
         else if (field[0]) chasers.set(field[0], 1);
       }
 
+      // Goal-side man marking while the other team has the ball
+      const marks = new Map();
+      if (ownerTeam && ownerTeam !== team && this.kickGrace <= 0) {
+        const threats = (team === 'home' ? this.away : this.home).filter(o => o.role !== 'GK' && !o.hasBall);
+        const taken = new Set();
+        const markers = players.filter(p => p.role !== 'GK' && !this._isHuman(p) && !p.hasBall && !chasers.has(p));
+        for (const m of markers) {
+          let best = null, bd = Infinity;
+          for (const o of threats) {
+            if (taken.has(o)) continue;
+            const dd = dist(o.x, o.y, m.baseX, m.baseY);
+            if (dd < bd && dd < 190) { bd = dd; best = o; }
+          }
+          if (best) { taken.add(best); marks.set(m, best); }
+        }
+      }
+
       for (const p of players) {
         if (this._isHuman(p)) continue;
         if (p.role === 'GK') this._aiKeeper(p);
         else if (p.hasBall) this._aiCarrier(p);
-        else if (chasers.has(p)) this._aiChase(p, chasers.get(p));
+        else if (chasers.has(p)) this._aiChase(p, chasers.get(p), chasers.get(p) === 1);
         else {
           const t = this._formationTarget(p, ownerTeam);
-          this._steer(p, t.x, t.y, 0.8);
+          const o = marks.get(p);
+          if (o) {
+            const ownGoalDir = team === 'home' ? 1 : -1;
+            const mx = o.x * 0.7 + t.x * 0.3;
+            const my = clamp(o.y + ownGoalDir * 22, 60, PITCH_H - 60) * 0.7 + t.y * 0.3;
+            this._steer(p, mx, my, 0.85);
+          } else {
+            const s = ownerTeam === team ? this._spread(p, t, players) : t;
+            this._steer(p, s.x, s.y, 0.8);
+          }
         }
       }
     }
   }
 
-  _aiChase(p, mult) {
+  // Keeps team-mates from bunching up: pushes the target away from nearby team-mates and the ball carrier
+  _spread(p, t, players) {
+    let x = t.x, y = t.y;
+    for (const q of players) {
+      if (q === p || q.role === 'GK') continue;
+      const dx = x - q.x, dy = y - q.y, dd = Math.hypot(dx, dy);
+      const need = q.hasBall ? 70 : 48;
+      if (dd < need && dd > 0.1) { x += (dx / dd) * (need - dd) * 0.8; y += (dy / dd) * (need - dd) * 0.8; }
+      else if (dd <= 0.1) x += 30;
+    }
+    return { x: clamp(x, PLAYER_R + 4, PITCH_W - PLAYER_R - 4), y: clamp(y, 130, PITCH_H - 130) };
+  }
+
+  _aiChase(p, mult, press = true) {
     const b = this.ball;
     if (b.owner) {
       const c = b.owner;
-      this._steer(p, c.x + c.vx * 5, c.y + c.vy * 5, mult, false);
+      if (press) {
+        this._steer(p, c.x + c.vx * 5, c.y + c.vy * 5, mult, false);
+      } else {
+        // Second defender jockeys at a distance instead of piling onto the carrier
+        const dx = p.x - c.x, dy = p.y - c.y, dd = Math.hypot(dx, dy) || 1;
+        this._steer(p, c.x + (dx / dd) * 38, c.y + (dy / dd) * 38, mult, true);
+      }
     } else {
       this._steer(p, b.x + b.vx * 6, b.y + b.vy * 6, mult, false);
     }
@@ -537,12 +586,12 @@ export class FootballGame {
       if (dd < nd) { nd = dd; near = o; }
     }
 
-    if (dg < 135) { this._shoot(p, 0, false); return; }
+    if (dg < 95 && nd > 14) { this._shoot(p, 0, false); return; }
 
     if (p.think <= 0) {
       p.think = 10;
-      if (SHOOTER_ROLES.includes(p.role) && dg < 150 && nd > 20) {
-        if (Math.random() < (dg < 100 ? 0.45 : 0.12)) { this._shoot(p, 0, false); return; }
+      if (SHOOTER_ROLES.includes(p.role) && dg < 170 && nd > 20) {
+        if (Math.random() < (dg < 125 ? 0.3 : 0.1)) { this._shoot(p, 0, false); return; }
       }
       const pressured = nd < 30;
       if (p.hold > (MIN_HOLD[p.role] || 30) && ((pressured && Math.random() < 0.7) || Math.random() < 0.18)) {
@@ -612,15 +661,26 @@ export class FootballGame {
       const dx = t.x - p.x, dy = t.y - p.y;
       const dd = Math.hypot(dx, dy);
       if (dd < 35 || dd > 330) continue;
-      let s = aim
-        ? ((dx * aim.x + dy * aim.y) / dd) * 130
-        : (dy * atk / dd) * 60 + clamp((t.y - p.y) * atk * 0.15, -40, 40);
-      s -= dd * 0.12;
-      if (opps.some(o => dist(o.x, o.y, t.x, t.y) < 28)) s -= aim ? 35 : 70;
-      if (this._laneBlocked(p, t, opps)) s -= aim ? 50 : 80;
+      let s;
+      if (aim) {
+        const cos = (dx * aim.x + dy * aim.y) / dd;
+        if (cos < 0.6) continue; // only teammates roughly in the chosen direction
+        s = cos * 220 - dd * 0.08;
+        if (opps.some(o => dist(o.x, o.y, t.x, t.y) < 28)) s -= 25;
+        if (this._laneBlocked(p, t, opps)) s -= 35;
+      } else {
+        s = (dy * atk / dd) * 60 + clamp((t.y - p.y) * atk * 0.15, -40, 40) - dd * 0.12;
+        if (opps.some(o => dist(o.x, o.y, t.x, t.y) < 28)) s -= 70;
+        if (this._laneBlocked(p, t, opps)) s -= 80;
+      }
       if (s > bs) { bs = s; best = t; }
     }
-    if (!best) return false;
+    if (!best) {
+      if (!aim) return false;
+      // Nobody in that direction: play the ball into space where the player pointed
+      this._kick(p, aim.x, aim.y, 8, 0.03);
+      return true;
+    }
 
     const dd = dist(p.x, p.y, best.x, best.y);
     const lead = Math.min(45, dd / 6);
