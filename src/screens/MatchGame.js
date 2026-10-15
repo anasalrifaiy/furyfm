@@ -39,6 +39,9 @@ export default function MatchGame({
   // Virtual joystick state
   const joystickRef = useRef({ active: false, baseX: 0, baseY: 0, touchId: null });
   const rootRef = useRef(null);
+  const passBtnRef = useRef(null);
+  const shootBtnRef = useRef(null);
+  const switchBtnRef = useRef(null);
   const joyZoneRef = useRef(null);
   const joyBaseRef = useRef(null);
   const joyKnobRef = useRef(null);
@@ -74,7 +77,7 @@ export default function MatchGame({
 
     // Keyboard listeners
     const onKeyDown = (e) => {
-      keysRef.current[e.key] = true;
+      keysRef.current[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true;
       if (e.repeat) return;
       if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'j' || e.key === 'J') {
         e.preventDefault();
@@ -90,8 +93,10 @@ export default function MatchGame({
       }
     };
     const onKeyUp = (e) => {
-      keysRef.current[e.key] = false;
+      keysRef.current[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false;
     };
+    const onBlur = () => { keysRef.current = {}; };
+    window.addEventListener('blur', onBlur);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
@@ -174,6 +179,7 @@ export default function MatchGame({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (dbWriteRef.current) clearInterval(dbWriteRef.current);
       if (dbUnsubRef.current) dbUnsubRef.current();
@@ -257,6 +263,38 @@ export default function MatchGame({
     };
   }, []);
 
+  // Action buttons use native touch events so they fire immediately even while another
+  // finger is holding the joystick (React Native's responder system handles one touch at a time).
+  useEffect(() => {
+    const cleanups = [];
+    const bind = (el, fn) => {
+      if (!el) return;
+      const down = (e) => {
+        if (e.cancelable) e.preventDefault();
+        e.stopPropagation();
+        el.style.opacity = '0.6';
+        fn();
+      };
+      const up = () => { el.style.opacity = '1'; };
+      el.addEventListener('touchstart', down, { passive: false });
+      el.addEventListener('touchend', up);
+      el.addEventListener('touchcancel', up);
+      el.addEventListener('mousedown', down);
+      el.addEventListener('mouseup', up);
+      cleanups.push(() => {
+        el.removeEventListener('touchstart', down);
+        el.removeEventListener('touchend', up);
+        el.removeEventListener('touchcancel', up);
+        el.removeEventListener('mousedown', down);
+        el.removeEventListener('mouseup', up);
+      });
+    };
+    bind(passBtnRef.current, () => gameRef.current?.triggerPass());
+    bind(shootBtnRef.current, () => gameRef.current?.triggerShoot());
+    bind(switchBtnRef.current, () => gameRef.current?.triggerSwitch());
+    return () => cleanups.forEach(c => c());
+  }, []);
+
   const handleShootBtn = useCallback(() => {
     gameRef.current?.triggerShoot();
   }, []);
@@ -309,18 +347,18 @@ export default function MatchGame({
 
           {/* Action buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.passBtn} onPress={handlePassBtn} activeOpacity={0.7}>
+            <View ref={passBtnRef} style={styles.passBtn}>
               <Text style={styles.btnText}>PASS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shootBtn} onPress={handleShootBtn} activeOpacity={0.7}>
+            </View>
+            <View ref={shootBtnRef} style={styles.shootBtn}>
               <Text style={styles.btnText}>SHOOT</Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* Switch player button */}
-          <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchBtn} activeOpacity={0.7}>
+          <View ref={switchBtnRef} style={styles.switchBtn}>
             <Text style={styles.switchBtnText}>⇄ SWITCH</Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
 

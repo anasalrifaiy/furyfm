@@ -391,9 +391,15 @@ export class FootballGame {
       return;
     }
 
+    if (inp.shoot) p.bufShoot = 10;
+    else if (inp.pass) p.bufPass = 10;
+    if (p.bufShoot > 0) p.bufShoot--;
+    if (p.bufPass > 0) p.bufPass--;
     if (!p.hasBall) return;
-    if (inp.shoot) this._shoot(p, inp.dx, mag > 0.3);
-    else if (inp.pass) {
+    // A press made a few frames before regaining the ball still counts
+    if (p.bufShoot > 0) { p.bufShoot = 0; this._shoot(p, inp.dx, mag > 0.3); }
+    else if (p.bufPass > 0) {
+      p.bufPass = 0;
       const aim = mag > 0.3 ? { x: inp.dx / mag, y: inp.dy / mag } : { x: p.fx, y: p.fy };
       this._pass(p, aim);
     }
