@@ -1,165 +1,158 @@
 import { create } from 'zustand';
-import { supabase } from './supabase';
-import type { User } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as fbSignOut,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  type User,
+} from 'firebase/auth';
+import { ref, get, set, update, push, onValue, type Unsubscribe } from 'firebase/database';
+import { auth, database } from './firebase';
+import type { Manager } from './manager';
 
 interface AuthState {
   user: User | null;
+  manager: Manager | null;
   loading: boolean;
   initialized: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<string>;
+  signUp: (email: string, password: string, managerName: string) => Promise<string>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   initialize: () => Promise<void>;
+  updateManager: (updates: Partial<Manager>) => Promise<void>;
+  recordMatch: (opponent: string, homeScore: number, awayScore: number) => Promise<void>;
 }
 
-// Keep track of the last signup attempt
-let lastSignUpAttempt = 0;
-const SIGNUP_COOLDOWN = 30000; // 30 seconds cooldown
+const newManager = (user: User, managerName: string): Manager => ({
+  uid: user.uid,
+  email: user.email || '',
+  managerName,
+  budget: 900000000,
+  squad: [],
+  wins: 0,
+  draws: 0,
+  losses: 0,
+  points: 0,
+});
 
-// Get the site URL based on the platform and environment
-const getSiteUrl = () => {
-  if (Platform.OS === 'web') {
-    // Use window.location.origin for all web environments
-    return window.location.origin;
-  }
-  return 'https://anaszrock.com';
+const friendlyError = (e: any): Error => {
+  const code = e?.code as string | undefined;
+  const map: Record<string, string> = {
+    'auth/invalid-credential': 'Wrong email or password',
+    'auth/invalid-email': 'Invalid email address',
+    'auth/user-not-found': 'No account found for this email',
+    'auth/wrong-password': 'Wrong email or password',
+    'auth/email-already-in-use': 'This email is already registered',
+    'auth/weak-password': 'Password must be at least 6 characters',
+    'auth/network-request-failed': 'Network error, check your connection',
+    'auth/too-many-requests': 'Too many attempts, try again later',
+  };
+  return new Error((code && map[code]) || e?.message || 'Something went wrong');
 };
 
-function getAuthErrorMessage(error: any): string {
-  // Check for existing user error
-  if (error?.message?.includes('User already registered')) {
-    return 'An account with this email already exists. Please sign in instead.';
-  }
-  if (error?.message?.includes('Email not confirmed')) {
-    return 'Please check your email (including spam folder) and click the confirmation link to verify your account.';
-  }
-  if (error?.message?.includes('Invalid login credentials')) {
-    return 'Invalid email or password. Please try again.';
-  }
-  if (error?.message?.includes('security purposes')) {
-    return 'Please wait a moment before trying again.';
-  }
-  // Add specific handling for network errors
-  if (error?.message?.includes('Failed to fetch')) {
-    return 'Unable to connect to the server. Please check your internet connection and try again.';
-  }
-  return error?.message || 'An error occurred. Please try again.';
-}
+let started = false;
+let profileUnsub: Unsubscribe | null = null;
 
-export const useAuth = create<AuthState>((set) => ({
+export const useAuth = create<AuthState>((set_, get_) => ({
   user: null,
-  loading: true,
+  manager: null,
+  loading: false,
   initialized: false,
 
   initialize: async () => {
-    try {
-      set({ loading: true, initialized: false });
-      
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Set up auth state change listener
-      supabase.auth.onAuthStateChange((_event, session) => {
-        set({ user: session?.user ?? null });
-      });
-
-      // Set initial state
-      set({ 
-        user: session?.user ?? null, 
-        initialized: true, 
-        loading: false 
-      });
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-      set({ initialized: true, loading: false });
-    }
-  },
-
-  signIn: async (email: string, password: string) => {
-    set({ loading: true });
-    try {
-      const { error, data: { user } } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      set({ user });
-    } catch (error) {
-      console.error('Error signing in:', error);
-      throw new Error(getAuthErrorMessage(error));
-    } finally {
-      set({ loading: false });
-    }
-  },
-
-  signUp: async (email: string, password: string) => {
-    set({ loading: true });
-    try {
-      const now = Date.now();
-      if (now - lastSignUpAttempt < SIGNUP_COOLDOWN) {
-        const remainingTime = Math.ceil((SIGNUP_COOLDOWN - (now - lastSignUpAttempt)) / 1000);
-        throw new Error(`Please wait ${remainingTime} seconds before trying again`);
+    if (started) return;
+    started = true;
+    onAuthStateChanged(auth, async (user) => {
+      profileUnsub?.();
+      profileUnsub = null;
+      if (!user) {
+        set_({ user: null, manager: null, initialized: true });
+        return;
       }
-
-      lastSignUpAttempt = now;
-
-      const { error: checkError } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'check-user-exists',
-      });
-
-      if (!checkError?.message?.includes('Invalid login credentials')) {
-        throw new Error('An account with this email already exists. Please sign in instead.');
-      }
-
-      const { error: signUpError, data } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getSiteUrl()}/login`,
+      try {
+        const managerRef = ref(database, `managers/${user.uid}`);
+        const snap = await get(managerRef);
+        if (!snap.exists()) {
+          await set(managerRef, { ...newManager(user, (user.email || 'manager').split('@')[0]), createdAt: Date.now() });
         }
-      });
-      
-      if (signUpError) throw signUpError;
-      if (!data.user) throw new Error('No user returned after signup');
+        profileUnsub = onValue(managerRef, (s) => {
+          if (s.exists()) set_({ manager: s.val() as Manager });
+        });
+      } catch (e) {
+        console.error('Failed to load manager profile', e);
+      }
+      set_({ user, initialized: true });
+    });
+    // Never hang on the splash screen if Firebase is unreachable
+    setTimeout(() => {
+      if (!get_().initialized) set_({ initialized: true });
+    }, 8000);
+  },
 
-      return 'Please check your email (including spam folder) for a confirmation link. You will be able to sign in after confirming your email.';
-    } catch (error) {
-      console.error('Error signing up:', error);
-      throw new Error(getAuthErrorMessage(error));
+  signIn: async (email, password) => {
+    set_({ loading: true });
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+    } catch (e) {
+      throw friendlyError(e);
     } finally {
-      set({ loading: false });
+      set_({ loading: false });
+    }
+  },
+
+  signUp: async (email, password, managerName) => {
+    set_({ loading: true });
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await set(ref(database, `managers/${cred.user.uid}`), {
+        ...newManager(cred.user, managerName.trim()),
+        createdAt: Date.now(),
+      });
+      return 'Account created! You start with $900M to build your squad.';
+    } catch (e) {
+      throw friendlyError(e);
+    } finally {
+      set_({ loading: false });
     }
   },
 
   signOut: async () => {
+    await fbSignOut(auth);
+  },
+
+  resetPassword: async (email) => {
     try {
-      set({ loading: true });
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      set({ user: null });
-    } catch (error) {
-      console.error('Error signing out:', error);
-      throw new Error(getAuthErrorMessage(error));
-    } finally {
-      set({ loading: false });
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (e) {
+      throw friendlyError(e);
     }
   },
 
-  resetPassword: async (email: string) => {
-    try {
-      set({ loading: true });
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getSiteUrl()}/login`,
-      });
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      throw new Error(getAuthErrorMessage(error));
-    } finally {
-      set({ loading: false });
-    }
+  updateManager: async (updates) => {
+    const user = get_().user;
+    if (!user) return;
+    await update(ref(database, `managers/${user.uid}`), updates);
+  },
+
+  // Practice match result: same record fields the web app uses
+  recordMatch: async (opponent, homeScore, awayScore) => {
+    const { user, manager } = get_();
+    if (!user || !manager) return;
+    const won = homeScore > awayScore;
+    const draw = homeScore === awayScore;
+    await push(ref(database, `managers/${user.uid}/matchHistory`), {
+      opponent,
+      homeScore,
+      awayScore,
+      playedAt: Date.now(),
+    });
+    await update(ref(database, `managers/${user.uid}`), {
+      wins: (manager.wins || 0) + (won ? 1 : 0),
+      draws: (manager.draws || 0) + (draw ? 1 : 0),
+      losses: (manager.losses || 0) + (!won && !draw ? 1 : 0),
+      points: (manager.points || 0) + (won ? 3 : draw ? 1 : 0),
+    });
   },
 }));

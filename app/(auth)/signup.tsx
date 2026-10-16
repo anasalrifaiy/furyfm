@@ -6,11 +6,16 @@ import { useAuth } from '@/lib/auth';
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [managerName, setManagerName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const { signUp, loading } = useAuth();
 
   const validateForm = () => {
+    if (!managerName.trim()) {
+      setError('Manager name is required');
+      return false;
+    }
     if (!email.trim()) {
       setError('Email is required');
       return false;
@@ -32,11 +37,11 @@ export default function SignUpScreen() {
       setSuccess(null);
       if (!validateForm()) return;
       
-      const message = await signUp(email, password);
+      const message = await signUp(email, password, managerName);
       setSuccess(message);
-      // Clear form after successful signup
       setEmail('');
       setPassword('');
+      setManagerName('');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       if (errorMessage.includes('already exists')) {
@@ -68,6 +73,19 @@ export default function SignUpScreen() {
             <Text style={styles.successText}>{success}</Text>
           </View>
         )}
+
+        <TextInput
+          style={[styles.input, !managerName.trim() && error && styles.inputError]}
+          placeholder="Manager name"
+          placeholderTextColor="#666"
+          value={managerName}
+          onChangeText={(text) => {
+            setManagerName(text);
+            setError(null);
+            setSuccess(null);
+          }}
+          editable={!loading}
+        />
 
         <TextInput
           style={[styles.input, !email.trim() && error && styles.inputError]}
