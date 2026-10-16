@@ -1,31 +1,18 @@
-import { useEffect } from 'react';
-import { Slot, useRouter, useSegments } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { useAuth } from '@/lib/auth';
+import { installLocalStorage } from '@/lib/localStorage';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { initialize, initialized, user } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_600SemiBold, Inter_700Bold });
-  const ready = (fontsLoaded || !!fontError) && initialized;
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
-
-  useEffect(() => {
-    if (!ready) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    if (!user && !inAuthGroup) router.replace('/login');
-    else if (user && inAuthGroup) router.replace('/(tabs)');
-  }, [ready, user, segments, router]);
+    installLocalStorage().finally(() => setReady(true));
+  }, []);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -34,7 +21,7 @@ export default function RootLayout() {
   if (!ready) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#5b6cf0" />
       </View>
     );
   }
@@ -42,11 +29,11 @@ export default function RootLayout() {
   return (
     <>
       <Slot />
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0b1020' },
 });

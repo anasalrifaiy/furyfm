@@ -29,6 +29,10 @@ export class FootballGame {
   goalFlash: number;
   goalPause: number;
   userPlayer: GamePlayer | null;
+  awayUserPlayer: GamePlayer | null;
+  getSerializableState(): any;
+  applyRemoteState(state: any): void;
+  getAwayClientInput(): any;
   onGoal: ((homeScore: number, awayScore: number, team: 'home' | 'away') => void) | null;
   onTick: ((minute: number) => void) | null;
   onSwitch: ((name: string) => void) | null;
@@ -41,7 +45,7 @@ export class FootballGame {
     homeClub: string,
     awayClub: string
   ): void;
-  update(keys: Record<string, any>, remoteInput: any): void;
+  update(keys: Record<string, any>, remoteInput?: any): void;
   triggerPass(): void;
   triggerShoot(): void;
   triggerSwitch(): void;

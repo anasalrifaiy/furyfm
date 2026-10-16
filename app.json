@@ -3,7 +3,7 @@
     "name": "FM Fury",
     "slug": "football-manager-2025",
     "owner": "anasdev90",
-    "version": "1.0.23",
+    "version": "1.0.24",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0b1020"
     },
     "assetBundlePatterns": [
       "**/*"

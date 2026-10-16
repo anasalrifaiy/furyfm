@@ -2,6 +2,8 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, LayoutChangeEvent, GestureResponderEvent } from 'react-native';
 import Svg, { Rect, Circle, Line, G, Path, Text as SvgText } from 'react-native-svg';
 import { FootballGame, SquadPlayer } from '@/lib/footballGame';
+import { database } from '@/lib/firebase';
+import { ref, set, onValue } from 'firebase/database';
 
 const W = FootballGame.PITCH_W;
 const H = FootballGame.PITCH_H;
@@ -17,6 +19,9 @@ interface Props {
   homeName: string;
   awayName: string;
   onExit: (homeScore: number, awayScore: number, finished: boolean) => void;
+  isHost?: boolean;
+  matchId?: string | null;
+  isPractice?: boolean;
 }
 
 const PitchBackground = memo(function PitchBackground() {
@@ -42,8 +47,39 @@ const PitchBackground = memo(function PitchBackground() {
   );
 });
 
+// Button driven by raw touch events: unlike Pressable it doesn't compete for the single JS responder,
+// so it keeps working while another finger holds the joystick or another button.
+function ActionButton({ style, onDown, onUp, children }: {
+  style: any; onDown: () => void; onUp?: () => void; children: React.ReactNode;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const active = useRef(0);
+  return (
+    <View
+      style={[styles.btn, style, pressed && { opacity: 0.6, transform: [{ scale: 0.92 }] }]}
+      onTouchStart={() => {
+        active.current += 1;
+        setPressed(true);
+        onDown();
+      }}
+      onTouchEnd={() => {
+        active.current = Math.max(0, active.current - 1);
+        if (active.current === 0) { setPressed(false); onUp?.(); }
+      }}
+      onTouchCancel={() => {
+        active.current = 0;
+        setPressed(false);
+        onUp?.();
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
 export default function MatchGame({
   homeSquad, awaySquad, homeFormation, awayFormation, homeName, awayName, onExit,
+  isHost = true, matchId = null, isPractice = true,
 }: Props) {
   const gameRef = useRef<FootballGame | null>(null);
   const keysRef = useRef<Record<string, any>>({ joystickX: 0, joystickY: 0, Shift: false });
@@ -59,7 +95,29 @@ export default function MatchGame({
     const game = new FootballGame();
     gameRef.current = game;
     game.onTick = (m: number) => setMinute(m);
-    game.start(homeSquad, awaySquad, homeFormation, awayFormation, true, homeName, awayName);
+    game.start(homeSquad, awaySquad, homeFormation, awayFormation, isHost, homeName, awayName);
+
+    const online = !isPractice && !!matchId;
+    const stateRef = online ? ref(database, `liveGame/${matchId}/gameState`) : null;
+    const inputRef = online ? ref(database, `liveGame/${matchId}/awayInput`) : null;
+    let remoteInput: any = null;
+    const timers: ReturnType<typeof setInterval>[] = [];
+    let unsub: (() => void) | null = null;
+
+    if (online && stateRef && inputRef) {
+      if (isHost) {
+        timers.push(setInterval(() => {
+          if (!game.finished) set(stateRef, game.getSerializableState()).catch(() => {});
+        }, 50));
+        unsub = onValue(inputRef, (snap) => { if (snap.exists()) remoteInput = snap.val(); });
+      } else {
+        unsub = onValue(stateRef, (snap) => { if (snap.exists()) game.applyRemoteState(snap.val()); });
+        timers.push(setInterval(() => {
+          const input = game.getAwayClientInput();
+          if (input) set(inputRef, input).catch(() => {});
+        }, 50));
+      }
+    }
 
     let raf = 0;
     let last = Date.now();
@@ -71,11 +129,12 @@ export default function MatchGame({
       acc += Math.min(100, now - last);
       last = now;
       while (acc >= STEP_MS && !game.finished) {
-        game.update(keysRef.current, null);
+        game.update(keysRef.current, isHost ? remoteInput : undefined);
         acc -= STEP_MS;
       }
       setTick(t => (t + 1) % 1000000);
       if (game.finished) {
+        if (online && isHost && stateRef) set(stateRef, game.getSerializableState()).catch(() => {});
         setFinished(true);
         return;
       }
@@ -85,6 +144,8 @@ export default function MatchGame({
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      timers.forEach(clearInterval);
+      unsub?.();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -130,7 +191,7 @@ export default function MatchGame({
   // Pitch fills the width; falls back to fitting the height
   const pitchW = size.w ? Math.min(size.w, ((size.h - 150) * W) / H) : 0;
   const pitchH = (pitchW * H) / W;
-  const user = game?.userPlayer;
+  const user = isHost ? game?.userPlayer : game?.awayUserPlayer;
 
   const renderPlayer = (p: any, color: string, key: string) => {
     const isUser = p.isUser;
@@ -195,28 +256,28 @@ export default function MatchGame({
         )}
       </View>
 
-      {/* Action buttons */}
+      {/* Action buttons: raw touch events so several fingers work at once (joystick + buttons) */}
       <View style={styles.buttons}>
         <View style={styles.buttonRow}>
-          <Pressable style={[styles.btn, styles.switchBtn]} onPressIn={() => game?.triggerSwitch()}>
+          <ActionButton style={styles.switchBtn} onDown={() => game?.triggerSwitch()}>
             <Text style={styles.btnText}>SWITCH</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.btn, styles.sprintBtn]}
-            onPressIn={() => { keysRef.current.Shift = true; }}
-            onPressOut={() => { keysRef.current.Shift = false; }}
+          </ActionButton>
+          <ActionButton
+            style={styles.sprintBtn}
+            onDown={() => { keysRef.current.Shift = true; }}
+            onUp={() => { keysRef.current.Shift = false; }}
           >
             <Text style={styles.btnText}>SPRINT</Text>
-          </Pressable>
+          </ActionButton>
         </View>
         <View style={styles.buttonRow}>
-          <Pressable style={[styles.btn, styles.passBtn]} onPressIn={() => game?.triggerPass()}>
+          <ActionButton style={styles.passBtn} onDown={() => game?.triggerPass()}>
             <Text style={styles.btnText}>PASS</Text>
             <Text style={styles.btnSub}>/TACKLE</Text>
-          </Pressable>
-          <Pressable style={[styles.btn, styles.shootBtn]} onPressIn={() => game?.triggerShoot()}>
+          </ActionButton>
+          <ActionButton style={styles.shootBtn} onDown={() => game?.triggerShoot()}>
             <Text style={styles.btnText}>SHOOT</Text>
-          </Pressable>
+          </ActionButton>
         </View>
       </View>
 
@@ -229,7 +290,8 @@ export default function MatchGame({
           <Text style={styles.fullTime}>Full Time</Text>
           <Text style={styles.finalScore}>{homeName} {game?.homeScore} – {game?.awayScore} {awayName}</Text>
           <Text style={styles.result}>
-            {game && game.homeScore > game.awayScore ? 'You won!' : game && game.homeScore < game.awayScore ? 'You lost' : 'Draw'}
+            {!game ? '' : game.homeScore === game.awayScore ? 'Draw'
+              : (game.homeScore > game.awayScore) === isHost ? 'You won!' : 'You lost'}
           </Text>
           <Pressable style={styles.doneBtn} onPress={() => onExit(game?.homeScore ?? 0, game?.awayScore ?? 0, true)}>
             <Text style={styles.doneText}>Continue</Text>

@@ -3,6 +3,7 @@ import { initializeAuth, getAuth } from 'firebase/auth';
 // @ts-expect-error exported by Firebase's React Native bundle but missing from its typings
 import { getReactNativePersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Public client configuration (same Firebase project as the FuryFM web app)
@@ -24,3 +25,4 @@ export const auth = isNew
   : getAuth(app);
 
 export const database = getDatabase(app);
+export const storage = getStorage(app);
