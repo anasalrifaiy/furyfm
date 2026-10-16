@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "FM Fury",
+    "slug": "football-manager-2025",
+    "owner": "anasdev90",
+    "version": "1.0.21",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anaszrock.footballmanager2025"
+    },
+    "android": {
+      "backgroundColor": "#ffffff",
+      "package": "com.anaszrock.footballmanager2025",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.ico"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "524c15fb-5ea0-454a-9b8c-3f03a6bdb1cb"
+      }
+    }
+  }
+}
